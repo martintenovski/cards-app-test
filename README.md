@@ -156,6 +156,62 @@ This repo includes `eas.json` with:
 
 The development profile is configured for a development client build.
 
+## Recommended Git workflow
+
+If you're used to a `development -> live` flow on web projects, that maps very well here with one important mobile twist:
+
+- **`main`** = production-ready code
+- **`develop`** = integration branch for day-to-day work
+- **`hotfix/*`** = urgent fixes branched from `main`
+
+### Suggested branch flow
+
+1. commit your day-to-day work directly to `develop`
+2. test with a local dev build or preview build
+3. when you want to ship, open a PR from `develop` into `main`
+4. review the PR and merge it only when the release looks good
+5. create a production build from `main`
+6. tag the release, for example `v1.0.0`
+
+This repository uses `main` as the production-ready branch.
+
+### How mobile releases differ from web
+
+On web, merging to production often means the live site updates immediately.
+
+On mobile, there are usually **two different kinds of releases**:
+
+- **JavaScript / asset updates**: can be delivered quickly with Expo update infrastructure
+- **Native changes**: require a new app binary and usually App Store / Play Store submission
+
+In this app, changes involving packages like camera or OCR should be treated as **native-impacting** changes and should go through a fresh build.
+
+### Practical mapping for this repo
+
+- `develop` → internal testing using the `development` or `preview` EAS profile
+- `main` → store-ready builds using the `production` EAS profile
+
+### Minimum repo rules worth adopting
+
+- protect `main` from direct pushes
+- allow direct commits to `develop` if this is a solo-maintained project
+- use PRs from `develop` into `main` for releases
+- require the validation workflow to pass before merge
+- tag every production release
+- keep release notes in GitHub releases or a changelog
+
+## Validation scripts
+
+This repo includes a few lightweight checks you can run before pushing:
+
+```bash
+npm run typecheck
+npm run doctor
+npm run check
+```
+
+These are also good candidates to run in CI on pull requests.
+
 ## Persistence
 
 Cards and dashboard preferences are stored locally using Zustand persistence.
