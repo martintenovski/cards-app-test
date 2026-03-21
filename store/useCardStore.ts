@@ -43,6 +43,7 @@ interface CardStoreState {
   toggleViewMode: () => void;
   setHomeFilter: (filter: HomeFilter) => void;
   addCard: (values: CardFormValues, palette: CardPalette) => void;
+  prependCard: (card: WalletCard) => void;
   updateCard: (id: string, values: CardFormValues, palette: CardPalette) => void;
   deleteCard: (id: string) => void;
   /** Advance the stack: current top → end (swipe left) */
@@ -86,6 +87,12 @@ export const useCardStore = create<CardStoreState>()(
             viewMode: 'list',
           };
         }),
+      prependCard: (card) =>
+        set((state) => ({
+          cards: [card, ...state.cards],
+          homeFilter: card.category,
+          viewMode: 'list',
+        })),
       updateCard: (id, values, palette) =>
         set((state) => ({
           cards: state.cards.map((c) => {

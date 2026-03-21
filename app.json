@@ -6,18 +6,41 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
-    "splash": {
-      "image": "./assets/splash-icon.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
-    },
+    "resizeMode": "contain",
+    "backgroundColor": "#ffffff",
+    "userInterfaceStyle": "automatic",
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-font",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Camera is required to scan identity documents and bank cards"
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "deploymentTarget": "16.0"
+          },
+          "android": {}
+        }
+      ]
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.tenovski.cardsapp",
       "infoPlist": {
-        "NSCameraUsageDescription": "Allow access to camera to scan your cards",
+        "NSCameraUsageDescription": "Camera is required to scan identity documents and bank cards",
+        "NFCReaderUsageDescription": "Allow Cards App to use NFC to read compatible cards and tags when you choose to scan them.",
         "ITSAppUsesNonExemptEncryption": false
+      },
+      "entitlements": {
+        "com.apple.developer.nfc.readersession.formats": [
+          "TAG"
+        ]
       }
     },
     "android": {
@@ -30,24 +53,15 @@
       "predictiveBackGestureEnabled": false,
       "package": "com.tenovski.cardsapp",
       "permissions": [
-        "android.permission.CAMERA"
+        "android.permission.CAMERA",
+        "android.permission.NFC"
       ]
     },
     "web": {
       "favicon": "./assets/favicon.png",
       "bundler": "metro"
     },
-    "plugins": [
-      "expo-router",
-      "expo-secure-store",
-      "expo-font",
-      [
-        "react-native-vision-camera",
-        {
-          "cameraPermissionText": "Allow access to camera to scan your cards"
-        }
-      ]
-    ],
+    
     "extra": {
       "router": {},
       "eas": {

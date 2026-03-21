@@ -36,6 +36,7 @@ export interface BankCard extends BaseCard {
   holderName: string;
   cardNumber: string;
   maskedCardNumber: string;
+  expiry?: string;
   cvc: string;
   accountNumber: string;
   brand: 'visa' | 'mastercard';
@@ -47,6 +48,11 @@ export interface PersonalDocCard extends BaseCard {
   issuedBy: string;
   docNumber: string;
   secondaryNumber: string;
+  personalIdNumber?: string;
+  dateOfBirth?: string;
+  dateOfExpiry?: string;
+  nationality?: string;
+  sex?: string;
 }
 
 export interface ClubCard extends BaseCard {
@@ -65,6 +71,7 @@ export interface CardFormValues {
   issuer: string;
   nameOnCard: string;
   cardNumber: string;
+  expiry: string;
   secondaryNumber: string;
   cvc: string;
   accountNumber: string;
@@ -100,6 +107,7 @@ export const DEFAULT_FORM_VALUES: CardFormValues = {
   issuer: '',
   nameOnCard: '',
   cardNumber: '',
+  expiry: '',
   secondaryNumber: '',
   cvc: '',
   accountNumber: '',
@@ -386,6 +394,7 @@ export function createPreviewCard(values: CardFormValues, paletteOverride?: Card
     holderName: values.holderName || values.nameOnCard || 'Holder name',
     cardNumber: values.cardNumber || '6358241226238933',
     maskedCardNumber: maskCardNumber(values.cardNumber || '6358241226238933'),
+    expiry: values.expiry || '',
     cvc: values.cvc || 'CVC',
     accountNumber: values.accountNumber || 'Account number',
     brand: 'visa',
@@ -402,6 +411,7 @@ export function cardToFormValues(card: WalletCard): CardFormValues {
       holderName: card.holderName,
       nameOnCard: card.holderName,
       cardNumber: card.cardNumber,
+      expiry: card.expiry ?? '',
       cvc: card.cvc,
       accountNumber: card.accountNumber,
     };
@@ -437,6 +447,7 @@ export function createCardFromForm(values: CardFormValues, paletteOverride?: Car
       id: createId('bank'),
       cardNumber: values.cardNumber,
       maskedCardNumber: maskCardNumber(values.cardNumber),
+      expiry: values.expiry,
       cvc: values.cvc,
       accountNumber: values.accountNumber,
       holderName: values.holderName || values.nameOnCard,

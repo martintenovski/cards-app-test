@@ -2,8 +2,8 @@ import { Feather } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
+  Alert,
   KeyboardAvoidingView,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -13,41 +13,37 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, {
-  runOnJS,
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from 'react-native-reanimated';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { GRADIENTS } from '@/constants/gradients';
 import { useCardStore } from '@/store/useCardStore';
 import {
-  DEFAULT_FORM_VALUES,
   getContrastColor,
-  type CardCategory,
-  type CardFormValues,
+  maskCardNumber,
+  type BankCard,
   type CardPalette,
+  type PersonalDocCard,
+  type WalletCard,
 } from '@/types/card';
-
-type SelectOption = { label: string; value: CardCategory };
+import type { ScannedCardData } from '@/utils/blinkidSetup';
 
 type ConfirmFormState = {
-  category: CardCategory;
-  issuerName: string;
-  cardholderName: string;
+  documentType: ScannedCardData['documentType'];
+  fullName: string;
+  documentNumber: string;
+  personalIdNumber: string;
+  dateOfBirth: string;
+  dateOfExpiry: string;
+  nationality: string;
+  issuedBy: string;
+  sex: string;
   cardNumber: string;
-  expiry: string;
+  cardExpiry: string;
+  cardHolder: string;
+  bankName: string;
   cvc: string;
   accountNumber: string;
 };
-
-const CATEGORY_OPTIONS: SelectOption[] = [
-  { label: 'Bank Card', value: 'bank' },
-  { label: 'Personal Doc', value: 'personal' },
-  { label: 'Club Card', value: 'club' },
-];
 
 function createScanPalette(gradient: [string, string]): CardPalette {
   const primaryText = getContrastColor(gradient[0]);
@@ -61,77 +57,18 @@ function createScanPalette(gradient: [string, string]): CardPalette {
   };
 }
 
-function categoryToFormValues(form: ConfirmFormState): CardFormValues {
-  const normalizedCardNumber =
-    form.category === 'bank'
-      ? form.cardNumber.replace(/\D/g, '') || form.cardNumber.trim()
-      : form.cardNumber.trim();
-
-  if (form.category === 'personal') {
-    return {
-      ...DEFAULT_FORM_VALUES,
-      category: 'personal',
-      type: 'Identity Card',
-      issuer: form.issuerName.trim(),
-      nameOnCard: form.cardholderName.trim(),
-      cardNumber: normalizedCardNumber,
-      secondaryNumber: form.accountNumber.trim(),
-    };
-  }
-
-  if (form.category === 'club') {
-    return {
-      ...DEFAULT_FORM_VALUES,
-      category: 'club',
-      type: 'Club Card',
-      clubName: form.issuerName.trim(),
-      nameOnCard: form.cardholderName.trim(),
-      memberId: normalizedCardNumber,
-      tier: form.accountNumber.trim(),
-    };
-  }
-
-  return {
-    ...DEFAULT_FORM_VALUES,
-    category: 'bank',
-    type: 'Debit Card',
-    bankName: form.issuerName.trim(),
-    holderName: form.cardholderName.trim(),
-    nameOnCard: form.cardholderName.trim(),
-    cardNumber: normalizedCardNumber,
-    cvc: form.cvc.trim(),
-    accountNumber: form.accountNumber.trim(),
-  };
-}
-
-function previewLabel(category: CardCategory) {
-  if (category === 'personal') return 'Personal Document';
-  if (category === 'club') return 'Club Card';
-  return 'Bank Card';
-}
-
-function issuerFieldLabel(category: CardCategory) {
-  if (category === 'personal') return 'Issued by';
-  if (category === 'club') return 'Club name';
-  return 'Bank / issuer';
-}
-
-function accountFieldLabel(category: CardCategory) {
-  if (category === 'personal') return 'Secondary number';
-  if (category === 'club') return 'Membership tier';
-  return 'Account number';
-}
-
 function InputRow({
   label,
   value,
   onChangeText,
   keyboardType = 'default',
+  editable = true,
 }: {
   label: string;
   value: string;
   onChangeText: (value: string) => void;
   keyboardType?: 'default' | 'number-pad';
+  editable?: boolean;
 }) {
   return (
     <View style={styles.pill}>
@@ -141,91 +78,37 @@ function InputRow({
         onChangeText={onChangeText}
         keyboardType={keyboardType}
         style={styles.input}
+        editable={editable}
         placeholderTextColor="rgba(255,255,255,0.25)"
       />
     </View>
   );
 }
 
-function SelectRow({
-  label,
-  value,
-  options,
-  onChange,
-}: {
-  label: string;
-  value: CardCategory;
-  options: SelectOption[];
-  onChange: (value: CardCategory) => void;
-}) {
-  const [modalVisible, setModalVisible] = useState(false);
-  const translateY = useSharedValue(400);
-  const selectedLabel = options.find((option) => option.value === value)?.label ?? 'Choose one';
-
-  const openSheet = () => {
-    translateY.value = 400;
-    setModalVisible(true);
-    translateY.value = withTiming(0, { duration: 200 });
-  };
-
-  const closeSheet = () => {
-    translateY.value = withTiming(400, { duration: 150 }, (done) => {
-      if (done) runOnJS(setModalVisible)(false);
-    });
-  };
-
-  const sheetAnim = useAnimatedStyle(() => ({
-    transform: [{ translateY: translateY.value }],
-  }));
-
-  return (
-    <>
-      <Pressable style={styles.pill} onPress={openSheet} accessibilityRole="button">
-        <View style={styles.selectContent}>
-          <Text style={styles.rowLabel}>{label.toUpperCase()}</Text>
-          <Text style={styles.selectValue}>{selectedLabel}</Text>
-        </View>
-        <Feather name="chevron-down" size={18} color="rgba(255,255,255,0.7)" />
-      </Pressable>
-
-      <Modal transparent visible={modalVisible} animationType="none" onRequestClose={closeSheet}>
-        <Pressable style={styles.sheetBackdrop} onPress={closeSheet} />
-        <Animated.View style={[styles.sheet, sheetAnim]}>
-          <View style={styles.sheetHandle} />
-          {options.map((option) => {
-            const active = option.value === value;
-            return (
-              <Pressable
-                key={option.value}
-                style={styles.sheetItem}
-                onPress={() => {
-                  onChange(option.value);
-                  closeSheet();
-                }}
-              >
-                <Text style={[styles.sheetItemText, active && styles.sheetItemTextActive]}>
-                  {option.label}
-                </Text>
-                {active ? <Feather name="check" size={18} color="#FFFFFF" /> : null}
-              </Pressable>
-            );
-          })}
-        </Animated.View>
-      </Modal>
-    </>
-  );
-}
-
 function ScannerCardPreview({ form, palette }: { form: ConfirmFormState; palette: CardPalette }) {
-  const numberText = form.cardNumber || '0000 0000 0000 0000';
-  const holderText = form.cardholderName || 'CARDHOLDER NAME';
-  const issuerText = form.issuerName || 'Issuer';
-  const expiryText = form.expiry || 'MM/YY';
+  const isBankCard = form.documentType === 'bank_card';
+  const numberText = isBankCard
+    ? formatCardNumber(form.cardNumber || '0000 0000 0000 0000')
+    : form.documentNumber || 'DOCUMENT NUMBER';
+  const holderText = isBankCard
+    ? form.cardHolder || 'CARDHOLDER NAME'
+    : form.fullName || 'FULL NAME';
+  const issuerText = isBankCard
+    ? form.bankName || 'Bank Card'
+    : humanizeDocumentType(form.documentType);
+  const expiryText = isBankCard ? form.cardExpiry || 'MM/YY' : form.dateOfExpiry || '—';
 
   return (
-    <LinearGradient colors={palette.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.previewCard}>
+    <LinearGradient
+      colors={palette.gradient}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+      style={styles.previewCard}
+    >
       <View style={styles.previewTopRow}>
-        <Text style={[styles.previewLabel, { color: palette.mutedText }]}>{previewLabel(form.category)}</Text>
+        <Text style={[styles.previewLabel, { color: palette.mutedText }]}>
+          {humanizeDocumentType(form.documentType)}
+        </Text>
         <Feather name="credit-card" size={18} color={palette.primaryText} />
       </View>
       <View style={styles.previewBody}>
@@ -249,20 +132,25 @@ function ScannerCardPreview({ form, palette }: { form: ConfirmFormState; palette
 export default function CardScanConfirmScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const addCard = useCardStore((state) => state.addCard);
-  const params = useLocalSearchParams<{
-    cardNumber?: string;
-    expiry?: string;
-    name?: string;
-    bank?: string;
-  }>();
+  const prependCard = useCardStore((state) => state.prependCard);
+  const params = useLocalSearchParams<{ payload?: string }>();
+
+  const scannedData = useMemo(() => parsePayload(params.payload), [params.payload]);
 
   const [form, setForm] = useState<ConfirmFormState>({
-    category: 'bank',
-    issuerName: params.bank ?? '',
-    cardholderName: params.name ?? '',
-    cardNumber: params.cardNumber ?? '',
-    expiry: params.expiry ?? '',
+    documentType: scannedData?.documentType ?? 'id',
+    fullName: scannedData?.fullName ?? '',
+    documentNumber: scannedData?.documentNumber ?? '',
+    personalIdNumber: scannedData?.personalIdNumber ?? '',
+    dateOfBirth: scannedData?.dateOfBirth ?? '',
+    dateOfExpiry: scannedData?.dateOfExpiry ?? '',
+    nationality: scannedData?.nationality ?? '',
+    issuedBy: scannedData?.issuedBy ?? '',
+    sex: scannedData?.sex ?? '',
+    cardNumber: scannedData?.cardNumber ?? '',
+    cardExpiry: scannedData?.cardExpiry ?? '',
+    cardHolder: scannedData?.cardHolder ?? '',
+    bankName: '',
     cvc: '',
     accountNumber: '',
   });
@@ -288,8 +176,13 @@ export default function CardScanConfirmScreen() {
   const handleSave = () => {
     if (isSaving) return;
 
+    if (!scannedData) {
+      Alert.alert('Missing scan data', 'Please scan your card again.');
+      return;
+    }
+
     setIsSaving(true);
-    addCard(categoryToFormValues(form), palette);
+    prependCard(createCardFromScan(form, palette));
     setToastMessage('Card saved successfully!');
     setToastVisible(true);
 
@@ -320,45 +213,92 @@ export default function CardScanConfirmScreen() {
         >
           <ScannerCardPreview form={form} palette={palette} />
 
-          <SelectRow
-            label="Card type"
-            value={form.category}
-            options={CATEGORY_OPTIONS}
-            onChange={(value) => updateField('category', value)}
-          />
+          <Text style={styles.sectionTitle}>Extracted Information</Text>
 
-          <InputRow
-            label={issuerFieldLabel(form.category)}
-            value={form.issuerName}
-            onChangeText={(value) => updateField('issuerName', value)}
-          />
-          <InputRow
-            label="Cardholder name"
-            value={form.cardholderName}
-            onChangeText={(value) => updateField('cardholderName', value)}
-          />
-          <InputRow
-            label="Card number"
-            value={form.cardNumber}
-            onChangeText={(value) => updateField('cardNumber', value)}
-          />
-          <InputRow
-            label="Expiry date"
-            value={form.expiry}
-            onChangeText={(value) => updateField('expiry', value)}
-          />
-          <InputRow
-            label="CVC"
-            value={form.cvc}
-            onChangeText={(value) => updateField('cvc', value)}
-            keyboardType="number-pad"
-          />
-          <InputRow
-            label={accountFieldLabel(form.category)}
-            value={form.accountNumber}
-            onChangeText={(value) => updateField('accountNumber', value)}
-            keyboardType={form.category === 'bank' ? 'number-pad' : 'default'}
-          />
+          {form.documentType === 'bank_card' ? (
+            <>
+              <InputRow
+                label="Card number"
+                value={form.cardNumber}
+                onChangeText={(value) => updateField('cardNumber', value)}
+              />
+              <InputRow
+                label="Expiry date"
+                value={form.cardExpiry}
+                onChangeText={(value) => updateField('cardExpiry', value)}
+              />
+              <InputRow
+                label="Cardholder name"
+                value={form.cardHolder}
+                onChangeText={(value) => updateField('cardHolder', value)}
+              />
+              <InputRow
+                label="Bank name"
+                value={form.bankName}
+                onChangeText={(value) => updateField('bankName', value)}
+              />
+              <InputRow
+                label="CVC"
+                value={form.cvc}
+                onChangeText={(value) => updateField('cvc', value)}
+                keyboardType="number-pad"
+              />
+              <InputRow
+                label="Account number"
+                value={form.accountNumber}
+                onChangeText={(value) => updateField('accountNumber', value)}
+              />
+            </>
+          ) : (
+            <>
+              <InputRow
+                label="Document type"
+                value={humanizeDocumentType(form.documentType)}
+                onChangeText={() => undefined}
+                editable={false}
+              />
+              <InputRow
+                label="Full name"
+                value={form.fullName}
+                onChangeText={(value) => updateField('fullName', value)}
+              />
+              <InputRow
+                label="Document number"
+                value={form.documentNumber}
+                onChangeText={(value) => updateField('documentNumber', value)}
+              />
+              <InputRow
+                label="Personal ID / NIN"
+                value={form.personalIdNumber}
+                onChangeText={(value) => updateField('personalIdNumber', value)}
+              />
+              <InputRow
+                label="Date of birth"
+                value={form.dateOfBirth}
+                onChangeText={(value) => updateField('dateOfBirth', value)}
+              />
+              <InputRow
+                label="Date of expiry"
+                value={form.dateOfExpiry}
+                onChangeText={(value) => updateField('dateOfExpiry', value)}
+              />
+              <InputRow
+                label="Nationality"
+                value={form.nationality}
+                onChangeText={(value) => updateField('nationality', value)}
+              />
+              <InputRow
+                label="Issued by"
+                value={form.issuedBy}
+                onChangeText={(value) => updateField('issuedBy', value)}
+              />
+              <InputRow
+                label="Sex"
+                value={form.sex}
+                onChangeText={(value) => updateField('sex', value)}
+              />
+            </>
+          )}
         </ScrollView>
 
         <View style={[styles.saveWrap, { paddingBottom: Math.max(insets.bottom, 12) }]}>
@@ -405,6 +345,13 @@ const styles = StyleSheet.create({
     gap: 10,
     paddingHorizontal: 20,
     paddingBottom: 120,
+  },
+  sectionTitle: {
+    marginTop: 6,
+    marginBottom: 2,
+    fontFamily: 'ReadexPro-Medium',
+    fontSize: 16,
+    color: '#FFFFFF',
   },
   previewCard: {
     width: '100%',
@@ -456,16 +403,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   pill: {
-    borderRadius: 30,
+    borderRadius: 24,
     backgroundColor: '#3E3E3E',
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  selectContent: {
-    flex: 1,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
   },
   rowLabel: {
     fontFamily: 'ReadexPro-Regular',
@@ -476,16 +417,10 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   input: {
-    flex: 1,
     fontFamily: 'ReadexPro-Regular',
-    fontSize: 18,
+    fontSize: 17,
     color: '#FFFFFF',
     padding: 0,
-  },
-  selectValue: {
-    fontFamily: 'ReadexPro-Regular',
-    fontSize: 18,
-    color: '#FFFFFF',
   },
   saveWrap: {
     position: 'absolute',
@@ -522,40 +457,116 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#FFFFFF',
   },
-  sheetBackdrop: {
-    flex: 1,
-    backgroundColor: 'transparent',
-  },
-  sheet: {
-    backgroundColor: '#1D1D1D',
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
-    paddingHorizontal: 20,
-    paddingBottom: 40,
-    paddingTop: 10,
-  },
-  sheetHandle: {
-    alignSelf: 'center',
-    width: 40,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    marginBottom: 16,
-  },
-  sheetItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 16,
-    paddingHorizontal: 8,
-    borderRadius: 14,
-  },
-  sheetItemText: {
-    fontFamily: 'ReadexPro-Regular',
-    fontSize: 18,
-    color: 'rgba(255,255,255,0.55)',
-  },
-  sheetItemTextActive: {
-    color: '#FFFFFF',
-  },
 });
+
+function parsePayload(payload?: string | string[]): ScannedCardData | null {
+  const rawPayload = Array.isArray(payload) ? payload[0] : payload;
+
+  if (!rawPayload) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(rawPayload) as ScannedCardData;
+  } catch {
+    return null;
+  }
+}
+
+function humanizeDocumentType(type: ScannedCardData['documentType']) {
+  switch (type) {
+    case 'passport':
+      return 'Passport';
+    case 'driving_license':
+      return 'Driving License';
+    case 'bank_card':
+      return 'Bank Card';
+    default:
+      return 'ID';
+  }
+}
+
+function formatCardNumber(value: string) {
+  const digits = value.replace(/\D/g, '');
+  if (!digits) {
+    return value;
+  }
+  return digits.match(/.{1,4}/g)?.join(' ') ?? digits;
+}
+
+function createCardFromScan(form: ConfirmFormState, palette: CardPalette): WalletCard {
+  return form.documentType === 'bank_card'
+    ? createBankCard(form, palette)
+    : createPersonalDocCard(form, palette);
+}
+
+function createBankCard(form: ConfirmFormState, palette: CardPalette): BankCard {
+  const digits = form.cardNumber.replace(/\D/g, '');
+
+  return {
+    id: createCardId('bank'),
+    category: 'bank',
+    title: 'Debit Card',
+    issuer: form.bankName.trim() || 'Bank Card',
+    name: form.cardHolder.trim() || 'Cardholder Name',
+    primaryValue: maskCardNumber(digits || form.cardNumber.trim()),
+    palette,
+    bankName: form.bankName.trim() || 'Bank Card',
+    holderName: form.cardHolder.trim() || 'Cardholder Name',
+    cardNumber: digits || form.cardNumber.trim(),
+    maskedCardNumber: maskCardNumber(digits || form.cardNumber.trim()),
+    expiry: form.cardExpiry.trim(),
+    cvc: form.cvc.trim(),
+    accountNumber: form.accountNumber.trim(),
+    brand: inferBankBrand(digits),
+  };
+}
+
+function createPersonalDocCard(
+  form: ConfirmFormState,
+  palette: CardPalette
+): PersonalDocCard {
+  return {
+    id: createCardId('personal'),
+    category: 'personal',
+    title: mapDocumentTitle(form.documentType),
+    issuer: form.issuedBy.trim() || humanizeDocumentType(form.documentType),
+    name: form.fullName.trim() || 'Full Name',
+    primaryValue: form.documentNumber.trim() || 'Document Number',
+    secondaryValue: form.personalIdNumber.trim() || undefined,
+    palette,
+    issuedBy: form.issuedBy.trim() || humanizeDocumentType(form.documentType),
+    docNumber: form.documentNumber.trim(),
+    secondaryNumber: form.personalIdNumber.trim(),
+    personalIdNumber: form.personalIdNumber.trim() || undefined,
+    dateOfBirth: form.dateOfBirth.trim() || undefined,
+    dateOfExpiry: form.dateOfExpiry.trim() || undefined,
+    nationality: form.nationality.trim() || undefined,
+    sex: form.sex.trim() || undefined,
+  };
+}
+
+function mapDocumentTitle(
+  type: ScannedCardData['documentType']
+): PersonalDocCard['title'] {
+  switch (type) {
+    case 'passport':
+      return 'Passport';
+    case 'driving_license':
+      return 'Driving License';
+    default:
+      return 'Identity Card';
+  }
+}
+
+function inferBankBrand(cardNumber: string): BankCard['brand'] {
+  if (/^(5[1-5]|2[2-7])/.test(cardNumber)) {
+    return 'mastercard';
+  }
+
+  return 'visa';
+}
+
+function createCardId(prefix: 'bank' | 'personal') {
+  return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}

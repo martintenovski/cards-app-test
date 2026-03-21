@@ -114,9 +114,19 @@ export function AddCardSheet({ isOpen, onClose }: AddCardSheetProps) {
           onPress={handleScanPress}
           style={styles.scanButton}
         >
-          <Feather name="camera" size={18} color="#EFEFEF" />
-          <Text style={styles.scanButtonText}>Scan a card instead</Text>
+          <View style={styles.scanButtonIconWrap}>
+            <Feather name="camera" size={18} color="#EFEFEF" />
+          </View>
+          <View style={styles.scanButtonContent}>
+            <Text style={styles.scanButtonText}>Scan Card Automatically</Text>
+            <Text style={styles.scanButtonSubtitle}>
+              Supports IDs, passports, licenses & bank cards
+            </Text>
+          </View>
+          <Feather name="chevron-right" size={18} color="rgba(239,239,239,0.72)" />
         </Pressable>
+
+        <View style={styles.scanDivider} />
 
         {/* Form */}
         <CardForm key={formKey} onSubmit={handleSubmit} />
@@ -160,21 +170,45 @@ const styles = StyleSheet.create({
   },
   scanButton: {
     marginHorizontal: 20,
-    marginBottom: 12,
-    height: 55,
-    borderRadius: 30,
+    marginBottom: 14,
+    borderRadius: 24,
     borderWidth: 1,
-    borderColor: 'rgba(239,239,239,0.45)',
+    borderColor: 'rgba(239,239,239,0.12)',
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 14,
+    backgroundColor: '#252525',
+    paddingHorizontal: 18,
+    paddingVertical: 16,
+  },
+  scanButtonIconWrap: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
-    backgroundColor: 'rgba(255,255,255,0.02)',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+  },
+  scanButtonContent: {
+    flex: 1,
   },
   scanButtonText: {
-    fontFamily: 'ReadexPro-Regular',
+    fontFamily: 'ReadexPro-Medium',
     fontSize: 16,
     color: '#EFEFEF',
+  },
+  scanButtonSubtitle: {
+    marginTop: 4,
+    fontFamily: 'ReadexPro-Regular',
+    fontSize: 12,
+    lineHeight: 18,
+    color: 'rgba(239,239,239,0.52)',
+  },
+  scanDivider: {
+    height: 1,
+    marginHorizontal: 20,
+    marginBottom: 12,
+    backgroundColor: 'rgba(239,239,239,0.10)',
   },
   title: {
     fontFamily: 'ReadexPro-Bold',

@@ -47,6 +47,7 @@ function fieldLabels(category: CardCategory) {
       { key: 'bankName', label: 'Bank name', keyboardType: 'default' as const },
       { key: 'holderName', label: 'Holder name', keyboardType: 'default' as const },
       { key: 'cardNumber', label: 'Card number', keyboardType: 'number-pad' as const },
+      { key: 'expiry', label: 'Expiry date', keyboardType: 'default' as const },
       { key: 'cvc', label: 'CVC number', keyboardType: 'number-pad' as const },
       { key: 'accountNumber', label: 'Account number', keyboardType: 'number-pad' as const },
     ];
