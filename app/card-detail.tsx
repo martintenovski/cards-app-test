@@ -184,9 +184,10 @@ function getCardFields(card: WalletCard): { label: string; value: string }[] {
       { label: 'Card Type', value: card.title },
       { label: 'Cardholder Name', value: card.holderName },
       { label: 'Card Number', value: card.cardNumber },
+      { label: 'Expiry Date', value: card.expiry ?? '' },
       { label: 'CVC', value: card.cvc },
       { label: 'Account Number', value: card.accountNumber },
-    ];
+    ].filter((field) => field.value);
   }
   if (card.category === 'personal') {
     return [
@@ -195,14 +196,19 @@ function getCardFields(card: WalletCard): { label: string; value: string }[] {
       { label: 'Full Name', value: card.name },
       { label: 'ID Number', value: card.docNumber },
       { label: 'Secondary Number', value: card.secondaryNumber },
-    ];
+      { label: 'Personal ID / NIN', value: card.personalIdNumber ?? '' },
+      { label: 'Date of Birth', value: card.dateOfBirth ?? '' },
+      { label: 'Date of Expiry', value: card.dateOfExpiry ?? '' },
+      { label: 'Nationality', value: card.nationality ?? '' },
+      { label: 'Sex', value: card.sex ?? '' },
+    ].filter((field) => field.value);
   }
   return [
     { label: 'Club Name', value: card.clubName },
     { label: 'Member Name', value: card.name },
     { label: 'Member ID', value: card.memberId },
     { label: 'Tier', value: card.tier },
-  ];
+  ].filter((field) => field.value);
 }
 
 const styles = StyleSheet.create({

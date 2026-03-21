@@ -1,6 +1,6 @@
 # Cards App Test
 
-A wallet-style Expo app for managing bank cards, personal documents, and club cards with a polished card UI, local persistence, and a native card-scanning flow.
+A wallet-style Expo app for managing bank cards, personal documents, and club cards with a polished card UI, local persistence, and a BlinkID-powered native scanning flow.
 
 ## Highlights
 
@@ -9,7 +9,7 @@ A wallet-style Expo app for managing bank cards, personal documents, and club ca
 - Add and edit cards with a live preview
 - Card detail screen for reviewing saved entries
 - Local persistence with Zustand so saved cards survive app restarts
-- Card scanner flow with camera capture + OCR + confirmation before saving
+- Card scanner flow with BlinkID native capture + confirmation before saving
 - Expo Router navigation with tab-based sections
 - NativeWind + gluestack UI foundation for styling and UI primitives
 
@@ -21,8 +21,7 @@ A wallet-style Expo app for managing bank cards, personal documents, and club ca
 - **Expo Router**
 - **Zustand** for app state and persistence
 - **NativeWind** + **gluestack-ui**
-- **react-native-vision-camera** for camera access
-- **@react-native-ml-kit/text-recognition** for OCR
+- **@microblink/blinkid-react-native** for native document scanning
 - **react-native-reanimated** and **react-native-gesture-handler** for motion and gestures
 
 ## Project structure
@@ -64,13 +63,13 @@ The scanner flow:
 
 1. opens the camera
 2. captures a card image
-3. runs OCR on the image
-4. extracts likely card details
+3. extracts document details with BlinkID's native scanner
+4. shows the detected fields for review
 5. shows a confirmation screen so the user can edit the detected values before saving
 
 ## Important scanner limitation
 
-The scanner uses native camera/OCR libraries and **does not run in Expo Go**.
+The scanner uses native BlinkID SDKs and **does not run in Expo Go**.
 
 ### What works where
 
@@ -134,9 +133,7 @@ Because the scanner depends on native modules, use a native development build wh
 
 Relevant packages already included in this project:
 
-- `react-native-vision-camera`
-- `react-native-worklets-core`
-- `@react-native-ml-kit/text-recognition`
+- `@microblink/blinkid-react-native`
 - `expo-dev-client`
 
 ### Camera permissions
@@ -155,6 +152,62 @@ This repo includes `eas.json` with:
 - `production`
 
 The development profile is configured for a development client build.
+
+## Recommended Git workflow
+
+If you're used to a `development -> live` flow on web projects, that maps very well here with one important mobile twist:
+
+- **`main`** = production-ready code
+- **`develop`** = integration branch for day-to-day work
+- **`hotfix/*`** = urgent fixes branched from `main`
+
+### Suggested branch flow
+
+1. commit your day-to-day work directly to `develop`
+2. test with a local dev build or preview build
+3. when you want to ship, open a PR from `develop` into `main`
+4. review the PR and merge it only when the release looks good
+5. create a production build from `main`
+6. tag the release, for example `v1.0.0`
+
+This repository uses `main` as the production-ready branch.
+
+### How mobile releases differ from web
+
+On web, merging to production often means the live site updates immediately.
+
+On mobile, there are usually **two different kinds of releases**:
+
+- **JavaScript / asset updates**: can be delivered quickly with Expo update infrastructure
+- **Native changes**: require a new app binary and usually App Store / Play Store submission
+
+In this app, changes involving packages like BlinkID or other native scanner SDKs should be treated as **native-impacting** changes and should go through a fresh build.
+
+### Practical mapping for this repo
+
+- `develop` → internal testing using the `development` or `preview` EAS profile
+- `main` → store-ready builds using the `production` EAS profile
+
+### Minimum repo rules worth adopting
+
+- protect `main` from direct pushes
+- allow direct commits to `develop` if this is a solo-maintained project
+- use PRs from `develop` into `main` for releases
+- require the validation workflow to pass before merge
+- tag every production release
+- keep release notes in GitHub releases or a changelog
+
+## Validation scripts
+
+This repo includes a few lightweight checks you can run before pushing:
+
+```bash
+npm run typecheck
+npm run doctor
+npm run check
+```
+
+These are also good candidates to run in CI on pull requests.
 
 ## Persistence
 
@@ -192,6 +245,6 @@ Some useful next additions could be:
 
 - automated tests
 - screenshots/GIFs in the README
-- improved OCR extraction rules for more card formats
+- richer scanned-card review and validation flows
 - export/import or backup of saved cards
 - stronger form validation for scanned values
