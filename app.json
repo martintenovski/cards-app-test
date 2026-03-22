@@ -20,7 +20,8 @@
           },
           "android": {}
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ],
     "ios": {
       "supportsTablet": true,
@@ -54,7 +55,6 @@
       "favicon": "./assets/favicon.png",
       "bundler": "metro"
     },
-    
     "extra": {
       "router": {},
       "eas": {

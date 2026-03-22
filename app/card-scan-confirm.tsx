@@ -19,6 +19,7 @@ import { CardItem } from '@/components/CardItem';
 import { GRADIENTS } from '@/constants/gradients';
 import { useCardStore } from '@/store/useCardStore';
 import {
+  getRandomPastelPalette,
   getContrastColor,
   maskCardNumber,
   type BankCard,
@@ -50,13 +51,14 @@ type ConfirmFormState = {
   accountNumber: string;
   clubName: string;
   memberId: string;
+  memberIdFormat: 'text' | 'barcode';
   tier: string;
 };
 
 function createScanPalette(gradient: [string, string]): CardPalette {
   const primaryText = getContrastColor(gradient[0]);
   return {
-    id: `scan-${gradient[0].replace('#', '').toLowerCase()}`,
+    id: `scan-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     background: gradient[0],
     mutedText: primaryText === '#1D1D1D' ? 'rgba(29,29,29,0.65)' : 'rgba(255,255,255,0.65)',
     primaryText,
@@ -122,15 +124,17 @@ export default function CardScanConfirmScreen() {
     accountNumber: '',
     clubName: scannedData?.clubName ?? '',
     memberId: scannedData?.memberId ?? '',
+    memberIdFormat: 'text',
     tier: scannedData?.tier ?? '',
   });
   const [toastMessage, setToastMessage] = useState('');
   const [toastVisible, setToastVisible] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [previewSide, setPreviewSide] = useState<'front' | 'back'>('front');
-  const [gradient] = useState<[string, string]>(() => {
-    return GRADIENTS[Math.floor(Math.random() * GRADIENTS.length)] as [string, string];
-  });
+  const gradient = useMemo<[string, string]>(() => {
+    const palette = getRandomPastelPalette();
+    return palette.gradient;
+  }, [params.payload]);
 
   const palette = useMemo(() => createScanPalette(gradient), [gradient]);
   const previewCard = useMemo(
@@ -255,9 +259,15 @@ export default function CardScanConfirmScreen() {
                 onChangeText={(value) => updateField('fullName', value)}
               />
               <InputRow
+                label="Member ID format"
+                value={form.memberIdFormat === 'barcode' ? 'Barcode' : 'Typed ID'}
+                onChangeText={(value) => updateField('memberIdFormat', value.toLowerCase().includes('bar') ? 'barcode' : 'text')}
+              />
+              <InputRow
                 label="Member ID"
                 value={form.memberId}
-                onChangeText={(value) => updateField('memberId', value)}
+                onChangeText={(value) => updateField('memberId', form.memberIdFormat === 'barcode' ? value.replace(/\D/g, '') : value)}
+                keyboardType={form.memberIdFormat === 'barcode' ? 'number-pad' : 'default'}
               />
               <InputRow
                 label="Tier / status"
@@ -288,13 +298,13 @@ export default function CardScanConfirmScreen() {
           ) : (
             <>
               <InputRow
-                label="Document type"
+                label="Type"
                 value={humanizeDocumentType(form.documentType)}
                 onChangeText={() => undefined}
                 editable={false}
               />
               <InputRow
-                label="Issued by"
+                label="Issuer"
                 value={form.issuedBy}
                 onChangeText={(value) => updateField('issuedBy', value)}
               />
@@ -618,6 +628,7 @@ function createClubCard(
     palette,
     clubName: form.clubName.trim() || 'Club Card',
     memberId: form.memberId.trim() || 'Member ID',
+    memberIdFormat: form.memberIdFormat,
     tier: form.tier.trim() || 'Standard',
     secondaryNumber: form.secondaryNumber.trim() || undefined,
     dateOfIssue: form.dateOfIssue.trim() || undefined,

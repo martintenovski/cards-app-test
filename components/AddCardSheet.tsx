@@ -1,7 +1,7 @@
 import { Feather } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Dimensions, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Dimensions, Pressable, StyleSheet, Text, View, useColorScheme } from 'react-native';
 import Animated, {
   runOnJS,
   useAnimatedStyle,
@@ -9,9 +9,11 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+
 import { CardForm } from '@/components/CardForm';
 import { useCardStore } from '@/store/useCardStore';
 import type { CardFormValues, CardPalette } from '@/types/card';
+import { APP_THEME, resolveTheme } from '@/utils/theme';
 
 const { height } = Dimensions.get('window');
 const SHEET_HEIGHT = height * 0.85;
@@ -28,6 +30,10 @@ type AddCardSheetProps = {
 export function AddCardSheet({ isOpen, onClose }: AddCardSheetProps) {
   const router = useRouter();
   const addCard = useCardStore((state) => state.addCard);
+  const themePreference = useCardStore((state) => state.themePreference);
+  const deviceScheme = useColorScheme();
+  const resolvedTheme = resolveTheme(themePreference, deviceScheme);
+  const colors = APP_THEME[resolvedTheme];
   const [formKey, setFormKey] = useState(0);
 
   const translateY = useSharedValue(SHEET_HEIGHT);
@@ -93,40 +99,46 @@ export function AddCardSheet({ isOpen, onClose }: AddCardSheetProps) {
       </Animated.View>
 
       {/* Sheet panel */}
-      <Animated.View style={[styles.sheet, sheetStyle]}>
+      <Animated.View style={[styles.sheet, sheetStyle, { backgroundColor: colors.surface }]}>
         {/* Drag handle */}
         <GestureDetector gesture={dragGesture}>
           <View style={styles.handleArea}>
-            <View style={styles.handle} />
+            <View style={[styles.handle, { backgroundColor: colors.textSoft }]} />
           </View>
         </GestureDetector>
 
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Add New Card</Text>
+          <Text style={[styles.title, { color: colors.text }]}>Add New Card</Text>
           <Pressable onPress={onClose} hitSlop={12} style={styles.closeBtn}>
-            <Feather name="x" size={22} color="rgba(239,239,239,0.70)" />
+            <Feather name="x" size={22} color={colors.textMuted} />
           </Pressable>
         </View>
 
         <Pressable
           accessibilityRole="button"
           onPress={handleScanPress}
-          style={styles.scanButton}
+          style={[
+            styles.scanButton,
+            {
+              borderColor: colors.border,
+              backgroundColor: colors.surfaceMuted,
+            },
+          ]}
         >
-          <View style={styles.scanButtonIconWrap}>
-            <Feather name="camera" size={18} color="#EFEFEF" />
+          <View style={[styles.scanButtonIconWrap, { backgroundColor: colors.surfaceStrong }]}>
+            <Feather name="camera" size={18} color={colors.text} />
           </View>
           <View style={styles.scanButtonContent}>
-            <Text style={styles.scanButtonText}>Scan Card Automatically</Text>
-            <Text style={styles.scanButtonSubtitle}>
+            <Text style={[styles.scanButtonText, { color: colors.text }]}>Scan Card Automatically</Text>
+            <Text style={[styles.scanButtonSubtitle, { color: colors.textMuted }]}>
               Supports IDs, passports, licenses & bank cards
             </Text>
           </View>
-          <Feather name="chevron-right" size={18} color="rgba(239,239,239,0.72)" />
+          <Feather name="chevron-right" size={18} color={colors.textMuted} />
         </Pressable>
 
-        <View style={styles.scanDivider} />
+        <View style={[styles.scanDivider, { backgroundColor: colors.border }]} />
 
         {/* Form */}
         <CardForm key={formKey} onSubmit={handleSubmit} />

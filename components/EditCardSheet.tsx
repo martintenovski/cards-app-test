@@ -1,6 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import { useEffect } from 'react';
-import { Dimensions, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Dimensions, Pressable, StyleSheet, Text, View, useColorScheme } from 'react-native';
 import Animated, {
   runOnJS,
   useAnimatedStyle,
@@ -13,6 +13,7 @@ import { CardForm } from '@/components/CardForm';
 import { useCardStore } from '@/store/useCardStore';
 import { cardToFormValues } from '@/types/card';
 import type { CardFormValues, CardPalette, WalletCard } from '@/types/card';
+import { APP_THEME, resolveTheme } from '@/utils/theme';
 
 const { height } = Dimensions.get('window');
 const SHEET_HEIGHT = height * 0.85;
@@ -29,6 +30,10 @@ type EditCardSheetProps = {
 
 export function EditCardSheet({ card, isOpen, onClose }: EditCardSheetProps) {
   const updateCard = useCardStore((state) => state.updateCard);
+  const themePreference = useCardStore((state) => state.themePreference);
+  const deviceScheme = useColorScheme();
+  const resolvedTheme = resolveTheme(themePreference, deviceScheme);
+  const colors = APP_THEME[resolvedTheme];
 
   const translateY = useSharedValue(SHEET_HEIGHT);
   const backdropOpacity = useSharedValue(0);
@@ -85,19 +90,19 @@ export function EditCardSheet({ card, isOpen, onClose }: EditCardSheetProps) {
       </Animated.View>
 
       {/* Sheet panel */}
-      <Animated.View style={[styles.sheet, sheetStyle]}>
+      <Animated.View style={[styles.sheet, sheetStyle, { backgroundColor: colors.surface }]}>
         {/* Drag handle */}
         <GestureDetector gesture={dragGesture}>
           <View style={styles.handleArea}>
-            <View style={styles.handle} />
+            <View style={[styles.handle, { backgroundColor: colors.textSoft }]} />
           </View>
         </GestureDetector>
 
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Edit Card</Text>
+          <Text style={[styles.title, { color: colors.text }]}>Edit Card</Text>
           <Pressable onPress={onClose} hitSlop={12} style={styles.closeBtn}>
-            <Feather name="x" size={22} color="rgba(239,239,239,0.70)" />
+            <Feather name="x" size={22} color={colors.textMuted} />
           </Pressable>
         </View>
 

@@ -6,13 +6,14 @@ import type { WalletCard } from '@/types/card';
 type CardListProps = {
   cards: WalletCard[];
   onCardPress?: (id: string) => void;
+  bottomSpacing?: number;
 };
 
-export function CardList({ cards, onCardPress }: CardListProps) {
+export function CardList({ cards, onCardPress, bottomSpacing = 120 }: CardListProps) {
   return (
     <ScrollView
       style={styles.scroll}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, { paddingBottom: bottomSpacing }]}
       showsVerticalScrollIndicator={false}
     >
       {cards.map((card) => (
@@ -35,7 +36,6 @@ const styles = StyleSheet.create({
   content: {
     paddingTop: 10,
     paddingHorizontal: 25,
-    paddingBottom: 120,
     gap: 16,
   },
   item: {

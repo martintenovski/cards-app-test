@@ -15,6 +15,7 @@ import {
   initialSeedCards,
 } from '@/types/card';
 import { GRADIENTS } from '@/constants/gradients';
+import type { ResolvedTheme, ThemePreference } from '@/utils/theme';
 
 const storage: StateStorage =
   Platform.OS === 'web'
@@ -39,9 +40,12 @@ interface CardStoreState {
   cards: WalletCard[];
   viewMode: WalletViewMode;
   homeFilter: HomeFilter;
+  themePreference: ThemePreference;
   setViewMode: (viewMode: WalletViewMode) => void;
   toggleViewMode: () => void;
   setHomeFilter: (filter: HomeFilter) => void;
+  setThemePreference: (themePreference: ThemePreference) => void;
+  toggleThemePreference: (resolvedTheme: ResolvedTheme) => void;
   addCard: (values: CardFormValues, palette: CardPalette) => void;
   prependCard: (card: WalletCard) => void;
   updateCard: (id: string, values: CardFormValues, palette: CardPalette) => void;
@@ -59,12 +63,25 @@ export const useCardStore = create<CardStoreState>()(
       cards: initialSeedCards,
       viewMode: 'stack',
       homeFilter: 'everything',
+      themePreference: 'system',
       setViewMode: (viewMode) => set({ viewMode }),
       toggleViewMode: () =>
         set((state) => ({
           viewMode: state.viewMode === 'stack' ? 'list' : 'stack',
         })),
       setHomeFilter: (homeFilter) => set({ homeFilter }),
+      setThemePreference: (themePreference) => set({ themePreference }),
+      toggleThemePreference: (resolvedTheme) =>
+        set((state) => ({
+          themePreference:
+            state.themePreference === 'system'
+              ? resolvedTheme === 'dark'
+                ? 'light'
+                : 'dark'
+              : state.themePreference === 'dark'
+                ? 'light'
+                : 'dark',
+        })),
       addCard: (values, palette) =>
         set((state) => {
           // Guarantee every new card has a gradient, even if caller omitted one
@@ -120,10 +137,11 @@ export const useCardStore = create<CardStoreState>()(
           cards: initialSeedCards,
           viewMode: 'stack',
           homeFilter: 'everything',
+          themePreference: 'system',
         }),
     }),
     {
-      name: 'cards-app-wallet-store-v2',
+      name: 'cards-app-wallet-store-v3',
       storage: createJSONStorage(() => storage),
       onRehydrateStorage: () => (state) => {
         if (!state) return;
@@ -147,6 +165,7 @@ export const useCardStore = create<CardStoreState>()(
         cards: state.cards,
         viewMode: state.viewMode,
         homeFilter: state.homeFilter,
+        themePreference: state.themePreference,
       }),
     }
   )

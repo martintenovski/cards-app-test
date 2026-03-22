@@ -19,12 +19,20 @@ import { useFonts } from 'expo-font';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
+import { useColorScheme } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+
+import { useCardStore } from '@/store/useCardStore';
+import { APP_THEME, resolveTheme } from '@/utils/theme';
 
 SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
+  const deviceScheme = useColorScheme();
+  const themePreference = useCardStore((state) => state.themePreference);
+  const resolvedTheme = resolveTheme(themePreference, deviceScheme);
+  const colors = APP_THEME[resolvedTheme];
   const [fontsLoaded] = useFonts({
     'ReadexPro-Regular': ReadexPro_400Regular,
     'ReadexPro-Medium': ReadexPro_500Medium,
@@ -47,14 +55,14 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <GluestackUIProvider mode="light">
+      <GluestackUIProvider mode={resolvedTheme}>
         <SafeAreaProvider>
-          <StatusBar style="dark" />
+          <StatusBar style={resolvedTheme === 'dark' ? 'light' : 'dark'} />
           <Stack
             screenOptions={{
               headerShown: false,
               contentStyle: {
-                backgroundColor: '#EFEFEF',
+                backgroundColor: colors.background,
               },
             }}
           >

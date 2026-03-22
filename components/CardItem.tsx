@@ -1,6 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { StyleSheet, Text, View } from 'react-native';
+import Svg, { Rect } from 'react-native-svg';
 
 import { getCardSideContent, getContrastColor } from '@/types/card';
 import type { WalletCard } from '@/types/card';
@@ -13,12 +14,14 @@ const SIZES = {
     radius: 30,
     padding: 25,
     topLabelSize: 14,
-    topValueSize: 16,
+    topValueSize: 18,
     middleLabelSize: 13,
-    middleValueSize: 20,
+    middleValueSize: 18,
     metaLabelSize: 13,
     metaValueSize: 16,
     iconSize: 22,
+    sectionGap: 12,
+    footerGap: 14,
   },
   compact: {
     width: 335,
@@ -33,6 +36,8 @@ const SIZES = {
     metaLabelSize: 12,
     metaValueSize: 15,
     iconSize: 20,
+    sectionGap: 10,
+    footerGap: 12,
   },
   small: {
     width: 302,
@@ -46,6 +51,8 @@ const SIZES = {
     metaLabelSize: 11,
     metaValueSize: 14,
     iconSize: 18,
+    sectionGap: 8,
+    footerGap: 10,
   },
 };
 
@@ -78,6 +85,9 @@ export function CardItem({ card, side = 'front', size = 'full', onFlip }: CardIt
   const primaryColor = getContrastColor(gradient[0]);
   const mutedColor = primaryColor === '#1D1D1D' ? 'rgba(29,29,29,0.65)' : 'rgba(255,255,255,0.65)';
   const iconColor = primaryColor === '#1D1D1D' ? 'rgba(29,29,29,0.85)' : 'rgba(255,255,255,0.9)';
+  const hasMiddleContent = Boolean(content.middleLabel || content.middleValue);
+  const hasBottomLeft = Boolean(content.bottomLeftLabel || content.bottomLeftValue);
+  const hasBottomRight = Boolean(content.bottomRightLabel || content.bottomRightValue);
 
   return (
     <LinearGradient
@@ -102,46 +112,103 @@ export function CardItem({ card, side = 'front', size = 'full', onFlip }: CardIt
         <MaterialCommunityIcons name={content.iconName} size={s.iconSize} color={iconColor} />
       </View>
 
-      <View style={styles.middleWrap}>
-        <Text style={[styles.middleLabel, { fontSize: s.middleLabelSize, color: mutedColor }]}>
-          {content.middleLabel}
-        </Text>
-        <Text
-          style={[styles.middleValue, { fontSize: s.middleValueSize, color: primaryColor }]}
-          numberOfLines={2}
-        >
-          {content.middleValue}
-        </Text>
-      </View>
+      {hasMiddleContent ? (
+        <View style={[styles.middleWrap, { marginTop: s.sectionGap }] }>
+          {content.middleLabel ? (
+            <Text style={[styles.middleLabel, { fontSize: s.middleLabelSize, color: mutedColor }]}>
+              {content.middleLabel}
+            </Text>
+          ) : null}
+          {content.middleValue ? (
+            <Text
+              style={[styles.middleValue, { fontSize: s.middleValueSize, color: primaryColor }]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+            >
+              {content.middleValue}
+            </Text>
+          ) : null}
+        </View>
+      ) : (
+        <View style={styles.middleSpacer} />
+      )}
 
-      <View style={styles.footerRow}>
-        <View style={styles.footerColLeft}>
-          <Text style={[styles.metaLabel, { fontSize: s.metaLabelSize, color: mutedColor }]}>
-            {content.bottomLeftLabel}
-          </Text>
-          <Text
-            style={[styles.metaValue, { fontSize: s.metaValueSize, color: primaryColor }]}
-            numberOfLines={1}
-            adjustsFontSizeToFit
-          >
-            {content.bottomLeftValue}
-          </Text>
-        </View>
-        <View style={styles.footerColRight}>
-          <Text style={[styles.metaLabel, { fontSize: s.metaLabelSize, color: mutedColor }]}>
-            {content.bottomRightLabel}
-          </Text>
-          <Text
-            style={[styles.metaValue, styles.metaValueRight, { fontSize: s.metaValueSize, color: primaryColor }]}
-            numberOfLines={1}
-            adjustsFontSizeToFit
-          >
-            {content.bottomRightValue}
-          </Text>
-        </View>
+      <View style={[styles.footerRow, { marginTop: s.footerGap }] }>
+        {content.footerVariant === 'barcode' && content.barcodeValue ? (
+          <View style={styles.barcodeWrap}>
+            <BarcodeStrip value={content.barcodeValue} color={primaryColor} />
+            <Text style={[styles.barcodeDigits, { color: primaryColor }]}>{content.barcodeValue}</Text>
+          </View>
+        ) : (
+          <>
+            {hasBottomLeft ? (
+              <View style={styles.footerColLeft}>
+                {content.bottomLeftLabel ? (
+                  <Text style={[styles.metaLabel, { fontSize: s.metaLabelSize, color: mutedColor }]}>
+                    {content.bottomLeftLabel}
+                  </Text>
+                ) : null}
+                {content.bottomLeftValue ? (
+                  <Text
+                    style={[styles.metaValue, { fontSize: s.metaValueSize, color: primaryColor }]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                  >
+                    {content.bottomLeftValue}
+                  </Text>
+                ) : null}
+              </View>
+            ) : null}
+            {hasBottomRight ? (
+              <View style={styles.footerColRight}>
+                {content.bottomRightLabel ? (
+                  <Text style={[styles.metaLabel, { fontSize: s.metaLabelSize, color: mutedColor }]}>
+                    {content.bottomRightLabel}
+                  </Text>
+                ) : null}
+                {content.bottomRightValue ? (
+                  <Text
+                    style={[styles.metaValue, styles.metaValueRight, { fontSize: s.metaValueSize, color: primaryColor }]}
+                    numberOfLines={1}
+                    adjustsFontSizeToFit
+                  >
+                    {content.bottomRightValue}
+                  </Text>
+                ) : null}
+              </View>
+            ) : null}
+          </>
+        )}
       </View>
       {!!onFlip && <View style={styles.hiddenFlipTapArea} />}
     </LinearGradient>
+  );
+}
+
+const EAN_DIGIT_PATTERNS: Record<string, string> = {
+  '0': '0001101',
+  '1': '0011001',
+  '2': '0010011',
+  '3': '0111101',
+  '4': '0100011',
+  '5': '0110001',
+  '6': '0101111',
+  '7': '0111011',
+  '8': '0110111',
+  '9': '0001011',
+};
+
+function BarcodeStrip({ value, color }: { value: string; color: string }) {
+  const digits = value.replace(/\D/g, '').slice(0, 18);
+  const pattern = ['101', ...digits.split('').map((digit) => EAN_DIGIT_PATTERNS[digit] ?? '0010011'), '101'].join('01');
+  const width = pattern.length;
+
+  return (
+    <Svg width="100%" height={46} viewBox={`0 0 ${width} 46`} preserveAspectRatio="none">
+      {pattern.split('').map((bar, index) =>
+        bar === '1' ? <Rect key={`${value}-${index}`} x={index} y={0} width={1} height={46} fill={color} /> : null
+      )}
+    </Svg>
   );
 }
 
@@ -174,9 +241,14 @@ const styles = StyleSheet.create({
   topValue: {
     fontFamily: 'ReadexPro-Medium',
     marginTop: 2,
+    lineHeight: 24,
   },
   middleWrap: {
-    marginTop: 22,
+    flex: 1,
+    justifyContent: 'flex-start',
+    minHeight: 48,
+  },
+  middleSpacer: {
     flex: 1,
   },
   middleLabel: {
@@ -186,12 +258,14 @@ const styles = StyleSheet.create({
   },
   middleValue: {
     fontFamily: 'OpenSans-SemiBold',
-    marginTop: 4,
+    marginTop: 2,
+    lineHeight: 26,
   },
   footerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     gap: 16,
+    minHeight: 46,
   },
   footerColLeft: {
     flex: 1,
@@ -206,9 +280,21 @@ const styles = StyleSheet.create({
   },
   metaValue: {
     fontFamily: 'OpenSans-Bold',
+    lineHeight: 22,
   },
   metaValueRight: {
     textAlign: 'right',
+  },
+  barcodeWrap: {
+    width: '100%',
+    marginTop: 2,
+  },
+  barcodeDigits: {
+    marginTop: 6,
+    textAlign: 'center',
+    fontFamily: 'OpenSans-SemiBold',
+    fontSize: 12,
+    letterSpacing: 1.2,
   },
   hiddenFlipTapArea: {
     position: 'absolute',

@@ -5,6 +5,7 @@ export type WalletViewMode = 'stack' | 'list';
 export type BankCardType = 'Debit Card' | 'Credit Card';
 export type PersonalDocType = 'Identity Card' | 'Driving License' | 'Passport';
 export type ClubCardType = 'Club Card' | 'Gym Pass' | 'Loyalty Card';
+export type ClubMemberIdFormat = 'text' | 'barcode';
 
 export interface CardPalette {
   id: string;
@@ -62,6 +63,7 @@ export interface ClubCard extends BaseCard {
   title: ClubCardType;
   clubName: string;
   memberId: string;
+  memberIdFormat: ClubMemberIdFormat;
   tier: string;
   secondaryNumber?: string;
   dateOfIssue?: string;
@@ -92,6 +94,7 @@ export interface CardFormValues {
   holderName: string;
   clubName: string;
   memberId: string;
+  memberIdFormat: ClubMemberIdFormat;
   tier: string;
 }
 
@@ -135,6 +138,7 @@ export const DEFAULT_FORM_VALUES: CardFormValues = {
   holderName: '',
   clubName: '',
   memberId: '',
+  memberIdFormat: 'text',
   tier: '',
 };
 
@@ -345,6 +349,7 @@ export const seedCards: WalletCard[] = [
     palette: pastelPalettes[5],
     clubName: 'City Rewards',
     memberId: 'CR-4400-7782',
+    memberIdFormat: 'text',
     tier: 'Gold Tier',
     secondaryNumber: 'MEM-2024-99',
     dateOfIssue: '12.02.2024',
@@ -423,6 +428,7 @@ export function createPreviewCard(values: CardFormValues, paletteOverride?: Card
       palette,
       clubName: values.clubName || 'Club',
       memberId: values.memberId || 'Member ID',
+      memberIdFormat: values.memberIdFormat,
       tier: values.tier || 'Tier',
       secondaryNumber: values.secondaryNumber || undefined,
       dateOfIssue: values.dateOfIssue || undefined,
@@ -490,6 +496,7 @@ export function cardToFormValues(card: WalletCard): CardFormValues {
     clubName: card.clubName,
     nameOnCard: card.name,
     memberId: card.memberId,
+    memberIdFormat: card.memberIdFormat,
     tier: card.tier,
     secondaryNumber: card.secondaryNumber ?? '',
     dateOfIssue: card.dateOfIssue ?? '',
@@ -546,6 +553,7 @@ export function createCardFromForm(values: CardFormValues, paletteOverride?: Car
     issuer: values.clubName,
     name: values.nameOnCard || values.holderName,
     memberId: values.memberId,
+    memberIdFormat: values.memberIdFormat,
     primaryValue: values.memberId,
     tier: values.tier,
     secondaryValue: values.tier,
@@ -571,6 +579,8 @@ export interface CardSideContent {
   bottomRightLabel: string;
   bottomRightValue: string;
   iconName: CardIconName;
+  footerVariant?: 'default' | 'barcode';
+  barcodeValue?: string;
 }
 
 export function supportsCardBack(_card: WalletCard) {
@@ -581,10 +591,10 @@ export function getCardSideContent(card: WalletCard, side: 'front' | 'back'): Ca
   if (card.category === 'bank') {
     return side === 'front'
       ? {
-          topLabel: 'Type',
-          topValue: card.bankName || card.issuer,
+          topLabel: card.title,
+          topValue: card.bankName || card.issuer || 'Bank name',
           middleLabel: 'CARDHOLDER',
-          middleValue: card.holderName || card.name,
+          middleValue: card.holderName || card.name || 'Cardholder',
           bottomLeftLabel: 'Card Number',
           bottomLeftValue: card.maskedCardNumber || maskCardNumber(card.cardNumber),
           bottomRightLabel: 'Brand',
@@ -592,8 +602,8 @@ export function getCardSideContent(card: WalletCard, side: 'front' | 'back'): Ca
           iconName: 'credit-card-outline',
         }
       : {
-          topLabel: 'Type',
-          topValue: card.bankName || card.issuer,
+          topLabel: card.title,
+          topValue: card.bankName || card.issuer || 'Bank name',
           middleLabel: card.accountNumber ? 'Account Number' : 'Bank',
           middleValue: card.accountNumber || card.bankName || card.issuer,
           bottomLeftLabel: 'Expiry Date',
@@ -605,33 +615,40 @@ export function getCardSideContent(card: WalletCard, side: 'front' | 'back'): Ca
   }
 
   if (card.category === 'club') {
+    const usesBarcode = card.memberIdFormat === 'barcode' && !!card.memberId;
+
     return side === 'front'
       ? {
-          topLabel: 'Type',
-          topValue: card.clubName || card.issuer,
+          topLabel: card.title,
+          topValue: card.clubName || card.issuer || 'Club',
           middleLabel: 'MEMBER',
           middleValue: card.name || 'Member name',
-          bottomLeftLabel: 'Member ID',
-          bottomLeftValue: card.memberId || 'Not added',
-          bottomRightLabel: 'Tier',
-          bottomRightValue: card.tier || 'Standard',
+          bottomLeftLabel: usesBarcode ? 'Member Since' : 'Member ID',
+          bottomLeftValue: usesBarcode ? card.dateOfIssue || 'Not added' : card.memberId || 'Not added',
+          bottomRightLabel: usesBarcode ? '' : 'Tier',
+          bottomRightValue: usesBarcode ? '' : card.tier || 'Standard',
           iconName: 'card-account-details-star-outline',
         }
       : {
-          topLabel: 'Type',
-          topValue: card.clubName || card.issuer,
-          middleLabel: card.address
-            ? 'Address'
-            : card.secondaryNumber
-              ? 'Membership No.'
-              : 'Program',
-          middleValue:
-            card.address || card.secondaryNumber || card.clubName || card.issuer || 'Not added',
-          bottomLeftLabel: 'Member Since',
-          bottomLeftValue: card.dateOfIssue || 'Not added',
-          bottomRightLabel: 'Expires',
-          bottomRightValue: card.dateOfExpiry || card.tier || 'Not added',
+          topLabel: card.title,
+          topValue: card.clubName || card.issuer || 'Club',
+          middleLabel: usesBarcode
+            ? ''
+            : card.address
+              ? 'Address'
+              : card.secondaryNumber
+                ? 'Membership No.'
+                : 'Program',
+          middleValue: usesBarcode
+            ? ''
+            : card.address || card.secondaryNumber || card.clubName || card.issuer || 'Not added',
+          bottomLeftLabel: usesBarcode ? '' : 'Member Since',
+          bottomLeftValue: usesBarcode ? '' : card.dateOfIssue || 'Not added',
+          bottomRightLabel: usesBarcode ? '' : 'Expires',
+          bottomRightValue: usesBarcode ? '' : card.dateOfExpiry || card.tier || 'Not added',
           iconName: 'card-account-details-star-outline',
+          footerVariant: usesBarcode ? 'barcode' : 'default',
+          barcodeValue: usesBarcode ? card.memberId : undefined,
         };
   }
 
@@ -641,8 +658,8 @@ export function getCardSideContent(card: WalletCard, side: 'front' | 'back'): Ca
 
   return side === 'front'
     ? {
-        topLabel: 'Type',
-        topValue: card.issuedBy || card.issuer,
+        topLabel: card.title,
+        topValue: card.issuedBy || card.issuer || 'Issuer',
         middleLabel: 'CARDHOLDER',
         middleValue: card.name || 'Cardholder',
         bottomLeftLabel: personalFront.bottomLeftLabel,
@@ -652,8 +669,8 @@ export function getCardSideContent(card: WalletCard, side: 'front' | 'back'): Ca
         iconName: 'card-account-details-outline',
       }
     : {
-        topLabel: 'Type',
-        topValue: card.issuedBy || card.issuer,
+        topLabel: card.title,
+        topValue: card.issuedBy || card.issuer || 'Issuer',
         middleLabel: personalBackMiddle.label,
         middleValue: personalBackMiddle.value,
         bottomLeftLabel: personalBackLeft ? 'Date of Issue' : 'Birth Date',

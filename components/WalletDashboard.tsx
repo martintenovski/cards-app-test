@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Feather } from '@expo/vector-icons';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Pressable, StyleSheet, Text, View, useColorScheme, useWindowDimensions } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 
@@ -12,6 +12,7 @@ import { CardStack } from '@/components/CardStack';
 import { TopMenu } from '@/components/TopMenu';
 import { useCardStore } from '@/store/useCardStore';
 import { FILTER_LABELS, getCardsByFilter, type HomeFilter } from '@/types/card';
+import { APP_THEME, resolveTheme } from '@/utils/theme';
 
 type WalletDashboardProps = {
   routeFilter: HomeFilter;
@@ -19,15 +20,24 @@ type WalletDashboardProps = {
 
 export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
   const router = useRouter();
+  const deviceScheme = useColorScheme();
+  const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const [menuOpen, setMenuOpen] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const cards = useCardStore((state) => state.cards);
   const viewMode = useCardStore((state) => state.viewMode);
   const homeFilter = useCardStore((state) => state.homeFilter);
+  const themePreference = useCardStore((state) => state.themePreference);
   const setHomeFilter = useCardStore((state) => state.setHomeFilter);
   const toggleViewMode = useCardStore((state) => state.toggleViewMode);
+  const toggleThemePreference = useCardStore((state) => state.toggleThemePreference);
   const cycleCardFwd = useCardStore((state) => state.cycleCardFwd);
   const cycleCardBwd = useCardStore((state) => state.cycleCardBwd);
+  const resolvedTheme = resolveTheme(themePreference, deviceScheme);
+  const colors = APP_THEME[resolvedTheme];
+  const isCompact = width < 390;
+  const bottomBarClearance = Math.max(insets.bottom, isCompact ? 12 : 16) + 68;
 
   // Chevron rotation animation
   const chevronRotate = useSharedValue(0);
@@ -54,7 +64,7 @@ export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
   };
 
   return (
-    <SafeAreaView style={styles.root}>
+    <SafeAreaView style={[styles.root, { backgroundColor: colors.background }]}>
       {/* ── Header ─────────────────────────────────────────── */}
       <View style={styles.header}>
         <Pressable
@@ -62,8 +72,10 @@ export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
           accessibilityLabel="Open filter menu"
           onPress={() => setMenuOpen(true)}
         >
-          <Text style={styles.headingMain}>Manage</Text>
-          <Text style={styles.headingSub}>{FILTER_LABELS[activeFilter]}</Text>
+          <Text style={[styles.headingMain, { color: colors.text }]}>Manage</Text>
+          <Text style={[styles.headingSub, { color: colors.textMuted }]}>
+            {FILTER_LABELS[activeFilter]}
+          </Text>
         </Pressable>
         <Pressable
           accessibilityRole="button"
@@ -72,7 +84,7 @@ export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
           onPress={() => setMenuOpen(true)}
         >
           <Animated.View style={chevronStyle}>
-            <Feather name="chevron-down" size={24} color="#1D1D1D" />
+            <Feather name="chevron-down" size={24} color={colors.text} />
           </Animated.View>
         </Pressable>
       </View>
@@ -80,15 +92,24 @@ export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
       {/* ── Cards area ─────────────────────────────────────── */}
       <View style={styles.cardsArea}>
         {cards.length === 0 ? (
-          <Pressable style={styles.mockCard} onPress={() => setSheetOpen(true)}>
-            <Feather name="credit-card" size={44} color="rgba(29,29,29,0.18)" />
-            <Text style={styles.mockCardText}>Add your first card</Text>
-            <Text style={styles.mockCardSub}>Tap here to get started</Text>
+          <Pressable
+            style={[
+              styles.mockCard,
+              {
+                borderColor: colors.border,
+                backgroundColor: colors.surface,
+              },
+            ]}
+            onPress={() => setSheetOpen(true)}
+          >
+            <Feather name="credit-card" size={44} color={colors.textSoft} />
+            <Text style={[styles.mockCardText, { color: colors.textMuted }]}>Add your first card</Text>
+            <Text style={[styles.mockCardSub, { color: colors.textSoft }]}>Tap here to get started</Text>
           </Pressable>
         ) : filteredCards.length === 0 ? (
-          <View style={styles.emptyBox}>
-            <Text style={styles.emptyTitle}>No cards here</Text>
-            <Text style={styles.emptyBody}>No cards in this category yet.</Text>
+          <View style={[styles.emptyBox, { backgroundColor: colors.surface }]}> 
+            <Text style={[styles.emptyTitle, { color: colors.text }]}>No cards here</Text>
+            <Text style={[styles.emptyBody, { color: colors.textMuted }]}>No cards in this category yet.</Text>
           </View>
         ) : viewMode === 'stack' ? (
           <CardStack
@@ -100,6 +121,7 @@ export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
         ) : (
           <CardList
             cards={filteredCards}
+            bottomSpacing={bottomBarClearance + 16}
             onCardPress={(id) => router.push({ pathname: '/card-detail', params: { id } })}
           />
         )}
@@ -109,6 +131,8 @@ export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
         onAddCard={() => setSheetOpen(true)}
         viewMode={viewMode}
         onToggleViewMode={toggleViewMode}
+        onToggleTheme={() => toggleThemePreference(resolvedTheme)}
+        theme={resolvedTheme}
       />
       <AddCardSheet isOpen={sheetOpen} onClose={() => setSheetOpen(false)} />
       <TopMenu
@@ -155,6 +179,7 @@ const styles = StyleSheet.create({
   cardsArea: {
     flex: 1,
     paddingTop: 50,
+    paddingBottom: 8,
   },
   emptyBox: {
     marginHorizontal: 25,

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Feather } from '@expo/vector-icons';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, Text, View, useColorScheme } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   useAnimatedStyle,
@@ -8,8 +8,10 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 
+import { useCardStore } from '@/store/useCardStore';
 import type { HomeFilter } from '@/types/card';
 import { FILTER_LABELS } from '@/types/card';
+import { APP_THEME, resolveTheme } from '@/utils/theme';
 
 type TopMenuProps = {
   isOpen: boolean;
@@ -22,6 +24,10 @@ const MENU_ITEMS: HomeFilter[] = ['everything', 'personal', 'bank', 'club'];
 
 export function TopMenu({ isOpen, selectedFilter, onClose, onSelect }: TopMenuProps) {
   const insets = useSafeAreaInsets();
+  const themePreference = useCardStore((state) => state.themePreference);
+  const deviceScheme = useColorScheme();
+  const resolvedTheme = resolveTheme(themePreference, deviceScheme);
+  const colors = APP_THEME[resolvedTheme];
   const [modalVisible, setModalVisible] = useState(false);
 
   const translateY = useSharedValue(-600);
@@ -57,22 +63,35 @@ export function TopMenu({ isOpen, selectedFilter, onClose, onSelect }: TopMenuPr
       statusBarTranslucent
     >
       {/* Dim backdrop */}
-      <Animated.View style={[StyleSheet.absoluteFill, styles.backdrop, backdropStyle]} />
+      <Animated.View
+        style={[
+          StyleSheet.absoluteFill,
+          styles.backdrop,
+          backdropStyle,
+          { backgroundColor: colors.overlay },
+        ]}
+      />
       {/* Tap-outside-to-close */}
       <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
 
       {/* Sheet slides down from top */}
-      <Animated.View style={[styles.sheet, sheetStyle, { paddingTop: insets.top + 20 }]}>
+      <Animated.View
+        style={[
+          styles.sheet,
+          sheetStyle,
+          { paddingTop: insets.top + 20, backgroundColor: colors.surface },
+        ]}
+      >
         {/* Header */}
         <View style={styles.sheetHeader}>
-          <Text style={styles.sheetTitle}>Manage</Text>
+          <Text style={[styles.sheetTitle, { color: colors.text }]}>Manage</Text>
           <Pressable
             accessibilityRole="button"
             accessibilityLabel="Close menu"
             style={styles.closeBtn}
             onPress={onClose}
           >
-            <Feather name="chevron-up" size={22} color="#FFFFFF" />
+            <Feather name="chevron-up" size={22} color={colors.text} />
           </Pressable>
         </View>
 
@@ -87,11 +106,16 @@ export function TopMenu({ isOpen, selectedFilter, onClose, onSelect }: TopMenuPr
                 style={styles.optionRow}
                 onPress={() => { onSelect(item); onClose(); }}
               >
-                <Text style={[styles.optionText, !active && styles.optionTextMuted]}>
+                <Text
+                  style={[
+                    styles.optionText,
+                    { color: active ? colors.text : colors.textMuted },
+                  ]}
+                >
                   {FILTER_LABELS[item]}
                 </Text>
                 {active ? (
-                  <Feather name="check" size={18} color="#FFFFFF" />
+                  <Feather name="check" size={18} color={colors.text} />
                 ) : (
                   <View style={styles.checkIcon} />
                 )}
@@ -105,9 +129,7 @@ export function TopMenu({ isOpen, selectedFilter, onClose, onSelect }: TopMenuPr
 }
 
 const styles = StyleSheet.create({
-  backdrop: {
-    backgroundColor: 'rgba(0,0,0,0.45)',
-  },
+  backdrop: {},
   sheet: {
     position: 'absolute',
     top: 0,
@@ -115,7 +137,6 @@ const styles = StyleSheet.create({
     right: 0,
     borderBottomLeftRadius: 30,
     borderBottomRightRadius: 30,
-    backgroundColor: '#1D1D1D',
     paddingHorizontal: 25,
     paddingBottom: 32,
   },
@@ -153,10 +174,6 @@ const styles = StyleSheet.create({
   optionText: {
     fontFamily: 'ReadexPro-Medium',
     fontSize: 22,
-    color: '#FFFFFF',
-  },
-  optionTextMuted: {
-    color: 'rgba(255,255,255,0.4)',
   },
   checkIcon: {
     width: 25,

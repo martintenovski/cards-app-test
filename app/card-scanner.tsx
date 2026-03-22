@@ -1,7 +1,7 @@
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
-import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useRouter } from 'expo-router';
 import { useRef, useState } from 'react';
+import type { ComponentType } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -22,13 +22,18 @@ const VIEWFINDER_HEIGHT = VIEWFINDER_WIDTH * 0.63;
 const CORNER_SIZE = 22;
 const CORNER_THICKNESS = 3;
 
+type CameraPermissionResponse = {
+  granted?: boolean;
+};
+
 export default function CardScannerScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [permission, requestPermission] = useCameraPermissions();
-  const cameraRef = useRef<CameraView>(null);
+  const [cameraModuleErrorMessage, setCameraModuleErrorMessage] = useState('');
+  const [CameraViewComponent, setCameraViewComponent] = useState<ComponentType<any> | null>(null);
+  const cameraRef = useRef<any>(null);
 
   const handleClose = () => {
     if (isCameraActive) {
@@ -39,17 +44,48 @@ export default function CardScannerScreen() {
     else router.dismissTo('/');
   };
 
+  const loadCameraModule = async (): Promise<
+    { status: 'granted' } | { status: 'denied' } | { status: 'unavailable'; message: string }
+  > => {
+    try {
+      const expoCamera = await import('expo-camera');
+
+      setCameraViewComponent(() => expoCamera.CameraView);
+
+      const currentPermission = await expoCamera.Camera.getCameraPermissionsAsync();
+      if (currentPermission.granted) {
+        return { status: 'granted' };
+      }
+
+      const requestedPermission = await expoCamera.Camera.requestCameraPermissionsAsync();
+      return requestedPermission.granted ? { status: 'granted' } : { status: 'denied' };
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Expo camera native module is not available.';
+      setCameraModuleErrorMessage(message);
+      return { status: 'unavailable', message };
+    }
+  };
+
   const handleStartScanner = async () => {
-    if (!permission?.granted) {
-      const result = await requestPermission();
-      if (!result.granted) {
+    const result = await loadCameraModule();
+
+    if (result.status !== 'granted') {
+      if (result.status === 'unavailable') {
+        Alert.alert(
+          'Camera module unavailable',
+          'This Android build does not include expo-camera yet. Rebuild the Android app and reopen it in the simulator.'
+            + `\n\nDetails: ${result.message}`
+        );
+      } else {
         Alert.alert(
           'Camera access required',
           'Please enable camera access in Settings to scan cards and documents.'
         );
-        return;
       }
+      return;
     }
+
     setIsCameraActive(true);
   };
 
@@ -74,9 +110,39 @@ export default function CardScannerScreen() {
 
   // ── Camera capture stage ──────────────────────────────────────────────────
   if (isCameraActive) {
+    if (!CameraViewComponent) {
+      return (
+        <SafeAreaView style={styles.root}>
+          <View style={styles.header}>
+            <Pressable onPress={handleClose} style={styles.headerButton} hitSlop={12}>
+              <Feather name="arrow-left" size={24} color="#FFFFFF" />
+            </Pressable>
+            <Text style={styles.headerTitle}>Scan Cards</Text>
+            <View style={styles.headerButton} />
+          </View>
+
+          <View style={styles.heroWrap}>
+            <View style={styles.heroCard}>
+              <View style={styles.heroIconWrap}>
+                <MaterialCommunityIcons name="camera-off-outline" size={42} color="#FFFFFF" />
+              </View>
+              <Text style={styles.heroTitle}>Camera needs a rebuild</Text>
+              <Text style={styles.heroSubtitle}>
+                This simulator build was launched without the native camera module, so the scanner can’t open yet.
+              </Text>
+              <Text style={styles.helperText}>
+                Rebuild Android with the current native dependencies, then reopen the app in the emulator.
+                {cameraModuleErrorMessage ? `\n\n${cameraModuleErrorMessage}` : ''}
+              </Text>
+            </View>
+          </View>
+        </SafeAreaView>
+      );
+    }
+
     return (
       <View style={styles.cameraRoot}>
-        <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing="back" />
+        <CameraViewComponent ref={cameraRef} style={StyleSheet.absoluteFill} facing="back" />
 
         {/* Dimmed overlay with transparent viewfinder slot */}
         <View style={[StyleSheet.absoluteFill, styles.overlayColumn]}>
@@ -272,6 +338,13 @@ const styles = StyleSheet.create({
     fontFamily: 'ReadexPro-Medium',
     fontSize: 18,
     color: '#1D1D1D',
+  },
+  helperText: {
+    fontFamily: 'ReadexPro-Regular',
+    fontSize: 13,
+    lineHeight: 20,
+    color: 'rgba(255,255,255,0.68)',
+    textAlign: 'center',
   },
   // ── Camera stage ─────────────────────────────────────────────────────────
   cameraRoot: {
