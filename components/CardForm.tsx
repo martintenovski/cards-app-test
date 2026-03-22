@@ -12,6 +12,7 @@ import {
   Text,
   TextInput,
   TurboModuleRegistry,
+  UIManager,
   View,
   useColorScheme,
 } from 'react-native';
@@ -22,6 +23,7 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from 'react-native-reanimated';
+import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 
 import { CardPreview } from '@/components/CardPreview';
 import { useCardStore } from '@/store/useCardStore';
@@ -57,35 +59,21 @@ type FieldConfig = {
   options?: SelectOption[];
 };
 type ThemeColors = (typeof APP_THEME)[keyof typeof APP_THEME];
-type DatePickerModule = typeof import('@react-native-community/datetimepicker');
-
-let cachedDatePickerModule: DatePickerModule | null = null;
 
 function hasNativeDatePicker() {
-  const turboModule = typeof TurboModuleRegistry?.get === 'function'
-    ? TurboModuleRegistry.get('RNCDatePicker')
+  if (Platform.OS === 'android') {
+    const turboModule = typeof TurboModuleRegistry?.get === 'function'
+      ? TurboModuleRegistry.get('RNCDatePicker')
+      : null;
+
+    return Boolean(turboModule || NativeModules?.RNCDatePicker || DateTimePickerAndroid?.open);
+  }
+
+  const hasViewManager = typeof UIManager?.getViewManagerConfig === 'function'
+    ? UIManager.getViewManagerConfig('RNDateTimePicker')
     : null;
 
-  return Boolean(turboModule || NativeModules?.RNCDatePicker);
-}
-
-async function loadDatePickerModule() {
-  if (cachedDatePickerModule) {
-    return { status: 'ready' as const, module: cachedDatePickerModule };
-  }
-
-  if (!hasNativeDatePicker()) {
-    return { status: 'unavailable' as const, message: 'RNCDatePicker is not installed in this native build.' };
-  }
-
-  try {
-    const loadedModule = await import('@react-native-community/datetimepicker');
-    cachedDatePickerModule = loadedModule;
-    return { status: 'ready' as const, module: loadedModule };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : 'Native date picker module unavailable.';
-    return { status: 'unavailable' as const, message };
-  }
+  return Boolean(hasViewManager || NativeModules?.RNDateTimePicker);
 }
 
 function getFormSections(values: CardFormValues): { front: FieldConfig[]; back: FieldConfig[] } {
@@ -803,21 +791,20 @@ function DateRow({
 }) {
   const [iosPickerVisible, setIosPickerVisible] = useState(false);
   const [iosDate, setIosDate] = useState<Date>(() => parseDisplayDate(value, kind));
-  const [iosPickerReady, setIosPickerReady] = useState(false);
 
-  const openPicker = async () => {
+  const openPicker = () => {
     const initialValue = parseDisplayDate(value, kind);
-    if (Platform.OS === 'android') {
-      const pickerModule = await loadDatePickerModule();
-      if (pickerModule.status !== 'ready') {
-        Alert.alert(
-          'Date picker unavailable',
-          'This build does not include the native date picker yet. You can still type the date manually for now.'
-        );
-        return;
-      }
 
-      if (!pickerModule.module.DateTimePickerAndroid?.open) {
+    if (!hasNativeDatePicker()) {
+      Alert.alert(
+        'Date picker unavailable',
+        `This ${Platform.OS === 'ios' ? 'iOS' : 'Android'} build does not include the native date picker yet. You can still type the date manually for now.`
+      );
+      return;
+    }
+
+    if (Platform.OS === 'android') {
+      if (!DateTimePickerAndroid?.open) {
         Alert.alert(
           'Date picker unavailable',
           'This Android build does not expose the native date picker yet. You can still type the date manually for now.'
@@ -825,7 +812,7 @@ function DateRow({
         return;
       }
 
-      pickerModule.module.DateTimePickerAndroid.open({
+      DateTimePickerAndroid.open({
         value: initialValue,
         mode: 'date',
         is24Hour: true,
@@ -837,17 +824,7 @@ function DateRow({
       return;
     }
 
-    const pickerModule = await loadDatePickerModule();
-    if (pickerModule.status !== 'ready') {
-      Alert.alert(
-        'Date picker unavailable',
-        'This build does not include the native date picker yet. You can still type the date manually for now.'
-      );
-      return;
-    }
-
     setIosDate(initialValue);
-    setIosPickerReady(true);
     setIosPickerVisible(true);
   };
 
@@ -874,33 +851,30 @@ function DateRow({
             maxLength={kind === 'expiry' ? 5 : 10}
           />
         </View>
-        <Pressable onPress={() => void openPicker()} hitSlop={10} style={fieldSt.iconButton}>
+        <Pressable onPress={openPicker} hitSlop={10} style={fieldSt.iconButton}>
           <Feather name="calendar" size={18} color={colors.textMuted} />
         </Pressable>
       </Pressable>
 
       <FieldHelper error={error} helperText={helperText} valid={valid} colors={colors} />
 
-      {Platform.OS !== 'android' && iosPickerReady ? (
+      {Platform.OS !== 'android' && iosPickerVisible ? (
         <Modal transparent visible={iosPickerVisible} animationType="fade" onRequestClose={() => setIosPickerVisible(false)}>
           <View style={[iosSt.backdrop, { backgroundColor: colors.overlay }]}>
             <View style={[iosSt.modalCard, { backgroundColor: colors.surface }] }>
               <Text style={[iosSt.modalTitle, { color: colors.text }]}>{label}</Text>
-              {cachedDatePickerModule ? (
-                <cachedDatePickerModule.default
-                  value={iosDate}
-                  mode="date"
-                  display="spinner"
-                  onChange={(_event: unknown, selectedDate?: Date) => {
-                    if (selectedDate) setIosDate(selectedDate);
-                  }}
-                />
-              ) : null}
+              <DateTimePicker
+                value={iosDate}
+                mode="date"
+                display="spinner"
+                onChange={(_event: unknown, selectedDate?: Date) => {
+                  if (selectedDate) setIosDate(selectedDate);
+                }}
+              />
               <View style={iosSt.actions}>
                 <Pressable
                   onPress={() => {
                     setIosPickerVisible(false);
-                    setIosPickerReady(false);
                   }}
                   style={iosSt.actionBtn}
                 >
@@ -910,7 +884,6 @@ function DateRow({
                   onPress={() => {
                     onChange(kind === 'expiry' ? formatExpiryDate(iosDate) : formatDisplayDate(iosDate));
                     setIosPickerVisible(false);
-                    setIosPickerReady(false);
                   }}
                   style={iosSt.actionBtn}
                 >
