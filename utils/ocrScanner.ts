@@ -1,4 +1,6 @@
-import TextRecognition from '@react-native-ml-kit/text-recognition';
+// OCR powered by OCR.space (https://ocr.space) — free tier, no native deps
+const OCR_API_KEY = process.env.EXPO_PUBLIC_OCR_API_KEY ?? '';
+const OCR_ENDPOINT = 'https://api.ocr.space/parse/image';
 
 export type ScannedCardData = {
   documentType: 'id' | 'passport' | 'driving_license' | 'bank_card';
@@ -17,18 +19,39 @@ export type ScannedCardData = {
   cardHolder?: string;
 };
 
-export async function scanImageWithMLKit(
+export async function scanImageWithOCR(
   imageUri: string,
   type: 'document' | 'card'
 ): Promise<ScannedCardData> {
-  const recognition = await TextRecognition.recognize(imageUri);
-  const lines = recognition.blocks
-    .flatMap((b) => b.lines.map((l) => l.text.trim()))
+  const body = new FormData();
+  body.append('file', { uri: imageUri, type: 'image/jpeg', name: 'scan.jpg' } as unknown as Blob);
+  body.append('apikey', OCR_API_KEY);
+  body.append('language', 'eng');
+  body.append('isOverlayRequired', 'false');
+  body.append('detectOrientation', 'true');
+  body.append('scale', 'true');
+  body.append('OCREngine', '2'); // Engine 2 is better for cards/docs
+
+  const response = await fetch(OCR_ENDPOINT, { method: 'POST', body });
+  if (!response.ok) throw new Error(`OCR request failed: ${response.status}`);
+
+  const json = (await response.json()) as {
+    ParsedResults?: Array<{ ParsedText: string }>;
+    IsErroredOnProcessing?: boolean;
+    ErrorMessage?: string;
+  };
+
+  if (json.IsErroredOnProcessing) {
+    throw new Error(json.ErrorMessage ?? 'OCR processing error');
+  }
+
+  const rawText = json.ParsedResults?.[0]?.ParsedText ?? '';
+  const lines = rawText
+    .split(/\r?\n/)
+    .map((l) => l.trim())
     .filter(Boolean);
 
-  if (type === 'card') {
-    return parseCardText(lines);
-  }
+  if (type === 'card') return parseCardText(lines);
   return parseDocumentText(lines);
 }
 

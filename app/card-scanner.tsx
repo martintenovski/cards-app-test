@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { scanImageWithMLKit } from '@/utils/ocrScanner';
+import { scanImageWithOCR } from '@/utils/ocrScanner';
 import type { ScannedCardData } from '@/utils/ocrScanner';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -59,7 +59,7 @@ export default function CardScannerScreen() {
     try {
       const photo = await cameraRef.current.takePictureAsync({ quality: 0.9 });
       if (!photo?.uri) throw new Error('Could not capture photo.');
-      const result = await scanImageWithMLKit(photo.uri, scanType);
+      const result = await scanImageWithOCR(photo.uri, scanType);
       router.push({
         pathname: '/card-scan-confirm',
         params: { payload: JSON.stringify(result) },
