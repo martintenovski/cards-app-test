@@ -14,12 +14,6 @@
       "expo-secure-store",
       "expo-font",
       [
-        "expo-camera",
-        {
-          "cameraPermission": "Camera is required to scan identity documents and bank cards"
-        }
-      ],
-      [
         "expo-build-properties",
         {
           "ios": {
