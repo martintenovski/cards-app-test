@@ -50,9 +50,11 @@ export interface PersonalDocCard extends BaseCard {
   secondaryNumber: string;
   personalIdNumber?: string;
   dateOfBirth?: string;
+  dateOfIssue?: string;
   dateOfExpiry?: string;
   nationality?: string;
   sex?: string;
+  address?: string;
 }
 
 export interface ClubCard extends BaseCard {
@@ -61,6 +63,10 @@ export interface ClubCard extends BaseCard {
   clubName: string;
   memberId: string;
   tier: string;
+  secondaryNumber?: string;
+  dateOfIssue?: string;
+  dateOfExpiry?: string;
+  address?: string;
 }
 
 export type WalletCard = BankCard | PersonalDocCard | ClubCard;
@@ -72,6 +78,13 @@ export interface CardFormValues {
   nameOnCard: string;
   cardNumber: string;
   expiry: string;
+  dateOfBirth: string;
+  dateOfIssue: string;
+  dateOfExpiry: string;
+  nationality: string;
+  sex: string;
+  address: string;
+  personalIdNumber: string;
   secondaryNumber: string;
   cvc: string;
   accountNumber: string;
@@ -108,6 +121,13 @@ export const DEFAULT_FORM_VALUES: CardFormValues = {
   nameOnCard: '',
   cardNumber: '',
   expiry: '',
+  dateOfBirth: '',
+  dateOfIssue: '',
+  dateOfExpiry: '',
+  nationality: '',
+  sex: '',
+  address: '',
+  personalIdNumber: '',
   secondaryNumber: '',
   cvc: '',
   accountNumber: '',
@@ -240,6 +260,10 @@ export const seedCards: WalletCard[] = [
     issuedBy: 'MVR Skopje',
     docNumber: '1706000450034',
     secondaryNumber: 'D241124',
+    dateOfIssue: '15.03.2024',
+    dateOfExpiry: '14.03.2029',
+    address: 'BUL. ASNOM BR. 42-69',
+    dateOfBirth: '17.06.2000',
   },
   {
     id: 'personal-1',
@@ -253,6 +277,12 @@ export const seedCards: WalletCard[] = [
     issuedBy: 'MVR Skopje',
     docNumber: '1706000450034',
     secondaryNumber: 'M0800421',
+    personalIdNumber: '1706000450034',
+    dateOfIssue: '15.03.2024',
+    dateOfExpiry: '14.03.2029',
+    address: 'BUL. ASNOM BR. 42-69',
+    nationality: 'MKD',
+    sex: 'M',
   },
   {
     id: 'personal-3',
@@ -266,6 +296,11 @@ export const seedCards: WalletCard[] = [
     issuedBy: 'MVR Skopje',
     docNumber: '1706000450034',
     secondaryNumber: 'D241124',
+    dateOfIssue: '15.03.2024',
+    dateOfExpiry: '14.03.2034',
+    nationality: 'MKD',
+    dateOfBirth: '17.06.2000',
+    sex: 'M',
   },
   {
     id: 'bank-1',
@@ -311,6 +346,9 @@ export const seedCards: WalletCard[] = [
     clubName: 'City Rewards',
     memberId: 'CR-4400-7782',
     tier: 'Gold Tier',
+    secondaryNumber: 'MEM-2024-99',
+    dateOfIssue: '12.02.2024',
+    dateOfExpiry: '12.02.2027',
   },
 ];
 
@@ -356,13 +394,20 @@ export function createPreviewCard(values: CardFormValues, paletteOverride?: Card
       category: 'personal',
       title: (values.type as PersonalDocType) || 'Identity Card',
       issuer: values.issuer || 'Issued by',
-      name: values.nameOnCard || 'Name on card',
-      primaryValue: values.cardNumber || 'Card number',
-      secondaryValue: values.secondaryNumber || 'Secondary number',
+      name: values.nameOnCard || 'Cardholder',
+      primaryValue: values.personalIdNumber || values.cardNumber || 'Primary number',
+      secondaryValue: values.cardNumber || values.secondaryNumber || 'Document number',
       palette,
       issuedBy: values.issuer || 'Issued by',
-      docNumber: values.cardNumber || 'Card number',
-      secondaryNumber: values.secondaryNumber || 'Secondary number',
+      docNumber: values.cardNumber || 'Document number',
+      secondaryNumber: values.secondaryNumber || '',
+      personalIdNumber: values.personalIdNumber || undefined,
+      dateOfBirth: values.dateOfBirth || undefined,
+      dateOfIssue: values.dateOfIssue || undefined,
+      dateOfExpiry: values.dateOfExpiry || undefined,
+      nationality: values.nationality || undefined,
+      sex: values.sex || undefined,
+      address: values.address || undefined,
     };
   }
 
@@ -379,6 +424,10 @@ export function createPreviewCard(values: CardFormValues, paletteOverride?: Card
       clubName: values.clubName || 'Club',
       memberId: values.memberId || 'Member ID',
       tier: values.tier || 'Tier',
+      secondaryNumber: values.secondaryNumber || undefined,
+      dateOfIssue: values.dateOfIssue || undefined,
+      dateOfExpiry: values.dateOfExpiry || undefined,
+      address: values.address || undefined,
     };
   }
 
@@ -425,6 +474,13 @@ export function cardToFormValues(card: WalletCard): CardFormValues {
       nameOnCard: card.name,
       cardNumber: card.docNumber,
       secondaryNumber: card.secondaryNumber,
+      personalIdNumber: card.personalIdNumber ?? '',
+      dateOfBirth: card.dateOfBirth ?? '',
+      dateOfIssue: card.dateOfIssue ?? '',
+      dateOfExpiry: card.dateOfExpiry ?? '',
+      nationality: card.nationality ?? '',
+      sex: card.sex ?? '',
+      address: card.address ?? '',
     };
   }
   return {
@@ -435,6 +491,10 @@ export function cardToFormValues(card: WalletCard): CardFormValues {
     nameOnCard: card.name,
     memberId: card.memberId,
     tier: card.tier,
+    secondaryNumber: card.secondaryNumber ?? '',
+    dateOfIssue: card.dateOfIssue ?? '',
+    dateOfExpiry: card.dateOfExpiry ?? '',
+    address: card.address ?? '',
   };
 }
 
@@ -466,9 +526,16 @@ export function createCardFromForm(values: CardFormValues, paletteOverride?: Car
       issuer: values.issuer,
       name: values.nameOnCard,
       docNumber: values.cardNumber,
-      primaryValue: values.cardNumber,
+      primaryValue: values.personalIdNumber || values.cardNumber,
       secondaryNumber: values.secondaryNumber,
-      secondaryValue: values.secondaryNumber,
+      secondaryValue: values.cardNumber || values.secondaryNumber,
+      personalIdNumber: values.personalIdNumber || undefined,
+      dateOfBirth: values.dateOfBirth || undefined,
+      dateOfIssue: values.dateOfIssue || undefined,
+      dateOfExpiry: values.dateOfExpiry || undefined,
+      nationality: values.nationality || undefined,
+      sex: values.sex || undefined,
+      address: values.address || undefined,
     };
   }
 
@@ -482,5 +549,162 @@ export function createCardFromForm(values: CardFormValues, paletteOverride?: Car
     primaryValue: values.memberId,
     tier: values.tier,
     secondaryValue: values.tier,
+    secondaryNumber: values.secondaryNumber || undefined,
+    dateOfIssue: values.dateOfIssue || undefined,
+    dateOfExpiry: values.dateOfExpiry || undefined,
+    address: values.address || undefined,
+  };
+}
+
+export type CardIconName =
+  | 'credit-card-outline'
+  | 'card-account-details-outline'
+  | 'card-account-details-star-outline';
+
+export interface CardSideContent {
+  topLabel: string;
+  topValue: string;
+  middleLabel: string;
+  middleValue: string;
+  bottomLeftLabel: string;
+  bottomLeftValue: string;
+  bottomRightLabel: string;
+  bottomRightValue: string;
+  iconName: CardIconName;
+}
+
+export function supportsCardBack(_card: WalletCard) {
+  return true;
+}
+
+export function getCardSideContent(card: WalletCard, side: 'front' | 'back'): CardSideContent {
+  if (card.category === 'bank') {
+    return side === 'front'
+      ? {
+          topLabel: 'Type',
+          topValue: card.bankName || card.issuer,
+          middleLabel: 'CARDHOLDER',
+          middleValue: card.holderName || card.name,
+          bottomLeftLabel: 'Card Number',
+          bottomLeftValue: card.maskedCardNumber || maskCardNumber(card.cardNumber),
+          bottomRightLabel: 'Brand',
+          bottomRightValue: card.brand === 'mastercard' ? 'Mastercard' : 'Visa',
+          iconName: 'credit-card-outline',
+        }
+      : {
+          topLabel: 'Type',
+          topValue: card.bankName || card.issuer,
+          middleLabel: card.accountNumber ? 'Account Number' : 'Bank',
+          middleValue: card.accountNumber || card.bankName || card.issuer,
+          bottomLeftLabel: 'Expiry Date',
+          bottomLeftValue: card.expiry || 'Not added',
+          bottomRightLabel: 'CVC',
+          bottomRightValue: card.cvc || 'Not added',
+          iconName: 'credit-card-outline',
+        };
+  }
+
+  if (card.category === 'club') {
+    return side === 'front'
+      ? {
+          topLabel: 'Type',
+          topValue: card.clubName || card.issuer,
+          middleLabel: 'MEMBER',
+          middleValue: card.name || 'Member name',
+          bottomLeftLabel: 'Member ID',
+          bottomLeftValue: card.memberId || 'Not added',
+          bottomRightLabel: 'Tier',
+          bottomRightValue: card.tier || 'Standard',
+          iconName: 'card-account-details-star-outline',
+        }
+      : {
+          topLabel: 'Type',
+          topValue: card.clubName || card.issuer,
+          middleLabel: card.address
+            ? 'Address'
+            : card.secondaryNumber
+              ? 'Membership No.'
+              : 'Program',
+          middleValue:
+            card.address || card.secondaryNumber || card.clubName || card.issuer || 'Not added',
+          bottomLeftLabel: 'Member Since',
+          bottomLeftValue: card.dateOfIssue || 'Not added',
+          bottomRightLabel: 'Expires',
+          bottomRightValue: card.dateOfExpiry || card.tier || 'Not added',
+          iconName: 'card-account-details-star-outline',
+        };
+  }
+
+  const personalFront = getPersonalFrontContent(card);
+  const personalBackMiddle = getPersonalBackMiddle(card);
+  const personalBackLeft = card.dateOfIssue || card.dateOfBirth;
+
+  return side === 'front'
+    ? {
+        topLabel: 'Type',
+        topValue: card.issuedBy || card.issuer,
+        middleLabel: 'CARDHOLDER',
+        middleValue: card.name || 'Cardholder',
+        bottomLeftLabel: personalFront.bottomLeftLabel,
+        bottomLeftValue: personalFront.bottomLeftValue,
+        bottomRightLabel: personalFront.bottomRightLabel,
+        bottomRightValue: personalFront.bottomRightValue,
+        iconName: 'card-account-details-outline',
+      }
+    : {
+        topLabel: 'Type',
+        topValue: card.issuedBy || card.issuer,
+        middleLabel: personalBackMiddle.label,
+        middleValue: personalBackMiddle.value,
+        bottomLeftLabel: personalBackLeft ? 'Date of Issue' : 'Birth Date',
+        bottomLeftValue: personalBackLeft || 'Not added',
+        bottomRightLabel: 'Date of Expiry',
+        bottomRightValue: card.dateOfExpiry || 'Not added',
+        iconName: 'card-account-details-outline',
+      };
+}
+
+function getPersonalFrontContent(card: PersonalDocCard) {
+  if (card.title === 'Driving License') {
+    return {
+      bottomLeftLabel: 'License Number',
+      bottomLeftValue: card.docNumber || 'Not added',
+      bottomRightLabel: 'Class',
+      bottomRightValue: card.secondaryNumber || card.personalIdNumber || 'Not added',
+    };
+  }
+
+  if (card.title === 'Passport') {
+    return {
+      bottomLeftLabel: 'Passport No.',
+      bottomLeftValue: card.docNumber || 'Not added',
+      bottomRightLabel: 'Nationality',
+      bottomRightValue: card.nationality || card.secondaryNumber || 'Not added',
+    };
+  }
+
+  return {
+    bottomLeftLabel: 'National ID Num.',
+    bottomLeftValue: card.personalIdNumber || card.docNumber || 'Not added',
+    bottomRightLabel: 'ID Number',
+    bottomRightValue: card.docNumber || card.secondaryNumber || 'Not added',
+  };
+}
+
+function getPersonalBackMiddle(card: PersonalDocCard) {
+  if (card.address) {
+    return { label: 'Address', value: card.address };
+  }
+
+  if (card.title === 'Passport') {
+    return {
+      label: 'Nationality',
+      value: card.nationality || 'Not added',
+    };
+  }
+
+  return {
+    label: 'Birth Date',
+    value: card.dateOfBirth || 'Not added',
   };
 }

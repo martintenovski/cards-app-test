@@ -12,11 +12,11 @@ import type { WalletCard } from '@/types/card';
 
 type CardPreviewProps = {
   card: WalletCard;
-  bankPreviewSide?: 'front' | 'back';
+  previewSide?: 'front' | 'back';
 };
 
-export function CardPreview({ card, bankPreviewSide = 'front' }: CardPreviewProps) {
-  const targetSide = card.category === 'bank' ? bankPreviewSide : 'front';
+export function CardPreview({ card, previewSide = 'front' }: CardPreviewProps) {
+  const targetSide = previewSide;
   const [displayedSide, setDisplayedSide] = useState<'front' | 'back'>(targetSide);
   const prevTarget = useRef(targetSide);
   const scaleX = useSharedValue(1);

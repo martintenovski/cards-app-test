@@ -25,21 +25,21 @@ const CORNER_THICKNESS = 3;
 export default function CardScannerScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const [scanType, setScanType] = useState<'document' | 'card' | null>(null);
+  const [isCameraActive, setIsCameraActive] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<CameraView>(null);
 
   const handleClose = () => {
-    if (scanType !== null) {
-      setScanType(null);
+    if (isCameraActive) {
+      setIsCameraActive(false);
       return;
     }
     if (router.canGoBack()) router.back();
     else router.dismissTo('/');
   };
 
-  const handleSelectType = async (type: 'document' | 'card') => {
+  const handleStartScanner = async () => {
     if (!permission?.granted) {
       const result = await requestPermission();
       if (!result.granted) {
@@ -50,16 +50,16 @@ export default function CardScannerScreen() {
         return;
       }
     }
-    setScanType(type);
+    setIsCameraActive(true);
   };
 
   const handleCapture = async () => {
-    if (!cameraRef.current || isProcessing || !scanType) return;
+    if (!cameraRef.current || isProcessing) return;
     setIsProcessing(true);
     try {
       const photo = await cameraRef.current.takePictureAsync({ quality: 0.9 });
       if (!photo?.uri) throw new Error('Could not capture photo.');
-      const result = await scanImageWithOCR(photo.uri, scanType);
+      const result = await scanImageWithOCR(photo.uri, 'auto');
       router.push({
         pathname: '/card-scan-confirm',
         params: { payload: JSON.stringify(result) },
@@ -73,7 +73,7 @@ export default function CardScannerScreen() {
   };
 
   // ── Camera capture stage ──────────────────────────────────────────────────
-  if (scanType !== null) {
+  if (isCameraActive) {
     return (
       <View style={styles.cameraRoot}>
         <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing="back" />
@@ -96,9 +96,7 @@ export default function CardScannerScreen() {
           {/* bottom dark band — contains instruction text */}
           <View style={[styles.darkBand, styles.overlayBottom]}>
             <Text style={styles.instructionText}>
-              {scanType === 'card'
-                ? 'Position your card within the frame'
-                : 'Position your document within the frame'}
+              Hold any card or document inside the frame and we’ll detect the type automatically.
             </Text>
           </View>
         </View>
@@ -108,9 +106,7 @@ export default function CardScannerScreen() {
           <Pressable onPress={handleClose} style={styles.cameraHeaderBtn} hitSlop={12}>
             <Feather name="arrow-left" size={24} color="#FFFFFF" />
           </Pressable>
-          <Text style={styles.cameraHeaderTitle}>
-            {scanType === 'card' ? 'Scan Bank Card' : 'Scan Document'}
-          </Text>
+          <Text style={styles.cameraHeaderTitle}>Auto Scan</Text>
           <View style={styles.cameraHeaderBtn} />
         </View>
 
@@ -147,59 +143,41 @@ export default function CardScannerScreen() {
         <Pressable onPress={handleClose} style={styles.headerButton} hitSlop={12}>
           <Feather name="arrow-left" size={24} color="#FFFFFF" />
         </Pressable>
-        <Text style={styles.headerTitle}>Scan Card</Text>
+        <Text style={styles.headerTitle}>Scan Cards</Text>
         <View style={styles.headerButton} />
       </View>
 
-      <View style={styles.optionsWrap}>
-        <ScanOptionCard
-          icon={
-            <MaterialCommunityIcons
-              name="card-account-details-outline"
-              size={32}
-              color="#FFFFFF"
-            />
-          }
-          title="Scan ID / Passport / License"
-          subtitle="Supports IDs, passports and driving licences"
-          onPress={() => handleSelectType('document')}
-        />
-        <ScanOptionCard
-          icon={
-            <MaterialCommunityIcons name="credit-card-outline" size={32} color="#FFFFFF" />
-          }
-          title="Scan Bank Card"
-          subtitle="Extract card number, expiry and name"
-          onPress={() => handleSelectType('card')}
-        />
+      <View style={styles.heroWrap}>
+        <View style={styles.heroCard}>
+          <View style={styles.heroIconWrap}>
+            <MaterialCommunityIcons name="card-search-outline" size={42} color="#FFFFFF" />
+          </View>
+          <Text style={styles.heroTitle}>One-tap auto scan</Text>
+          <Text style={styles.heroSubtitle}>
+            Detects bank cards, IDs, passports and driving licences without making you pick a type first.
+          </Text>
+
+          <View style={styles.heroChipRow}>
+            <View style={styles.heroChip}>
+              <Text style={styles.heroChipText}>Bank</Text>
+            </View>
+            <View style={styles.heroChip}>
+              <Text style={styles.heroChipText}>ID</Text>
+            </View>
+            <View style={styles.heroChip}>
+              <Text style={styles.heroChipText}>License</Text>
+            </View>
+            <View style={styles.heroChip}>
+              <Text style={styles.heroChipText}>Passport</Text>
+            </View>
+          </View>
+
+          <Pressable style={styles.heroButton} onPress={handleStartScanner}>
+            <Text style={styles.heroButtonText}>Start Auto Scan</Text>
+          </Pressable>
+        </View>
       </View>
     </SafeAreaView>
-  );
-}
-
-function ScanOptionCard({
-  icon,
-  title,
-  subtitle,
-  onPress,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  subtitle: string;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={onPress}
-      style={({ pressed }) => [styles.optionCard, pressed ? styles.optionCardPressed : null]}
-    >
-      <View style={styles.optionIconWrap}>{icon}</View>
-      <View style={styles.optionTextWrap}>
-        <Text style={styles.optionTitle}>{title}</Text>
-        <Text style={styles.optionSubtitle}>{subtitle}</Text>
-      </View>
-    </Pressable>
   );
 }
 
@@ -225,51 +203,75 @@ const styles = StyleSheet.create({
     fontSize: 17,
     color: '#FFFFFF',
   },
-  optionsWrap: {
+  heroWrap: {
     flex: 1,
     paddingHorizontal: 20,
     justifyContent: 'center',
-    gap: 14,
-    paddingBottom: 60,
+    alignItems: 'center',
+    paddingBottom: 40,
   },
-  optionCard: {
-    borderRadius: 20,
+  heroCard: {
+    width: '100%',
+    maxWidth: 360,
+    borderRadius: 28,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.08)',
     backgroundColor: '#252525',
-    paddingHorizontal: 20,
-    paddingVertical: 20,
-    flexDirection: 'row',
+    paddingHorizontal: 24,
+    paddingVertical: 28,
     alignItems: 'center',
     gap: 16,
   },
-  optionCardPressed: {
-    opacity: 0.85,
-    transform: [{ scale: 0.98 }],
-  },
-  optionIconWrap: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+  heroIconWrap: {
+    width: 86,
+    height: 86,
+    borderRadius: 43,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    flexShrink: 0,
+    backgroundColor: 'rgba(255,255,255,0.10)',
   },
-  optionTextWrap: {
-    flex: 1,
-  },
-  optionTitle: {
+  heroTitle: {
     fontFamily: 'ReadexPro-Medium',
-    fontSize: 18,
+    fontSize: 24,
     color: '#FFFFFF',
   },
-  optionSubtitle: {
-    marginTop: 4,
+  heroSubtitle: {
+    fontFamily: 'ReadexPro-Regular',
+    fontSize: 15,
+    lineHeight: 22,
+    color: 'rgba(255,255,255,0.55)',
+    textAlign: 'center',
+  },
+  heroChipRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  heroChip: {
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  heroChipText: {
     fontFamily: 'ReadexPro-Regular',
     fontSize: 13,
-    lineHeight: 19,
-    color: 'rgba(255,255,255,0.55)',
+    color: '#FFFFFF',
+  },
+  heroButton: {
+    width: '100%',
+    marginTop: 6,
+    height: 58,
+    borderRadius: 999,
+    backgroundColor: '#EFEFEF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroButtonText: {
+    fontFamily: 'ReadexPro-Medium',
+    fontSize: 18,
+    color: '#1D1D1D',
   },
   // ── Camera stage ─────────────────────────────────────────────────────────
   cameraRoot: {
@@ -358,7 +360,8 @@ const styles = StyleSheet.create({
   },
   instructionText: {
     fontFamily: 'ReadexPro-Regular',
-    fontSize: 14,
+    fontSize: 15,
+    lineHeight: 21,
     color: 'rgba(255,255,255,0.7)',
     textAlign: 'center',
     paddingHorizontal: 32,

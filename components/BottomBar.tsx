@@ -13,6 +13,7 @@ type BottomBarProps = {
 export function BottomBar({ viewMode, onToggleViewMode, onAddCard }: BottomBarProps) {
   const insets = useSafeAreaInsets();
   const isListMode = viewMode === 'list';
+  const toggleIconName = isListMode ? 'filter' : 'list';
 
   return (
     <View
@@ -22,7 +23,7 @@ export function BottomBar({ viewMode, onToggleViewMode, onAddCard }: BottomBarPr
         { paddingBottom: Math.max(insets.bottom + 8, 20) },
       ]}
     >
-      {/* Toggle button: stack icon (default) / filter icon (list mode) */}
+      {/* Toggle button: list icon in stack mode / filter icon in list mode */}
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Toggle view mode"
@@ -30,7 +31,7 @@ export function BottomBar({ viewMode, onToggleViewMode, onAddCard }: BottomBarPr
         onPress={onToggleViewMode}
       >
         <Feather
-          name="sliders"
+          name={toggleIconName}
           size={20}
           color={isListMode ? '#FFFFFF' : '#1D1D1D'}
         />

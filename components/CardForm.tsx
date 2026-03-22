@@ -40,42 +40,106 @@ type CardFormProps = {
 
 type FieldName = keyof CardFormValues;
 type SelectOption = { label: string; value: string };
+type FieldConfig = { key: FieldName; label: string; keyboardType: 'default' | 'number-pad' };
 
-function fieldLabels(category: CardCategory) {
-  if (category === 'bank') {
-    return [
-      { key: 'bankName', label: 'Bank name', keyboardType: 'default' as const },
-      { key: 'holderName', label: 'Holder name', keyboardType: 'default' as const },
-      { key: 'cardNumber', label: 'Card number', keyboardType: 'number-pad' as const },
-      { key: 'expiry', label: 'Expiry date', keyboardType: 'default' as const },
-      { key: 'cvc', label: 'CVC number', keyboardType: 'number-pad' as const },
-      { key: 'accountNumber', label: 'Account number', keyboardType: 'number-pad' as const },
-    ];
+function getFormSections(values: CardFormValues): { front: FieldConfig[]; back: FieldConfig[] } {
+  if (values.category === 'bank') {
+    return {
+      front: [
+        { key: 'bankName', label: 'Bank name', keyboardType: 'default' },
+        { key: 'holderName', label: 'Cardholder name', keyboardType: 'default' },
+        { key: 'cardNumber', label: 'Card number', keyboardType: 'number-pad' },
+      ],
+      back: [
+        { key: 'expiry', label: 'Expiry date', keyboardType: 'default' },
+        { key: 'cvc', label: 'CVC', keyboardType: 'number-pad' },
+        { key: 'accountNumber', label: 'Account number', keyboardType: 'default' },
+      ],
+    };
   }
-  if (category === 'club') {
-    return [
-      { key: 'clubName', label: 'Club name', keyboardType: 'default' as const },
-      { key: 'nameOnCard', label: 'Member name', keyboardType: 'default' as const },
-      { key: 'memberId', label: 'Member ID', keyboardType: 'default' as const },
-      { key: 'tier', label: 'Membership tier', keyboardType: 'default' as const },
-    ];
+
+  if (values.category === 'club') {
+    return {
+      front: [
+        { key: 'clubName', label: 'Club name', keyboardType: 'default' },
+        { key: 'nameOnCard', label: 'Member name', keyboardType: 'default' },
+        { key: 'memberId', label: 'Member ID', keyboardType: 'default' },
+        { key: 'tier', label: 'Tier / status', keyboardType: 'default' },
+      ],
+      back: [
+        { key: 'secondaryNumber', label: 'Membership number', keyboardType: 'default' },
+        { key: 'address', label: 'Address', keyboardType: 'default' },
+        { key: 'dateOfIssue', label: 'Member since', keyboardType: 'default' },
+        { key: 'dateOfExpiry', label: 'Expiry date', keyboardType: 'default' },
+      ],
+    };
   }
-  return [
-    { key: 'issuer', label: 'Issued by', keyboardType: 'default' as const },
-    { key: 'nameOnCard', label: 'Name on card', keyboardType: 'default' as const },
-    { key: 'cardNumber', label: 'Card number', keyboardType: 'number-pad' as const },
-    { key: 'secondaryNumber', label: 'Secondary number', keyboardType: 'default' as const },
-  ];
+
+  if (values.type === 'Driving License') {
+    return {
+      front: [
+        { key: 'issuer', label: 'Issued by', keyboardType: 'default' },
+        { key: 'nameOnCard', label: 'Full name', keyboardType: 'default' },
+        { key: 'cardNumber', label: 'License number', keyboardType: 'default' },
+        { key: 'secondaryNumber', label: 'Class / restrictions', keyboardType: 'default' },
+      ],
+      back: [
+        { key: 'address', label: 'Address', keyboardType: 'default' },
+        { key: 'dateOfIssue', label: 'Date of issue', keyboardType: 'default' },
+        { key: 'dateOfExpiry', label: 'Date of expiry', keyboardType: 'default' },
+        { key: 'dateOfBirth', label: 'Date of birth', keyboardType: 'default' },
+        { key: 'sex', label: 'Sex', keyboardType: 'default' },
+      ],
+    };
+  }
+
+  if (values.type === 'Passport') {
+    return {
+      front: [
+        { key: 'issuer', label: 'Issued by', keyboardType: 'default' },
+        { key: 'nameOnCard', label: 'Full name', keyboardType: 'default' },
+        { key: 'cardNumber', label: 'Passport number', keyboardType: 'default' },
+        { key: 'nationality', label: 'Nationality', keyboardType: 'default' },
+      ],
+      back: [
+        { key: 'dateOfBirth', label: 'Date of birth', keyboardType: 'default' },
+        { key: 'dateOfIssue', label: 'Date of issue', keyboardType: 'default' },
+        { key: 'dateOfExpiry', label: 'Date of expiry', keyboardType: 'default' },
+        { key: 'sex', label: 'Sex', keyboardType: 'default' },
+      ],
+    };
+  }
+
+  return {
+    front: [
+      { key: 'issuer', label: 'Issued by', keyboardType: 'default' },
+      { key: 'nameOnCard', label: 'Full name', keyboardType: 'default' },
+      { key: 'personalIdNumber', label: 'National ID number', keyboardType: 'default' },
+      { key: 'cardNumber', label: 'Identity card number', keyboardType: 'default' },
+    ],
+    back: [
+      { key: 'address', label: 'Address', keyboardType: 'default' },
+      { key: 'dateOfIssue', label: 'Date of issue', keyboardType: 'default' },
+      { key: 'dateOfExpiry', label: 'Date of expiry', keyboardType: 'default' },
+      { key: 'dateOfBirth', label: 'Date of birth', keyboardType: 'default' },
+      { key: 'nationality', label: 'Nationality', keyboardType: 'default' },
+      { key: 'sex', label: 'Sex', keyboardType: 'default' },
+    ],
+  };
 }
 
 function validate(values: CardFormValues) {
   const errors: Partial<Record<FieldName, string>> = {};
   const required: FieldName[] =
     values.category === 'bank'
-      ? ['type', 'bankName', 'holderName', 'cardNumber', 'cvc', 'accountNumber']
+      ? ['type', 'bankName', 'holderName', 'cardNumber', 'expiry', 'cvc']
       : values.category === 'club'
         ? ['type', 'clubName', 'nameOnCard', 'memberId', 'tier']
-        : ['type', 'issuer', 'nameOnCard', 'cardNumber', 'secondaryNumber'];
+        : values.type === 'Driving License'
+          ? ['type', 'issuer', 'nameOnCard', 'cardNumber', 'address', 'dateOfExpiry']
+          : values.type === 'Passport'
+            ? ['type', 'issuer', 'nameOnCard', 'cardNumber', 'nationality', 'dateOfExpiry']
+            : ['type', 'issuer', 'nameOnCard', 'personalIdNumber', 'cardNumber', 'dateOfExpiry'];
   required.forEach((f) => {
     if (!String(values[f] ?? '').trim()) errors[f] = 'Required';
   });
@@ -188,19 +252,17 @@ export function CardForm({ onSubmit, initialValues, initialPalette, submitLabel 
   const [values, setValues] = useState<CardFormValues>(initialValues ?? DEFAULT_FORM_VALUES);
   const [errors, setErrors] = useState<Partial<Record<FieldName, string>>>({});
   const [previewPalette, setPreviewPalette] = useState<CardPalette>(() => initialPalette ?? getRandomPastelPalette());
+  const [previewSide, setPreviewSide] = useState<'front' | 'back'>('front');
 
   const typeOptions = useMemo<SelectOption[]>(
     () => TYPE_OPTIONS[values.category].map((o) => ({ label: o, value: o })),
     [values.category]
   );
+  const sections = useMemo(() => getFormSections(values), [values]);
   const previewCard = useMemo(
     () => createPreviewCard(values, previewPalette),
     [previewPalette, values]
   );
-  const bankPreviewSide =
-    values.category === 'bank' && (values.cvc.trim() || values.accountNumber.trim())
-      ? 'back'
-      : 'front';
 
   const updateField = (field: FieldName, val: string) => {
     setValues((c) => ({ ...c, [field]: val }));
@@ -216,6 +278,7 @@ export function CardForm({ onSubmit, initialValues, initialPalette, submitLabel 
       nameOnCard: c.nameOnCard,
       holderName: c.holderName,
     }));
+    setPreviewSide('front');
     setPreviewPalette((c) => getRandomPastelPalette([c.id]));
     setErrors({});
   };
@@ -256,8 +319,22 @@ export function CardForm({ onSubmit, initialValues, initialPalette, submitLabel 
           onChange={(v) => updateField('type', v)}
         />
 
-        {/* ── Dynamic text fields ───────────────── */}
-        {fieldLabels(values.category).map((f) => {
+        <Text style={formSt.sectionLabel}>Front details</Text>
+        {sections.front.map((f) => {
+          const key = f.key as FieldName;
+          return (
+            <FormRow
+              key={f.key}
+              label={f.label}
+              value={String(values[key] ?? '')}
+              onChange={(v) => updateField(key, v)}
+              keyboardType={f.keyboardType}
+            />
+          );
+        })}
+
+        <Text style={formSt.sectionLabel}>Back details</Text>
+        {sections.back.map((f) => {
           const key = f.key as FieldName;
           return (
             <FormRow
@@ -271,8 +348,24 @@ export function CardForm({ onSubmit, initialValues, initialPalette, submitLabel 
         })}
 
         {/* ── Live card preview ─────────────────── */}
+        <View style={formSt.sideToggle}>
+          {(['front', 'back'] as const).map((side) => {
+            const active = previewSide === side;
+            return (
+              <Pressable
+                key={side}
+                onPress={() => setPreviewSide(side)}
+                style={[formSt.sideToggleBtn, active && formSt.sideToggleBtnActive]}
+              >
+                <Text style={[formSt.sideToggleText, active && formSt.sideToggleTextActive]}>
+                  {side === 'front' ? 'Front' : 'Back'}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
         <View style={formSt.previewWrap}>
-          <CardPreview bankPreviewSide={bankPreviewSide} card={previewCard} />
+          <CardPreview previewSide={previewSide} card={previewCard} />
         </View>
       </ScrollView>
 
@@ -368,6 +461,38 @@ const sheetSt = StyleSheet.create({
 const formSt = StyleSheet.create({
   scroll: { flex: 1 },
   content: { gap: 10, paddingBottom: 100, paddingHorizontal: 20 },
+  sectionLabel: {
+    marginTop: 10,
+    marginBottom: 2,
+    fontFamily: 'ReadexPro-Medium',
+    fontSize: 14,
+    color: '#FFFFFF',
+  },
+  sideToggle: {
+    flexDirection: 'row',
+    alignSelf: 'center',
+    backgroundColor: '#2A2A2A',
+    borderRadius: 999,
+    padding: 4,
+    marginTop: 14,
+    gap: 4,
+  },
+  sideToggleBtn: {
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  sideToggleBtnActive: {
+    backgroundColor: '#EFEFEF',
+  },
+  sideToggleText: {
+    fontFamily: 'ReadexPro-Regular',
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.6)',
+  },
+  sideToggleTextActive: {
+    color: '#1D1D1D',
+  },
   previewWrap: { marginTop: 6 },
   submitContainer: {
     position: 'absolute',

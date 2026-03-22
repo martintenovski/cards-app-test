@@ -15,7 +15,7 @@ import Animated, {
 import { CardItem } from '@/components/CardItem';
 import { EditCardSheet } from '@/components/EditCardSheet';
 import { useCardStore } from '@/store/useCardStore';
-import type { WalletCard } from '@/types/card';
+import { supportsCardBack, type WalletCard } from '@/types/card';
 
 export default function CardDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -61,10 +61,10 @@ export default function CardDetailScreen() {
     );
   }
 
-  const isBankCard = card.category === 'bank';
+  const canFlip = supportsCardBack(card);
 
   function handleFlip() {
-    if (!isBankCard) return;
+    if (!canFlip) return;
     const next = !isFlipped;
     setIsFlipped(next);
     flipProgress.value = withTiming(next ? 1 : 0, { duration: 400 });
@@ -121,16 +121,16 @@ export default function CardDetailScreen() {
           <Pressable
             onPress={handleFlip}
             style={styles.cardContainer}
-            disabled={!isBankCard}
+            disabled={!canFlip}
           >
             <Animated.View style={frontStyle}>
               <CardItem card={card} side="front" size="full" />
             </Animated.View>
             <Animated.View style={backStyle}>
-              <CardItem card={card} side={isBankCard ? 'back' : 'front'} size="full" />
+              <CardItem card={card} side="back" size="full" />
             </Animated.View>
           </Pressable>
-          {isBankCard && <Text style={styles.flipHint}>Tap card to flip</Text>}
+          {canFlip && <Text style={styles.flipHint}>Tap card to flip</Text>}
         </View>
 
         {/* ── Field list ─────────────────────── */}
@@ -194,11 +194,13 @@ function getCardFields(card: WalletCard): { label: string; value: string }[] {
       { label: 'Document Type', value: card.title },
       { label: 'Issued By', value: card.issuedBy },
       { label: 'Full Name', value: card.name },
-      { label: 'ID Number', value: card.docNumber },
+      { label: 'Document Number', value: card.docNumber },
       { label: 'Secondary Number', value: card.secondaryNumber },
       { label: 'Personal ID / NIN', value: card.personalIdNumber ?? '' },
       { label: 'Date of Birth', value: card.dateOfBirth ?? '' },
+      { label: 'Date of Issue', value: card.dateOfIssue ?? '' },
       { label: 'Date of Expiry', value: card.dateOfExpiry ?? '' },
+      { label: 'Address', value: card.address ?? '' },
       { label: 'Nationality', value: card.nationality ?? '' },
       { label: 'Sex', value: card.sex ?? '' },
     ].filter((field) => field.value);
@@ -208,6 +210,10 @@ function getCardFields(card: WalletCard): { label: string; value: string }[] {
     { label: 'Member Name', value: card.name },
     { label: 'Member ID', value: card.memberId },
     { label: 'Tier', value: card.tier },
+    { label: 'Membership Number', value: card.secondaryNumber ?? '' },
+    { label: 'Address', value: card.address ?? '' },
+    { label: 'Member Since', value: card.dateOfIssue ?? '' },
+    { label: 'Expiry Date', value: card.dateOfExpiry ?? '' },
   ].filter((field) => field.value);
 }
 
@@ -255,7 +261,7 @@ const styles = StyleSheet.create({
   },
   cardContainer: {
     width: '100%',
-    height: 252,
+    height: 225,
   },
   flipHint: {
     marginTop: 14,

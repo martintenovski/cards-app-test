@@ -15,6 +15,7 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 
+import { CardItem } from '@/components/CardItem';
 import { GRADIENTS } from '@/constants/gradients';
 import { useCardStore } from '@/store/useCardStore';
 import {
@@ -22,6 +23,7 @@ import {
   maskCardNumber,
   type BankCard,
   type CardPalette,
+  type ClubCard,
   type PersonalDocCard,
   type WalletCard,
 } from '@/types/card';
@@ -32,17 +34,23 @@ type ConfirmFormState = {
   fullName: string;
   documentNumber: string;
   personalIdNumber: string;
+  secondaryNumber: string;
   dateOfBirth: string;
+  dateOfIssue: string;
   dateOfExpiry: string;
   nationality: string;
   issuedBy: string;
   sex: string;
+  address: string;
   cardNumber: string;
   cardExpiry: string;
   cardHolder: string;
   bankName: string;
   cvc: string;
   accountNumber: string;
+  clubName: string;
+  memberId: string;
+  tier: string;
 };
 
 function createScanPalette(gradient: [string, string]): CardPalette {
@@ -85,50 +93,6 @@ function InputRow({
   );
 }
 
-function ScannerCardPreview({ form, palette }: { form: ConfirmFormState; palette: CardPalette }) {
-  const isBankCard = form.documentType === 'bank_card';
-  const numberText = isBankCard
-    ? formatCardNumber(form.cardNumber || '0000 0000 0000 0000')
-    : form.documentNumber || 'DOCUMENT NUMBER';
-  const holderText = isBankCard
-    ? form.cardHolder || 'CARDHOLDER NAME'
-    : form.fullName || 'FULL NAME';
-  const issuerText = isBankCard
-    ? form.bankName || 'Bank Card'
-    : humanizeDocumentType(form.documentType);
-  const expiryText = isBankCard ? form.cardExpiry || 'MM/YY' : form.dateOfExpiry || '—';
-
-  return (
-    <LinearGradient
-      colors={palette.gradient}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={styles.previewCard}
-    >
-      <View style={styles.previewTopRow}>
-        <Text style={[styles.previewLabel, { color: palette.mutedText }]}>
-          {humanizeDocumentType(form.documentType)}
-        </Text>
-        <Feather name="credit-card" size={18} color={palette.primaryText} />
-      </View>
-      <View style={styles.previewBody}>
-        <Text style={[styles.previewIssuer, { color: palette.primaryText }]}>{issuerText}</Text>
-        <Text style={[styles.previewNumber, { color: palette.primaryText }]}>{numberText}</Text>
-      </View>
-      <View style={styles.previewBottomRow}>
-        <View>
-          <Text style={[styles.previewMetaLabel, { color: palette.mutedText }]}>Cardholder</Text>
-          <Text style={[styles.previewMetaValue, { color: palette.primaryText }]}>{holderText}</Text>
-        </View>
-        <View>
-          <Text style={[styles.previewMetaLabel, { color: palette.mutedText }]}>Expiry</Text>
-          <Text style={[styles.previewMetaValue, { color: palette.primaryText }]}>{expiryText}</Text>
-        </View>
-      </View>
-    </LinearGradient>
-  );
-}
-
 export default function CardScanConfirmScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
@@ -142,26 +106,37 @@ export default function CardScanConfirmScreen() {
     fullName: scannedData?.fullName ?? '',
     documentNumber: scannedData?.documentNumber ?? '',
     personalIdNumber: scannedData?.personalIdNumber ?? '',
+    secondaryNumber: scannedData?.secondaryNumber ?? '',
     dateOfBirth: scannedData?.dateOfBirth ?? '',
+    dateOfIssue: scannedData?.dateOfIssue ?? '',
     dateOfExpiry: scannedData?.dateOfExpiry ?? '',
     nationality: scannedData?.nationality ?? '',
     issuedBy: scannedData?.issuedBy ?? '',
     sex: scannedData?.sex ?? '',
+    address: scannedData?.address ?? '',
     cardNumber: scannedData?.cardNumber ?? '',
     cardExpiry: scannedData?.cardExpiry ?? '',
     cardHolder: scannedData?.cardHolder ?? '',
-    bankName: '',
+    bankName: scannedData?.bankName ?? '',
     cvc: '',
     accountNumber: '',
+    clubName: scannedData?.clubName ?? '',
+    memberId: scannedData?.memberId ?? '',
+    tier: scannedData?.tier ?? '',
   });
   const [toastMessage, setToastMessage] = useState('');
   const [toastVisible, setToastVisible] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [previewSide, setPreviewSide] = useState<'front' | 'back'>('front');
   const [gradient] = useState<[string, string]>(() => {
     return GRADIENTS[Math.floor(Math.random() * GRADIENTS.length)] as [string, string];
   });
 
   const palette = useMemo(() => createScanPalette(gradient), [gradient]);
+  const previewCard = useMemo(
+    () => createCardFromScan(form, palette, 'preview'),
+    [form, palette]
+  );
 
   useEffect(() => {
     return () => {
@@ -211,7 +186,25 @@ export default function CardScanConfirmScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <ScannerCardPreview form={form} palette={palette} />
+          <View style={styles.previewToggleRow}>
+            {(['front', 'back'] as const).map((side) => {
+              const active = previewSide === side;
+              return (
+                <Pressable
+                  key={side}
+                  style={[styles.previewToggleBtn, active && styles.previewToggleBtnActive]}
+                  onPress={() => setPreviewSide(side)}
+                >
+                  <Text style={[styles.previewToggleText, active && styles.previewToggleTextActive]}>
+                    {side === 'front' ? 'Front' : 'Back'}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          <View style={styles.previewCardWrap}>
+            <CardItem card={previewCard} side={previewSide} size="full" />
+          </View>
 
           <Text style={styles.sectionTitle}>Extracted Information</Text>
 
@@ -249,6 +242,49 @@ export default function CardScanConfirmScreen() {
                 onChangeText={(value) => updateField('accountNumber', value)}
               />
             </>
+          ) : form.documentType === 'club_card' ? (
+            <>
+              <InputRow
+                label="Club name"
+                value={form.clubName}
+                onChangeText={(value) => updateField('clubName', value)}
+              />
+              <InputRow
+                label="Member name"
+                value={form.fullName}
+                onChangeText={(value) => updateField('fullName', value)}
+              />
+              <InputRow
+                label="Member ID"
+                value={form.memberId}
+                onChangeText={(value) => updateField('memberId', value)}
+              />
+              <InputRow
+                label="Tier / status"
+                value={form.tier}
+                onChangeText={(value) => updateField('tier', value)}
+              />
+              <InputRow
+                label="Membership number"
+                value={form.secondaryNumber}
+                onChangeText={(value) => updateField('secondaryNumber', value)}
+              />
+              <InputRow
+                label="Address"
+                value={form.address}
+                onChangeText={(value) => updateField('address', value)}
+              />
+              <InputRow
+                label="Member since"
+                value={form.dateOfIssue}
+                onChangeText={(value) => updateField('dateOfIssue', value)}
+              />
+              <InputRow
+                label="Expiry date"
+                value={form.dateOfExpiry}
+                onChangeText={(value) => updateField('dateOfExpiry', value)}
+              />
+            </>
           ) : (
             <>
               <InputRow
@@ -256,6 +292,11 @@ export default function CardScanConfirmScreen() {
                 value={humanizeDocumentType(form.documentType)}
                 onChangeText={() => undefined}
                 editable={false}
+              />
+              <InputRow
+                label="Issued by"
+                value={form.issuedBy}
+                onChangeText={(value) => updateField('issuedBy', value)}
               />
               <InputRow
                 label="Full name"
@@ -267,10 +308,31 @@ export default function CardScanConfirmScreen() {
                 value={form.documentNumber}
                 onChangeText={(value) => updateField('documentNumber', value)}
               />
+              {form.documentType === 'id' ? (
+                <InputRow
+                  label="Personal ID / NIN"
+                  value={form.personalIdNumber}
+                  onChangeText={(value) => updateField('personalIdNumber', value)}
+                />
+              ) : null}
+              {form.documentType === 'driving_license' ? (
+                <InputRow
+                  label="Class / restrictions"
+                  value={form.secondaryNumber}
+                  onChangeText={(value) => updateField('secondaryNumber', value)}
+                />
+              ) : null}
+              {form.documentType === 'passport' ? (
+                <InputRow
+                  label="Nationality"
+                  value={form.nationality}
+                  onChangeText={(value) => updateField('nationality', value)}
+                />
+              ) : null}
               <InputRow
-                label="Personal ID / NIN"
-                value={form.personalIdNumber}
-                onChangeText={(value) => updateField('personalIdNumber', value)}
+                label="Address"
+                value={form.address}
+                onChangeText={(value) => updateField('address', value)}
               />
               <InputRow
                 label="Date of birth"
@@ -278,19 +340,14 @@ export default function CardScanConfirmScreen() {
                 onChangeText={(value) => updateField('dateOfBirth', value)}
               />
               <InputRow
+                label="Date of issue"
+                value={form.dateOfIssue}
+                onChangeText={(value) => updateField('dateOfIssue', value)}
+              />
+              <InputRow
                 label="Date of expiry"
                 value={form.dateOfExpiry}
                 onChangeText={(value) => updateField('dateOfExpiry', value)}
-              />
-              <InputRow
-                label="Nationality"
-                value={form.nationality}
-                onChangeText={(value) => updateField('nationality', value)}
-              />
-              <InputRow
-                label="Issued by"
-                value={form.issuedBy}
-                onChangeText={(value) => updateField('issuedBy', value)}
               />
               <InputRow
                 label="Sex"
@@ -353,54 +410,34 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#FFFFFF',
   },
-  previewCard: {
-    width: '100%',
-    aspectRatio: 1.586,
-    borderRadius: 30,
-    padding: 24,
+  previewToggleRow: {
+    flexDirection: 'row',
+    alignSelf: 'center',
+    backgroundColor: '#2A2A2A',
+    borderRadius: 999,
+    padding: 4,
+    gap: 4,
     marginTop: 8,
+  },
+  previewToggleBtn: {
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  previewToggleBtnActive: {
+    backgroundColor: '#EFEFEF',
+  },
+  previewToggleText: {
+    fontFamily: 'ReadexPro-Regular',
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.6)',
+  },
+  previewToggleTextActive: {
+    color: '#1D1D1D',
+  },
+  previewCardWrap: {
     marginBottom: 6,
-    justifyContent: 'space-between',
-  },
-  previewTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  previewLabel: {
-    fontFamily: 'ReadexPro-Regular',
-    fontSize: 12,
-    textTransform: 'uppercase',
-    letterSpacing: 0.9,
-  },
-  previewBody: {
-    gap: 8,
-  },
-  previewIssuer: {
-    fontFamily: 'ReadexPro-Medium',
-    fontSize: 22,
-  },
-  previewNumber: {
-    fontFamily: 'ReadexPro-Bold',
-    fontSize: 24,
-    letterSpacing: 1,
-  },
-  previewBottomRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'space-between',
-    gap: 16,
-  },
-  previewMetaLabel: {
-    fontFamily: 'ReadexPro-Regular',
-    fontSize: 10,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginBottom: 4,
-  },
-  previewMetaValue: {
-    fontFamily: 'ReadexPro-Regular',
-    fontSize: 16,
+    marginTop: 14,
   },
   pill: {
     borderRadius: 24,
@@ -481,6 +518,8 @@ function humanizeDocumentType(type: ScannedCardData['documentType']) {
       return 'Driving License';
     case 'bank_card':
       return 'Bank Card';
+    case 'club_card':
+      return 'Club Card';
     default:
       return 'ID';
   }
@@ -494,17 +533,31 @@ function formatCardNumber(value: string) {
   return digits.match(/.{1,4}/g)?.join(' ') ?? digits;
 }
 
-function createCardFromScan(form: ConfirmFormState, palette: CardPalette): WalletCard {
-  return form.documentType === 'bank_card'
-    ? createBankCard(form, palette)
-    : createPersonalDocCard(form, palette);
+function createCardFromScan(
+  form: ConfirmFormState,
+  palette: CardPalette,
+  mode: 'save' | 'preview' = 'save'
+): WalletCard {
+  if (form.documentType === 'bank_card') {
+    return createBankCard(form, palette, mode);
+  }
+
+  if (form.documentType === 'club_card') {
+    return createClubCard(form, palette, mode);
+  }
+
+  return createPersonalDocCard(form, palette, mode);
 }
 
-function createBankCard(form: ConfirmFormState, palette: CardPalette): BankCard {
+function createBankCard(
+  form: ConfirmFormState,
+  palette: CardPalette,
+  mode: 'save' | 'preview'
+): BankCard {
   const digits = form.cardNumber.replace(/\D/g, '');
 
   return {
-    id: createCardId('bank'),
+    id: createCardId('bank', mode),
     category: 'bank',
     title: 'Debit Card',
     issuer: form.bankName.trim() || 'Bank Card',
@@ -524,25 +577,52 @@ function createBankCard(form: ConfirmFormState, palette: CardPalette): BankCard 
 
 function createPersonalDocCard(
   form: ConfirmFormState,
-  palette: CardPalette
+  palette: CardPalette,
+  mode: 'save' | 'preview'
 ): PersonalDocCard {
   return {
-    id: createCardId('personal'),
+    id: createCardId('personal', mode),
     category: 'personal',
     title: mapDocumentTitle(form.documentType),
     issuer: form.issuedBy.trim() || humanizeDocumentType(form.documentType),
     name: form.fullName.trim() || 'Full Name',
-    primaryValue: form.documentNumber.trim() || 'Document Number',
-    secondaryValue: form.personalIdNumber.trim() || undefined,
+    primaryValue: form.personalIdNumber.trim() || form.documentNumber.trim() || 'Document Number',
+    secondaryValue: form.documentNumber.trim() || form.secondaryNumber.trim() || undefined,
     palette,
     issuedBy: form.issuedBy.trim() || humanizeDocumentType(form.documentType),
     docNumber: form.documentNumber.trim(),
-    secondaryNumber: form.personalIdNumber.trim(),
+    secondaryNumber: form.secondaryNumber.trim(),
     personalIdNumber: form.personalIdNumber.trim() || undefined,
     dateOfBirth: form.dateOfBirth.trim() || undefined,
+    dateOfIssue: form.dateOfIssue.trim() || undefined,
     dateOfExpiry: form.dateOfExpiry.trim() || undefined,
     nationality: form.nationality.trim() || undefined,
     sex: form.sex.trim() || undefined,
+    address: form.address.trim() || undefined,
+  };
+}
+
+function createClubCard(
+  form: ConfirmFormState,
+  palette: CardPalette,
+  mode: 'save' | 'preview'
+): ClubCard {
+  return {
+    id: createCardId('club', mode),
+    category: 'club',
+    title: 'Club Card',
+    issuer: form.clubName.trim() || 'Club Card',
+    name: form.fullName.trim() || 'Member Name',
+    primaryValue: form.memberId.trim() || 'Member ID',
+    secondaryValue: form.tier.trim() || undefined,
+    palette,
+    clubName: form.clubName.trim() || 'Club Card',
+    memberId: form.memberId.trim() || 'Member ID',
+    tier: form.tier.trim() || 'Standard',
+    secondaryNumber: form.secondaryNumber.trim() || undefined,
+    dateOfIssue: form.dateOfIssue.trim() || undefined,
+    dateOfExpiry: form.dateOfExpiry.trim() || undefined,
+    address: form.address.trim() || undefined,
   };
 }
 
@@ -567,6 +647,10 @@ function inferBankBrand(cardNumber: string): BankCard['brand'] {
   return 'visa';
 }
 
-function createCardId(prefix: 'bank' | 'personal') {
+function createCardId(prefix: 'bank' | 'personal' | 'club', mode: 'save' | 'preview') {
+  if (mode === 'preview') {
+    return `preview-${prefix}`;
+  }
+
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }

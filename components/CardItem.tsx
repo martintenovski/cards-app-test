@@ -1,59 +1,51 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 
-import { getContrastColor } from '@/types/card';
+import { getCardSideContent, getContrastColor } from '@/types/card';
 import type { WalletCard } from '@/types/card';
 
 // Sizes derived directly from Figma design
 const SIZES = {
   full: {
     width: 380,
-    height: 252,
+    height: 225,
     radius: 30,
     padding: 25,
-    titleSize: 24,
-    issuerSize: 16,
-    issuerWidth: 138,
-    nameSize: 36,
-    footerPrimarySize: 16,
-    footerSecondarySize: 20,
-    chipSize: 44,
-    cardNumSize: 24,
-    rotateSize: 20,
-    nfcSize: 20,
+    topLabelSize: 14,
+    topValueSize: 16,
+    middleLabelSize: 13,
+    middleValueSize: 20,
+    metaLabelSize: 13,
+    metaValueSize: 16,
+    iconSize: 22,
   },
   compact: {
     width: 335,
-    height: 222,
+    height: 198,
     radius: 26,
     padding: 22,
-    titleSize: 21,
-    issuerSize: 14,
-    issuerWidth: 122,
-    nameSize: 32,
-    footerPrimarySize: 14,
-    footerSecondarySize: 18,
-    chipSize: 35,
-    cardNumSize: 19,
-    rotateSize: 16,
-    nfcSize: 16,
+    topLabelSize: 13,
+    issuerSize: 16,
+    topValueSize: 15,
+    middleLabelSize: 12,
+    middleValueSize: 18,
+    metaLabelSize: 12,
+    metaValueSize: 15,
+    iconSize: 20,
   },
   small: {
     width: 302,
-    height: 200,
+    height: 178,
     radius: 24,
     padding: 20,
-    titleSize: 19,
-    issuerSize: 13,
-    issuerWidth: 110,
-    nameSize: 28,
-    footerPrimarySize: 13,
-    footerSecondarySize: 16,
-    chipSize: 30,
-    cardNumSize: 17,
-    rotateSize: 14,
-    nfcSize: 14,
+    topLabelSize: 12,
+    topValueSize: 14,
+    middleLabelSize: 11,
+    middleValueSize: 16,
+    metaLabelSize: 11,
+    metaValueSize: 14,
+    iconSize: 18,
   },
 };
 
@@ -68,8 +60,8 @@ type CardItemProps = {
 
 export function CardItem({ card, side = 'front', size = 'full', onFlip }: CardItemProps) {
   const s = SIZES[size];
-  const isBankCard = card.category === 'bank';
   const withShadow = size === 'full';
+  const content = getCardSideContent(card, side);
 
   const gradientStyle = [
     styles.card,
@@ -85,110 +77,70 @@ export function CardItem({ card, side = 'front', size = 'full', onFlip }: CardIt
   // Always derive from gradient at render time — immune to stale persisted palette values
   const primaryColor = getContrastColor(gradient[0]);
   const mutedColor = primaryColor === '#1D1D1D' ? 'rgba(29,29,29,0.65)' : 'rgba(255,255,255,0.65)';
-  const iconColor = primaryColor === '#1D1D1D' ? 'rgba(29,29,29,0.6)' : 'rgba(255,255,255,0.7)';
-  const chipColor = primaryColor === '#1D1D1D' ? 'rgba(29,29,29,0.35)' : 'rgba(255,255,255,0.5)';
+  const iconColor = primaryColor === '#1D1D1D' ? 'rgba(29,29,29,0.85)' : 'rgba(255,255,255,0.9)';
 
-  if (isBankCard && side === 'back') {
-    return (
-      <LinearGradient
-        colors={gradient}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={gradientStyle}
-      >
-        {/* Header row */}
-        <View style={styles.row}>
-          <Text style={[styles.title, { fontSize: s.titleSize, color: mutedColor }]}>
-            {card.title}
-          </Text>
-          <Text style={[styles.brandText, { fontSize: s.issuerSize, color: primaryColor }]}>
-            {card.brand === 'visa' ? 'VISA' : 'MC'}
-          </Text>
-        </View>
-
-        {/* CVC + NFC icon */}
-        <View style={[styles.row, { marginTop: 'auto', alignItems: 'flex-start' }]}>
-          <Text style={[styles.cardNum, { fontSize: s.cardNumSize, color: primaryColor }]}>
-            {card.cvc || '000'}
-          </Text>
-          <MaterialCommunityIcons name="nfc" size={s.nfcSize} color={iconColor} />
-        </View>
-
-        {/* Account number + rotate */}
-        <View style={[styles.row, { marginTop: 8, alignItems: 'flex-end' }]}>
-          <Text style={[styles.cardNum, { fontSize: s.cardNumSize, color: primaryColor }]}>
-            {card.accountNumber || '—'}
-          </Text>
-          <Pressable onPress={onFlip} hitSlop={12}>
-            <MaterialCommunityIcons name="refresh" size={s.rotateSize} color={iconColor} />
-          </Pressable>
-        </View>
-      </LinearGradient>
-    );
-  }
-
-  // Front face
   return (
     <LinearGradient
-      colors={gradient}
+      colors={side === 'back' ? [gradient[1], gradient[0]] : gradient}
       start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
+      end={{ x: 1, y: 0 }}
       style={gradientStyle}
     >
-      {/* Header row */}
       <View style={styles.row}>
-        <Text
-          style={[styles.title, { fontSize: s.titleSize, color: mutedColor }]}
-          numberOfLines={1}
-        >
-          {card.title}
+        <View style={styles.headerTextWrap}>
+          <Text style={[styles.topLabel, { fontSize: s.topLabelSize, color: mutedColor }]}>
+            {content.topLabel}
+          </Text>
+          <Text
+            style={[styles.topValue, { fontSize: s.topValueSize, color: primaryColor }]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+          >
+            {content.topValue}
+          </Text>
+        </View>
+        <MaterialCommunityIcons name={content.iconName} size={s.iconSize} color={iconColor} />
+      </View>
+
+      <View style={styles.middleWrap}>
+        <Text style={[styles.middleLabel, { fontSize: s.middleLabelSize, color: mutedColor }]}>
+          {content.middleLabel}
         </Text>
         <Text
-          style={[styles.issuer, { fontSize: s.issuerSize, maxWidth: s.issuerWidth, color: primaryColor }]}
-          numberOfLines={1}
-          adjustsFontSizeToFit
+          style={[styles.middleValue, { fontSize: s.middleValueSize, color: primaryColor }]}
+          numberOfLines={2}
         >
-          {card.issuer}
+          {content.middleValue}
         </Text>
       </View>
 
-      {/* Body */}
-      {isBankCard ? (
-        <>
-          <View style={{ marginTop: 'auto' }}>
-            <MaterialCommunityIcons name="chip" size={s.chipSize} color={chipColor} />
-          </View>
-          {/* Card number + rotate */}
-          <View style={[styles.row, { marginTop: 'auto', alignItems: 'flex-end' }]}>
-            <Text style={[styles.cardNum, { fontSize: s.cardNumSize, color: primaryColor }]}>
-              {card.maskedCardNumber}
-            </Text>
-            <Pressable onPress={onFlip} hitSlop={12}>
-              <MaterialCommunityIcons name="refresh" size={s.rotateSize} color={iconColor} />
-            </Pressable>
-          </View>
-        </>
-      ) : (
-        <>
-          {/* Name fills middle */}
-          <View style={{ flex: 1, justifyContent: 'center', marginTop: 4 }}>
-            <Text style={[styles.name, { fontSize: s.nameSize, color: primaryColor }]}>
-              {card.name}
-            </Text>
-          </View>
-          {/* Footer */}
-          <View style={styles.row}>
-            <Text style={[styles.primaryValue, { fontSize: s.footerPrimarySize, color: primaryColor }]}>
-              {card.primaryValue}
-            </Text>
-            {!!card.secondaryValue && (
-              <Text style={[styles.secondaryValue, { fontSize: s.footerSecondarySize, color: mutedColor }]}>
-                {card.secondaryValue}
-              </Text>
-            )}
-          </View>
-        </>
-      )}
+      <View style={styles.footerRow}>
+        <View style={styles.footerColLeft}>
+          <Text style={[styles.metaLabel, { fontSize: s.metaLabelSize, color: mutedColor }]}>
+            {content.bottomLeftLabel}
+          </Text>
+          <Text
+            style={[styles.metaValue, { fontSize: s.metaValueSize, color: primaryColor }]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+          >
+            {content.bottomLeftValue}
+          </Text>
+        </View>
+        <View style={styles.footerColRight}>
+          <Text style={[styles.metaLabel, { fontSize: s.metaLabelSize, color: mutedColor }]}>
+            {content.bottomRightLabel}
+          </Text>
+          <Text
+            style={[styles.metaValue, styles.metaValueRight, { fontSize: s.metaValueSize, color: primaryColor }]}
+            numberOfLines={1}
+            adjustsFontSizeToFit
+          >
+            {content.bottomRightValue}
+          </Text>
+        </View>
+      </View>
+      {!!onFlip && <View style={styles.hiddenFlipTapArea} />}
     </LinearGradient>
   );
 }
@@ -209,40 +161,58 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
-  title: {
+  headerTextWrap: {
+    flex: 1,
+    paddingRight: 12,
+  },
+  topLabel: {
+    fontFamily: 'ReadexPro-Regular',
+    letterSpacing: 0.2,
+  },
+  topValue: {
+    fontFamily: 'ReadexPro-Medium',
+    marginTop: 2,
+  },
+  middleWrap: {
+    marginTop: 22,
+    flex: 1,
+  },
+  middleLabel: {
+    fontFamily: 'ReadexPro-Regular',
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
+  },
+  middleValue: {
     fontFamily: 'OpenSans-SemiBold',
-    color: 'rgba(255,255,255,0.65)',
-    flexShrink: 1,
+    marginTop: 4,
   },
-  issuer: {
+  footerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 16,
+  },
+  footerColLeft: {
+    flex: 1,
+  },
+  footerColRight: {
+    flex: 1,
+    alignItems: 'flex-end',
+  },
+  metaLabel: {
+    fontFamily: 'ReadexPro-Regular',
+    marginBottom: 4,
+  },
+  metaValue: {
     fontFamily: 'OpenSans-Bold',
-    color: '#FFFFFF',
+  },
+  metaValueRight: {
     textAlign: 'right',
   },
-  name: {
-    fontFamily: 'OpenSans-ExtraBold',
-    color: '#FFFFFF',
-    lineHeight: undefined, // let it scale naturally
-  },
-  primaryValue: {
-    fontFamily: 'OpenSans-Regular',
-    color: '#FFFFFF',
-    flexShrink: 1,
-  },
-  secondaryValue: {
-    fontFamily: 'OpenSans-Bold',
-    color: 'rgba(255,255,255,0.65)',
-  },
-  cardNum: {
-    fontFamily: 'OpenSans-SemiBold',
-    color: '#FFFFFF',
-    flexShrink: 1,
-  },
-  brandText: {
-    fontFamily: 'OpenSans-Bold',
-    color: '#FFFFFF',
-    letterSpacing: 1,
+  hiddenFlipTapArea: {
+    position: 'absolute',
+    width: 0,
+    height: 0,
   },
 });
