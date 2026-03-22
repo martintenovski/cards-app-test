@@ -1,48 +1,48 @@
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
+import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
-  PermissionsAndroid,
-  Platform,
+  Dimensions,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { scanWithBlinkID, type ScannedCardData } from '@/utils/blinkidSetup';
+import { scanImageWithMLKit } from '@/utils/ocrScanner';
+import type { ScannedCardData } from '@/utils/ocrScanner';
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const VIEWFINDER_WIDTH = SCREEN_WIDTH - 48;
+const VIEWFINDER_HEIGHT = VIEWFINDER_WIDTH * 0.63;
+const CORNER_SIZE = 22;
+const CORNER_THICKNESS = 3;
 
 export default function CardScannerScreen() {
   const router = useRouter();
-  const [isScanning, setIsScanning] = useState(false);
+  const insets = useSafeAreaInsets();
+  const [scanType, setScanType] = useState<'document' | 'card' | null>(null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [permission, requestPermission] = useCameraPermissions();
+  const cameraRef = useRef<CameraView>(null);
 
   const handleClose = () => {
-    if (router.canGoBack()) {
-      router.back();
+    if (scanType !== null) {
+      setScanType(null);
       return;
     }
-    router.dismissTo('/');
+    if (router.canGoBack()) router.back();
+    else router.dismissTo('/');
   };
 
-  const handleScan = async (type: 'document' | 'card') => {
-    if (isScanning) {
-      return;
-    }
-
-    if (Platform.OS === 'android') {
-      const status = await PermissionsAndroid.request(
-        PermissionsAndroid.PERMISSIONS.CAMERA,
-        {
-          title: 'Camera access required',
-          message: 'Camera is required to scan identity documents and bank cards.',
-          buttonPositive: 'Allow',
-          buttonNegative: 'Deny',
-        }
-      );
-      if (status !== PermissionsAndroid.RESULTS.GRANTED) {
+  const handleSelectType = async (type: 'document' | 'card') => {
+    if (!permission?.granted) {
+      const result = await requestPermission();
+      if (!result.granted) {
         Alert.alert(
           'Camera access required',
           'Please enable camera access in Settings to scan cards and documents.'
@@ -50,34 +50,97 @@ export default function CardScannerScreen() {
         return;
       }
     }
+    setScanType(type);
+  };
 
-    setIsScanning(true);
-
+  const handleCapture = async () => {
+    if (!cameraRef.current || isProcessing || !scanType) return;
+    setIsProcessing(true);
     try {
-      const result = await scanWithBlinkID(type);
-
-      if (!result) {
-        // User likely cancelled or no document was detected — silent return
-        return;
-      }
-
-      const { rawResult: _rawResult, ...serializableResult } = result;
-
+      const photo = await cameraRef.current.takePictureAsync({ quality: 0.9 });
+      if (!photo?.uri) throw new Error('Could not capture photo.');
+      const result = await scanImageWithMLKit(photo.uri, scanType);
       router.push({
         pathname: '/card-scan-confirm',
-        params: {
-          payload: JSON.stringify(serializableResult),
-        },
+        params: { payload: JSON.stringify(result) },
       });
     } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : 'Something went wrong.';
+      const message = error instanceof Error ? error.message : 'Something went wrong.';
       Alert.alert('Scan error', message);
     } finally {
-      setIsScanning(false);
+      setIsProcessing(false);
     }
   };
 
+  // ── Camera capture stage ──────────────────────────────────────────────────
+  if (scanType !== null) {
+    return (
+      <View style={styles.cameraRoot}>
+        <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing="back" />
+
+        {/* Dimmed overlay with transparent viewfinder slot */}
+        <View style={[StyleSheet.absoluteFill, styles.overlayColumn]}>
+          {/* top dark band */}
+          <View style={[styles.darkBand, styles.overlayTop]} />
+          {/* middle row */}
+          <View style={styles.overlayMiddle}>
+            <View style={styles.darkStrip} />
+            <View style={styles.viewfinder}>
+              <View style={[styles.corner, styles.cornerTL]} />
+              <View style={[styles.corner, styles.cornerTR]} />
+              <View style={[styles.corner, styles.cornerBL]} />
+              <View style={[styles.corner, styles.cornerBR]} />
+            </View>
+            <View style={styles.darkStrip} />
+          </View>
+          {/* bottom dark band — contains instruction text */}
+          <View style={[styles.darkBand, styles.overlayBottom]}>
+            <Text style={styles.instructionText}>
+              {scanType === 'card'
+                ? 'Position your card within the frame'
+                : 'Position your document within the frame'}
+            </Text>
+          </View>
+        </View>
+
+        {/* Header */}
+        <View style={[styles.cameraHeader, { paddingTop: insets.top + 8 }]}>
+          <Pressable onPress={handleClose} style={styles.cameraHeaderBtn} hitSlop={12}>
+            <Feather name="arrow-left" size={24} color="#FFFFFF" />
+          </Pressable>
+          <Text style={styles.cameraHeaderTitle}>
+            {scanType === 'card' ? 'Scan Bank Card' : 'Scan Document'}
+          </Text>
+          <View style={styles.cameraHeaderBtn} />
+        </View>
+
+        {/* Capture button */}
+        <View style={[styles.captureWrap, { paddingBottom: insets.bottom + 24 }]}>
+          <Pressable
+            onPress={handleCapture}
+            disabled={isProcessing}
+            style={({ pressed }) => [styles.captureBtn, pressed && { opacity: 0.75 }]}
+          >
+            {isProcessing ? (
+              <ActivityIndicator size="small" color="#1D1D1D" />
+            ) : (
+              <View style={styles.captureInner} />
+            )}
+          </Pressable>
+        </View>
+
+        {/* Full-screen processing overlay */}
+        {isProcessing && (
+          <View style={styles.processingOverlay}>
+            <ActivityIndicator size="large" color="#FFFFFF" />
+            <Text style={styles.processingText}>Scanning…</Text>
+          </View>
+        )}
+      </View>
+    );
+  }
+
+  // ── Picker stage ──────────────────────────────────────────────────────────
   return (
     <SafeAreaView style={styles.root}>
       <View style={styles.header}>
@@ -88,42 +151,28 @@ export default function CardScannerScreen() {
         <View style={styles.headerButton} />
       </View>
 
-      {isScanning ? (
-        <View style={styles.loadingWrap}>
-          <ActivityIndicator size="large" color="#FFFFFF" />
-          <Text style={styles.loadingText}>Scanning...</Text>
-        </View>
-      ) : (
-        <View style={styles.optionsWrap}>
-          <ScanOptionCard
-            icon={
-              <MaterialCommunityIcons
-                name="card-account-details-outline"
-                size={32}
-                color="#FFFFFF"
-              />
-            }
-            title="Scan ID / Passport / License"
-            subtitle="Supports 500+ document types worldwide"
-            onPress={() => handleScan('document')}
-            disabled={isScanning}
-          />
-
-          <ScanOptionCard
-            icon={
-              <MaterialCommunityIcons
-                name="credit-card-outline"
-                size={32}
-                color="#FFFFFF"
-              />
-            }
-            title="Scan Bank Card"
-            subtitle="Extract card number, expiry and name"
-            onPress={() => handleScan('card')}
-            disabled={isScanning}
-          />
-        </View>
-      )}
+      <View style={styles.optionsWrap}>
+        <ScanOptionCard
+          icon={
+            <MaterialCommunityIcons
+              name="card-account-details-outline"
+              size={32}
+              color="#FFFFFF"
+            />
+          }
+          title="Scan ID / Passport / License"
+          subtitle="Supports IDs, passports and driving licences"
+          onPress={() => handleSelectType('document')}
+        />
+        <ScanOptionCard
+          icon={
+            <MaterialCommunityIcons name="credit-card-outline" size={32} color="#FFFFFF" />
+          }
+          title="Scan Bank Card"
+          subtitle="Extract card number, expiry and name"
+          onPress={() => handleSelectType('card')}
+        />
+      </View>
     </SafeAreaView>
   );
 }
@@ -133,24 +182,17 @@ function ScanOptionCard({
   title,
   subtitle,
   onPress,
-  disabled,
 }: {
   icon: React.ReactNode;
   title: string;
   subtitle: string;
   onPress: () => void;
-  disabled: boolean;
 }) {
   return (
     <Pressable
       accessibilityRole="button"
-      disabled={disabled}
       onPress={onPress}
-      style={({ pressed }) => [
-        styles.optionCard,
-        pressed && !disabled ? styles.optionCardPressed : null,
-        disabled ? styles.optionCardDisabled : null,
-      ]}
+      style={({ pressed }) => [styles.optionCard, pressed ? styles.optionCardPressed : null]}
     >
       <View style={styles.optionIconWrap}>{icon}</View>
       <View style={styles.optionTextWrap}>
@@ -162,6 +204,7 @@ function ScanOptionCard({
 }
 
 const styles = StyleSheet.create({
+  // ── Picker stage ────────────────────────────────────────────────────────
   root: {
     flex: 1,
     backgroundColor: '#1D1D1D',
@@ -204,9 +247,6 @@ const styles = StyleSheet.create({
     opacity: 0.85,
     transform: [{ scale: 0.98 }],
   },
-  optionCardDisabled: {
-    opacity: 0.5,
-  },
   optionIconWrap: {
     width: 60,
     height: 60,
@@ -231,15 +271,134 @@ const styles = StyleSheet.create({
     lineHeight: 19,
     color: 'rgba(255,255,255,0.55)',
   },
-  loadingWrap: {
+  // ── Camera stage ─────────────────────────────────────────────────────────
+  cameraRoot: {
     flex: 1,
+    backgroundColor: '#000',
+  },
+  overlayColumn: {
+    flexDirection: 'column',
+  },
+  darkBand: {
+    backgroundColor: 'rgba(0,0,0,0.62)',
+  },
+  overlayTop: {
+    flex: 1,
+  },
+  overlayMiddle: {
+    flexDirection: 'row',
+    height: VIEWFINDER_HEIGHT,
+  },
+  darkStrip: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.62)',
+  },
+  overlayBottom: {
+    flex: 1.4,
+    alignItems: 'center',
+    paddingTop: 20,
+  },
+  viewfinder: {
+    width: VIEWFINDER_WIDTH,
+    height: VIEWFINDER_HEIGHT,
+  },
+  corner: {
+    position: 'absolute',
+    width: CORNER_SIZE,
+    height: CORNER_SIZE,
+    borderColor: '#FFFFFF',
+  },
+  cornerTL: {
+    top: 0,
+    left: 0,
+    borderTopWidth: CORNER_THICKNESS,
+    borderLeftWidth: CORNER_THICKNESS,
+    borderTopLeftRadius: 4,
+  },
+  cornerTR: {
+    top: 0,
+    right: 0,
+    borderTopWidth: CORNER_THICKNESS,
+    borderRightWidth: CORNER_THICKNESS,
+    borderTopRightRadius: 4,
+  },
+  cornerBL: {
+    bottom: 0,
+    left: 0,
+    borderBottomWidth: CORNER_THICKNESS,
+    borderLeftWidth: CORNER_THICKNESS,
+    borderBottomLeftRadius: 4,
+  },
+  cornerBR: {
+    bottom: 0,
+    right: 0,
+    borderBottomWidth: CORNER_THICKNESS,
+    borderRightWidth: CORNER_THICKNESS,
+    borderBottomRightRadius: 4,
+  },
+  cameraHeader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingBottom: 14,
+  },
+  cameraHeaderBtn: {
+    width: 40,
+    alignItems: 'center',
+  },
+  cameraHeaderTitle: {
+    fontFamily: 'ReadexPro-Medium',
+    fontSize: 17,
+    color: '#FFFFFF',
+  },
+  instructionText: {
+    fontFamily: 'ReadexPro-Regular',
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.7)',
+    textAlign: 'center',
+    paddingHorizontal: 32,
+  },
+  captureWrap: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+  },
+  captureBtn: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 4,
+    borderColor: 'rgba(255,255,255,0.35)',
+  },
+  captureInner: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    borderColor: '#1D1D1D',
+  },
+  processingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.65)',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 14,
   },
-  loadingText: {
+  processingText: {
     fontFamily: 'ReadexPro-Regular',
     fontSize: 16,
-    color: 'rgba(255,255,255,0.8)',
+    color: '#FFFFFF',
   },
 });
+

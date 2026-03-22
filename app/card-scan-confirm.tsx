@@ -25,7 +25,7 @@ import {
   type PersonalDocCard,
   type WalletCard,
 } from '@/types/card';
-import type { ScannedCardData } from '@/utils/blinkidSetup';
+import type { ScannedCardData } from '@/utils/ocrScanner';
 
 type ConfirmFormState = {
   documentType: ScannedCardData['documentType'];

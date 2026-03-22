@@ -19,8 +19,8 @@
     "@gluestack-ui/core": "^3.0.10",
     "@gluestack-ui/utils": "^3.0.11",
     "@legendapp/motion": "^2.4.0",
-    "@microblink/blinkid-react-native": "^7.6.2",
     "@react-native-async-storage/async-storage": "2.2.0",
+    "@react-native-ml-kit/text-recognition": "^2.0.0",
     "babel-plugin-transform-import-meta": "^2.3.3",
     "expo": "^54.0.0",
     "expo-build-properties": "~1.0.10",
@@ -62,8 +62,8 @@
     "typescript": "~5.9.2"
   },
   "optionalDependencies": {
-    "lightningcss-linux-x64-gnu": "1.32.0",
-    "lightningcss-linux-arm64-gnu": "1.32.0"
+    "lightningcss-linux-arm64-gnu": "1.32.0",
+    "lightningcss-linux-x64-gnu": "1.32.0"
   },
   "private": true
 }

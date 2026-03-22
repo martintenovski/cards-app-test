@@ -13,6 +13,7 @@ config.resolver.resolveRequest = (ctx, moduleName, platform) => {
     const nativeOnlyModules = [
       'expo-secure-store',
       'react-native-worklets',
+      '@react-native-ml-kit/text-recognition',
     ];
     if (nativeOnlyModules.some((m) => moduleName === m || moduleName.startsWith(m + '/'))) {
       return { type: 'sourceFile', filePath: nativeStub };
