@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "cards-app",
+    "name": "Pocket ID",
     "slug": "cards-app",
     "scheme": "cards-app",
     "version": "1.0.0",
@@ -21,6 +21,15 @@
           "android": {}
         }
       ],
+      [
+        "./node_modules/rn-mlkit-ocr/app.plugin.js",
+        {
+          "ocrModels": [
+            "all"
+          ],
+          "ocrUseBundled": true
+        }
+      ],
       "@react-native-community/datetimepicker"
     ],
     "ios": {
@@ -39,10 +48,8 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundImage": "./assets/android-icon-background.png",
-        "monochromeImage": "./assets/android-icon-monochrome.png"
+        "backgroundColor": "#239BFF"
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.tenovski.cardsapp",
