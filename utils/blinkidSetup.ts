@@ -14,8 +14,8 @@ import {
 } from '@microblink/blinkid-react-native';
 import { Platform } from 'react-native';
 
-export const LICENSE_KEY_IOS = 'your-ios-license-key-here';
-export const LICENSE_KEY_ANDROID = 'your-android-license-key-here';
+export const LICENSE_KEY_IOS = process.env.EXPO_PUBLIC_BLINKID_LICENSE_KEY_IOS ?? '';
+export const LICENSE_KEY_ANDROID = process.env.EXPO_PUBLIC_BLINKID_LICENSE_KEY_ANDROID ?? '';
 
 export type ScannedCardData = {
   documentType: 'id' | 'passport' | 'driving_license' | 'bank_card';
@@ -93,7 +93,7 @@ export async function scanWithBlinkID(
     return hasCardData(mappedResult) ? mappedResult : null;
   } catch (error) {
     console.error('BlinkID scan error:', error);
-    return null;
+    throw error;
   }
 }
 

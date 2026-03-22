@@ -1,10 +1,11 @@
 import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useCameraPermissions } from 'expo-camera';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  PermissionsAndroid,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -17,7 +18,6 @@ import { scanWithBlinkID, type ScannedCardData } from '@/utils/blinkidSetup';
 export default function CardScannerScreen() {
   const router = useRouter();
   const [isScanning, setIsScanning] = useState(false);
-  const [permission, requestPermission] = useCameraPermissions();
 
   const handleClose = () => {
     if (router.canGoBack()) {
@@ -32,9 +32,17 @@ export default function CardScannerScreen() {
       return;
     }
 
-    if (!permission?.granted) {
-      const { granted } = await requestPermission();
-      if (!granted) {
+    if (Platform.OS === 'android') {
+      const status = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.CAMERA,
+        {
+          title: 'Camera access required',
+          message: 'Camera is required to scan identity documents and bank cards.',
+          buttonPositive: 'Allow',
+          buttonNegative: 'Deny',
+        }
+      );
+      if (status !== PermissionsAndroid.RESULTS.GRANTED) {
         Alert.alert(
           'Camera access required',
           'Please enable camera access in Settings to scan cards and documents.'
@@ -49,7 +57,7 @@ export default function CardScannerScreen() {
       const result = await scanWithBlinkID(type);
 
       if (!result) {
-        Alert.alert('Scan failed', 'Please try again in better lighting.');
+        // User likely cancelled or no document was detected — silent return
         return;
       }
 
@@ -61,6 +69,10 @@ export default function CardScannerScreen() {
           payload: JSON.stringify(serializableResult),
         },
       });
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : 'Something went wrong.';
+      Alert.alert('Scan error', message);
     } finally {
       setIsScanning(false);
     }
@@ -87,7 +99,7 @@ export default function CardScannerScreen() {
             icon={
               <MaterialCommunityIcons
                 name="card-account-details-outline"
-                size={34}
+                size={32}
                 color="#FFFFFF"
               />
             }
@@ -101,7 +113,7 @@ export default function CardScannerScreen() {
             icon={
               <MaterialCommunityIcons
                 name="credit-card-outline"
-                size={34}
+                size={32}
                 color="#FFFFFF"
               />
             }
@@ -141,8 +153,10 @@ function ScanOptionCard({
       ]}
     >
       <View style={styles.optionIconWrap}>{icon}</View>
-      <Text style={styles.optionTitle}>{title}</Text>
-      <Text style={styles.optionSubtitle}>{subtitle}</Text>
+      <View style={styles.optionTextWrap}>
+        <Text style={styles.optionTitle}>{title}</Text>
+        <Text style={styles.optionSubtitle}>{subtitle}</Text>
+      </View>
     </Pressable>
   );
 }
@@ -170,48 +184,52 @@ const styles = StyleSheet.create({
   },
   optionsWrap: {
     flex: 1,
-    paddingHorizontal: 24,
+    paddingHorizontal: 20,
     justifyContent: 'center',
-    gap: 18,
+    gap: 14,
+    paddingBottom: 60,
   },
   optionCard: {
-    borderRadius: 28,
+    borderRadius: 20,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.08)',
     backgroundColor: '#252525',
-    paddingHorizontal: 24,
-    paddingVertical: 28,
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    flexDirection: 'row',
     alignItems: 'center',
+    gap: 16,
   },
   optionCardPressed: {
-    opacity: 0.92,
-    transform: [{ scale: 0.995 }],
+    opacity: 0.85,
+    transform: [{ scale: 0.98 }],
   },
   optionCardDisabled: {
-    opacity: 0.6,
+    opacity: 0.5,
   },
   optionIconWrap: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    marginBottom: 18,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    flexShrink: 0,
+  },
+  optionTextWrap: {
+    flex: 1,
   },
   optionTitle: {
     fontFamily: 'ReadexPro-Medium',
-    fontSize: 20,
+    fontSize: 18,
     color: '#FFFFFF',
-    textAlign: 'center',
   },
   optionSubtitle: {
-    marginTop: 8,
+    marginTop: 4,
     fontFamily: 'ReadexPro-Regular',
-    fontSize: 14,
-    lineHeight: 22,
-    color: 'rgba(255,255,255,0.66)',
-    textAlign: 'center',
+    fontSize: 13,
+    lineHeight: 19,
+    color: 'rgba(255,255,255,0.55)',
   },
   loadingWrap: {
     flex: 1,
