@@ -65,5 +65,12 @@
     "lightningcss-linux-arm64-gnu": "1.32.0",
     "lightningcss-linux-x64-gnu": "1.32.0"
   },
+  "expo": {
+    "doctor": {
+      "reactNativeDirectoryCheck": {
+        "exclude": ["@react-native-ml-kit/text-recognition"]
+      }
+    }
+  },
   "private": true
 }
