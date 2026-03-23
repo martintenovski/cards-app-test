@@ -56,16 +56,23 @@ interface CardStoreState {
   viewMode: WalletViewMode;
   homeFilter: HomeFilter;
   themePreference: ThemePreference;
+  appLockEnabled: boolean;
+  expiryNotificationsEnabled: boolean;
+  hasHydrated: boolean;
+  lastModifiedAt: string;
   lastFieldScanResult: FieldScanResult | null;
   setViewMode: (viewMode: WalletViewMode) => void;
   toggleViewMode: () => void;
   setHomeFilter: (filter: HomeFilter) => void;
   setThemePreference: (themePreference: ThemePreference) => void;
   toggleThemePreference: (resolvedTheme: ResolvedTheme) => void;
+  setAppLockEnabled: (enabled: boolean) => void;
+  setExpiryNotificationsEnabled: (enabled: boolean) => void;
   setLastFieldScanResult: (result: FieldScanResult) => void;
   clearLastFieldScanResult: () => void;
   addCard: (values: CardFormValues, palette: CardPalette) => void;
   prependCard: (card: WalletCard) => void;
+  replaceCards: (cards: WalletCard[], lastModifiedAt?: string) => void;
   updateCard: (
     id: string,
     values: CardFormValues,
@@ -86,6 +93,10 @@ export const useCardStore = create<CardStoreState>()(
       viewMode: "stack",
       homeFilter: "everything",
       themePreference: "system",
+      appLockEnabled: true,
+      expiryNotificationsEnabled: true,
+      hasHydrated: false,
+      lastModifiedAt: new Date().toISOString(),
       lastFieldScanResult: null,
       setViewMode: (viewMode) => set({ viewMode }),
       toggleViewMode: () =>
@@ -94,6 +105,9 @@ export const useCardStore = create<CardStoreState>()(
         })),
       setHomeFilter: (homeFilter) => set({ homeFilter }),
       setThemePreference: (themePreference) => set({ themePreference }),
+      setAppLockEnabled: (appLockEnabled) => set({ appLockEnabled }),
+      setExpiryNotificationsEnabled: (expiryNotificationsEnabled) =>
+        set({ expiryNotificationsEnabled }),
       toggleThemePreference: (resolvedTheme) =>
         set((state) => ({
           themePreference:
@@ -127,6 +141,7 @@ export const useCardStore = create<CardStoreState>()(
             cards: [createCardFromForm(values, ensuredPalette), ...state.cards],
             homeFilter: values.category,
             viewMode: "list",
+            lastModifiedAt: new Date().toISOString(),
           };
         }),
       prependCard: (card) =>
@@ -134,16 +149,28 @@ export const useCardStore = create<CardStoreState>()(
           cards: [card, ...state.cards],
           homeFilter: card.category,
           viewMode: "list",
+          lastModifiedAt: new Date().toISOString(),
         })),
+      replaceCards: (cards, lastModifiedAt) =>
+        set({
+          cards,
+          homeFilter: "everything",
+          viewMode: cards.length > 0 ? "list" : "stack",
+          lastModifiedAt: lastModifiedAt ?? new Date().toISOString(),
+        }),
       updateCard: (id, values, palette) =>
         set((state) => ({
           cards: state.cards.map((c) => {
             if (c.id !== id) return c;
             return { ...createCardFromForm(values, palette), id };
           }),
+          lastModifiedAt: new Date().toISOString(),
         })),
       deleteCard: (id) =>
-        set((state) => ({ cards: state.cards.filter((c) => c.id !== id) })),
+        set((state) => ({
+          cards: state.cards.filter((c) => c.id !== id),
+          lastModifiedAt: new Date().toISOString(),
+        })),
       cycleCardFwd: () =>
         set((state) => {
           if (state.cards.length <= 1) return state;
@@ -163,6 +190,9 @@ export const useCardStore = create<CardStoreState>()(
           viewMode: "stack",
           homeFilter: "everything",
           themePreference: "system",
+          appLockEnabled: true,
+          expiryNotificationsEnabled: true,
+          lastModifiedAt: new Date().toISOString(),
         }),
     }),
     {
@@ -171,29 +201,35 @@ export const useCardStore = create<CardStoreState>()(
       onRehydrateStorage: () => (state) => {
         if (!state) return;
         const needsPatch = state.cards.some((c) => !c.palette?.gradient);
-        if (!needsPatch) return;
-        const patched = state.cards.map((c) => {
-          if (c.palette?.gradient) return c;
-          const gradient = GRADIENTS[
-            Math.floor(Math.random() * GRADIENTS.length)
-          ] as [string, string];
-          const primaryText = getContrastColor(gradient[0]);
-          const mutedText =
-            primaryText === "#1D1D1D"
-              ? "rgba(29,29,29,0.65)"
-              : "rgba(255,255,255,0.65)";
-          return {
-            ...c,
-            palette: { ...c.palette, gradient, primaryText, mutedText },
-          };
-        });
-        useCardStore.setState({ cards: patched });
+        if (needsPatch) {
+          const patched = state.cards.map((c) => {
+            if (c.palette?.gradient) return c;
+            const gradient = GRADIENTS[
+              Math.floor(Math.random() * GRADIENTS.length)
+            ] as [string, string];
+            const primaryText = getContrastColor(gradient[0]);
+            const mutedText =
+              primaryText === "#1D1D1D"
+                ? "rgba(29,29,29,0.65)"
+                : "rgba(255,255,255,0.65)";
+            return {
+              ...c,
+              palette: { ...c.palette, gradient, primaryText, mutedText },
+            };
+          });
+          useCardStore.setState({ cards: patched, hasHydrated: true });
+          return;
+        }
+        useCardStore.setState({ hasHydrated: true });
       },
       partialize: (state) => ({
         cards: state.cards,
         viewMode: state.viewMode,
         homeFilter: state.homeFilter,
         themePreference: state.themePreference,
+        appLockEnabled: state.appLockEnabled,
+        expiryNotificationsEnabled: state.expiryNotificationsEnabled,
+        lastModifiedAt: state.lastModifiedAt,
       }),
     },
   ),

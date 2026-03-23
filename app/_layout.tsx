@@ -13,13 +13,17 @@ import {
   ReadexPro_500Medium,
   ReadexPro_700Bold,
 } from "@expo-google-fonts/readex-pro";
+import { AppLockGate } from "@/components/AppLockGate";
+import { AuthSessionManager } from "@/components/AuthSessionManager";
+import { CloudSyncManager } from "@/components/CloudSyncManager";
+import { ExpiryNotificationManager } from "@/components/ExpiryNotificationManager";
 import { GluestackUIProvider } from "@/components/ui/gluestack-ui-provider";
 import * as SplashScreen from "expo-splash-screen";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
-import { useColorScheme } from "react-native";
+import { LogBox, useColorScheme } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
@@ -27,6 +31,10 @@ import { useCardStore } from "@/store/useCardStore";
 import { APP_THEME, resolveTheme } from "@/utils/theme";
 
 SplashScreen.preventAutoHideAsync();
+
+LogBox.ignoreLogs([
+  "Sending `onAnimatedValueUpdate` with no listeners registered.",
+]);
 
 export default function RootLayout() {
   const deviceScheme = useColorScheme();
@@ -58,38 +66,57 @@ export default function RootLayout() {
       <GluestackUIProvider mode={resolvedTheme}>
         <SafeAreaProvider>
           <StatusBar style={resolvedTheme === "dark" ? "light" : "dark"} />
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              contentStyle: {
-                backgroundColor: colors.background,
-              },
-            }}
-          >
-            <Stack.Screen name="(tabs)" />
-            <Stack.Screen
-              name="add-card"
-              options={{
-                presentation: "transparentModal",
-                animation: "none",
-              }}
-            />
-            <Stack.Screen
-              name="card-detail"
-              options={{
+          <AppLockGate>
+            <AuthSessionManager />
+            <CloudSyncManager />
+            <ExpiryNotificationManager />
+            <Stack
+              screenOptions={{
                 headerShown: false,
-                animation: "slide_from_right",
+                contentStyle: {
+                  backgroundColor: colors.background,
+                },
               }}
-            />
-            <Stack.Screen
-              name="card-scanner"
-              options={{
-                headerShown: false,
-                presentation: "modal",
-                animation: "slide_from_bottom",
-              }}
-            />
-          </Stack>
+            >
+              <Stack.Screen name="(tabs)" />
+              <Stack.Screen
+                name="add-card"
+                options={{
+                  presentation: "transparentModal",
+                  animation: "none",
+                }}
+              />
+              <Stack.Screen
+                name="card-detail"
+                options={{
+                  headerShown: false,
+                  animation: "slide_from_right",
+                }}
+              />
+              <Stack.Screen
+                name="import-card"
+                options={{
+                  headerShown: false,
+                  animation: "slide_from_right",
+                }}
+              />
+              <Stack.Screen
+                name="auth/callback"
+                options={{
+                  headerShown: false,
+                  animation: "fade_from_bottom",
+                }}
+              />
+              <Stack.Screen
+                name="card-scanner"
+                options={{
+                  headerShown: false,
+                  presentation: "modal",
+                  animation: "slide_from_bottom",
+                }}
+              />
+            </Stack>
+          </AppLockGate>
         </SafeAreaProvider>
       </GluestackUIProvider>
     </GestureHandlerRootView>

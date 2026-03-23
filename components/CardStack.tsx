@@ -42,17 +42,16 @@ import type { WalletCard } from "@/types/card";
 const CARD_H = 252;
 const CARD_GAP = 12;
 const ITEM_SIZE = CARD_H + CARD_GAP; // 264 — snap stride
-// Fixed container that shows 1 active card + ~90 px peek above & below.
-// Changing only this constant resizes the whole widget.
-const CONTAINER_H = 440;
-// Distance from container top to the top of the active card.
-const CENTER_OFFSET = Math.round((CONTAINER_H - CARD_H) / 2); // 94
+// Large viewport so the stack spans almost the full space between heading and
+// tab bar, while the active card stays centered inside that frame.
+const CONTAINER_H = 620;
+const CENTER_OFFSET = Math.round((CONTAINER_H - CARD_H) / 2);
 
 // ─── Visual — ported directly from card-picker.jsx ───────────────────────────
 
-const TRANSLATE_RATIO = 0.38;
-const SCALE_PER_UNIT = 0.1;
-const MIN_SCALE = 0.78;
+const TRANSLATE_RATIO = 0.48;
+const SCALE_PER_UNIT = 0.08;
+const MIN_SCALE = 0.82;
 
 /** Final snap: quick ease-out so it never feels laggy */
 const SNAP_CFG = {
@@ -101,8 +100,7 @@ function AnimatedCard({
   onSnapTo,
   onActivePress,
 }: AnimatedCardProps) {
-  const defaultSide: "front" | "back" =
-    card.category === "club" ? "back" : "front";
+  const defaultSide: "front" | "back" = "front";
   const [side, setSide] = useState<"front" | "back">(defaultSide);
   const flipSV = useSharedValue(1);
 
@@ -136,15 +134,14 @@ function AnimatedCard({
     const offset = wrappedDist / ITEM_SIZE; // always in (−N/2, +N/2)
     const absOffset = Math.abs(offset);
 
-    // Hide cards beyond ±2.5 slots (show max 5 at a time)
-    if (absOffset > 2.5) {
+    // Hide cards beyond ±3.5 slots so the larger viewport is populated.
+    if (absOffset > 3.5) {
       return { opacity: 0, zIndex: -1 };
     }
 
     const scale = Math.max(MIN_SCALE, 1 - absOffset * SCALE_PER_UNIT);
     const translateY = CENTER_OFFSET + offset * ITEM_SIZE * TRANSLATE_RATIO;
     const zIndex = 999 - Math.round(absOffset * 10);
-
     return {
       transform: [{ translateY }, { scale }],
       opacity: 1,
@@ -291,7 +288,7 @@ const styles = StyleSheet.create({
   pressable: {
     // Stretch full width so CardItem (width:'100%') fills the container correctly.
     width: "100%",
-    paddingHorizontal: 24,
+    paddingHorizontal: 25,
   },
   flipWrapper: {
     width: "100%",

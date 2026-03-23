@@ -1,5 +1,5 @@
-import { Feather } from '@expo/vector-icons';
-import { useMemo, useState } from 'react';
+import { Feather } from "@expo/vector-icons";
+import { useMemo, useState } from "react";
 import {
   Alert,
   KeyboardAvoidingView,
@@ -15,18 +15,20 @@ import {
   UIManager,
   View,
   useColorScheme,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withTiming,
-} from 'react-native-reanimated';
-import DateTimePicker, { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
+} from "react-native-reanimated";
+import DateTimePicker, {
+  DateTimePickerAndroid,
+} from "@react-native-community/datetimepicker";
 
-import { CardPreview } from '@/components/CardPreview';
-import { useCardStore } from '@/store/useCardStore';
+import { CardPreview } from "@/components/CardPreview";
+import { useCardStore } from "@/store/useCardStore";
 import {
   CATEGORY_OPTIONS,
   type ClubMemberIdFormat,
@@ -37,23 +39,35 @@ import {
   type CardPalette,
   type CardCategory,
   type CardFormValues,
-} from '@/types/card';
-import { APP_THEME, CARD_SIDE_TOGGLE_THEME, resolveTheme } from '@/utils/theme';
+} from "@/types/card";
+import { APP_THEME, CARD_SIDE_TOGGLE_THEME, resolveTheme } from "@/utils/theme";
+import type { ResolvedTheme } from "@/utils/theme";
 
 type CardFormProps = {
   onSubmit: (values: CardFormValues, palette: CardPalette) => void;
   initialValues?: CardFormValues;
   initialPalette?: CardPalette;
   submitLabel?: string;
+  contentHorizontalPadding?: number;
+  forcedTheme?: ResolvedTheme;
 };
 
 type FieldName = keyof CardFormValues;
 type SelectOption = { label: string; value: string };
-type FieldKind = 'text' | 'bank-card' | 'date' | 'expiry' | 'cvc' | 'doc-code' | 'nationality' | 'select';
+type FieldKind =
+  | "text"
+  | "bank-card"
+  | "date"
+  | "expiry"
+  | "cvc"
+  | "doc-code"
+  | "nationality"
+  | "select"
+  | "phone";
 type FieldConfig = {
   key: FieldName;
   label: string;
-  keyboardType?: 'default' | 'number-pad';
+  keyboardType?: "default" | "number-pad" | "phone-pad";
   kind?: FieldKind;
   helperText: string;
   options?: SelectOption[];
@@ -61,280 +75,499 @@ type FieldConfig = {
 type ThemeColors = (typeof APP_THEME)[keyof typeof APP_THEME];
 
 function hasNativeDatePicker() {
-  if (Platform.OS === 'android') {
-    const turboModule = typeof TurboModuleRegistry?.get === 'function'
-      ? TurboModuleRegistry.get('RNCDatePicker')
-      : null;
+  if (Platform.OS === "android") {
+    const turboModule =
+      typeof TurboModuleRegistry?.get === "function"
+        ? TurboModuleRegistry.get("RNCDatePicker")
+        : null;
 
-    return Boolean(turboModule || NativeModules?.RNCDatePicker || DateTimePickerAndroid?.open);
+    return Boolean(
+      turboModule ||
+      NativeModules?.RNCDatePicker ||
+      DateTimePickerAndroid?.open,
+    );
   }
 
-  const hasViewManager = typeof UIManager?.getViewManagerConfig === 'function'
-    ? UIManager.getViewManagerConfig('RNDateTimePicker')
-    : null;
+  const hasViewManager =
+    typeof UIManager?.getViewManagerConfig === "function"
+      ? UIManager.getViewManagerConfig("RNDateTimePicker")
+      : null;
 
   return Boolean(hasViewManager || NativeModules?.RNDateTimePicker);
 }
 
-function getFormSections(values: CardFormValues): { front: FieldConfig[]; back: FieldConfig[] } {
-  if (values.category === 'bank') {
+function getFormSections(values: CardFormValues): {
+  front: FieldConfig[];
+  back: FieldConfig[];
+} {
+  if (values.category === "bank") {
     return {
       front: [
         {
-          key: 'type',
-          label: 'Card type',
-          kind: 'select',
-          helperText: 'Required. Choose Debit Card or Credit Card.',
+          key: "type",
+          label: "Card type",
+          kind: "select",
+          helperText: "Required. Choose Debit Card or Credit Card.",
           options: TYPE_OPTIONS.bank.map((value) => ({ label: value, value })),
         },
         {
-          key: 'bankName',
-          label: 'Bank name',
-          helperText: 'Issuing bank or card program name as shown on the card.',
+          key: "bankName",
+          label: "Bank name",
+          helperText: "Issuing bank or card program name as shown on the card.",
         },
         {
-          key: 'holderName',
-          label: 'Cardholder name',
-          helperText: 'Enter the holder name exactly as printed on the card.',
+          key: "holderName",
+          label: "Cardholder name",
+          helperText: "Enter the holder name exactly as printed on the card.",
         },
         {
-          key: 'cardNumber',
-          label: 'Card number',
-          kind: 'bank-card',
-          keyboardType: 'number-pad',
-          helperText: 'Primary account number. 12–19 digits, grouped automatically as ####-####-####-####.',
+          key: "cardNumber",
+          label: "Card number",
+          kind: "bank-card",
+          keyboardType: "number-pad",
+          helperText:
+            "Primary account number. 12–19 digits, grouped automatically as ####-####-####-####.",
         },
       ],
       back: [
         {
-          key: 'expiry',
-          label: 'Expiry date',
-          kind: 'expiry',
-          helperText: 'Pick the card expiry month and year.',
+          key: "expiry",
+          label: "Expiry date",
+          kind: "expiry",
+          helperText: "Pick the card expiry month and year.",
         },
         {
-          key: 'cvc',
-          label: 'CVC',
-          kind: 'cvc',
-          keyboardType: 'number-pad',
-          helperText: 'Security code. Usually 3 digits, 4 for AmEx-style cards.',
+          key: "cvc",
+          label: "CVC",
+          kind: "cvc",
+          keyboardType: "number-pad",
+          helperText:
+            "Security code. Usually 3 digits, 4 for AmEx-style cards.",
         },
         {
-          key: 'accountNumber',
-          label: 'Account number',
-          helperText: 'Optional linked account or internal bank reference number.',
+          key: "accountNumber",
+          label: "Account number",
+          helperText:
+            "Optional linked account or internal bank reference number.",
         },
       ],
     };
   }
 
-  if (values.category === 'club') {
+  if (values.category === "club") {
     return {
       front: [
         {
-          key: 'type',
-          label: 'Card type',
-          kind: 'select',
-          helperText: 'Required. Choose the membership card style.',
+          key: "type",
+          label: "Card type",
+          kind: "select",
+          helperText: "Required. Choose the membership card style.",
           options: TYPE_OPTIONS.club.map((value) => ({ label: value, value })),
         },
         {
-          key: 'clubName',
-          label: 'Club name',
-          helperText: 'Organisation or program name shown on the card.',
+          key: "clubName",
+          label: "Club name",
+          helperText: "Organisation or program name shown on the card.",
         },
         {
-          key: 'nameOnCard',
-          label: 'Member name',
-          helperText: 'Member or guest name printed on the card.',
+          key: "nameOnCard",
+          label: "Member name",
+          helperText: "Member or guest name printed on the card.",
         },
         {
-          key: 'tier',
-          label: 'Tier / status',
-          helperText: 'Example: Gold, Elite, Premium or Standard.',
+          key: "tier",
+          label: "Tier / status",
+          helperText: "Example: Gold, Elite, Premium or Standard.",
         },
       ],
       back: [
         {
-          key: 'memberIdFormat',
-          label: 'Member ID format',
-          kind: 'select',
-          helperText: 'Choose whether the card shows a typed member ID or a generated barcode on the back.',
-          options: [
-            { label: 'Typed Member ID', value: 'text' },
-            { label: 'Barcode', value: 'barcode' },
-          ],
-        },
-        {
-          key: 'memberId',
-          label: values.memberIdFormat === 'barcode' ? 'Barcode digits' : 'Member ID',
-          kind: 'doc-code',
-          keyboardType: values.memberIdFormat === 'barcode' ? 'number-pad' : 'default',
+          key: "memberIdFormat",
+          label: "Member ID format",
+          kind: "select",
           helperText:
-            values.memberIdFormat === 'barcode'
-              ? 'Numbers only. These digits will be used to generate the barcode shown on the back.'
-              : 'Use letters, digits, hyphens or slashes exactly as issued.',
+            "Choose whether the card shows a typed member ID or a generated barcode on the back.",
+          options: [
+            { label: "Typed Member ID", value: "text" },
+            { label: "Barcode", value: "barcode" },
+          ],
         },
         {
-          key: 'secondaryNumber',
-          label: 'Membership number',
-          kind: 'doc-code',
-          helperText: 'Optional internal membership/reference number.',
+          key: "memberId",
+          label:
+            values.memberIdFormat === "barcode"
+              ? "Barcode digits"
+              : "Member ID",
+          kind: "doc-code",
+          keyboardType:
+            values.memberIdFormat === "barcode" ? "number-pad" : "default",
+          helperText:
+            values.memberIdFormat === "barcode"
+              ? "Numbers only. These digits will be used to generate the barcode shown on the back."
+              : "Use letters, digits, hyphens or slashes exactly as issued.",
         },
         {
-          key: 'address',
-          label: 'Address',
-          helperText: 'Postal or venue address if the card shows one.',
+          key: "secondaryNumber",
+          label: "Membership number",
+          kind: "doc-code",
+          helperText: "Optional internal membership/reference number.",
         },
         {
-          key: 'dateOfIssue',
-          label: 'Member since',
-          kind: 'date',
-          helperText: 'Pick the issue or enrollment date.',
+          key: "address",
+          label: "Address",
+          helperText: "Postal or venue address if the card shows one.",
         },
         {
-          key: 'dateOfExpiry',
-          label: 'Expiry date',
-          kind: 'date',
-          helperText: 'Pick the membership expiration date if applicable.',
+          key: "dateOfIssue",
+          label: "Member since",
+          kind: "date",
+          helperText: "Pick the issue or enrollment date.",
+        },
+        {
+          key: "dateOfExpiry",
+          label: "Expiry date",
+          kind: "date",
+          helperText: "Pick the membership expiration date if applicable.",
         },
       ],
     };
   }
 
-  if (values.type === 'Driving License') {
+  if (values.category === "insurance") {
     return {
       front: [
         {
-          key: 'type',
-          label: 'Type',
-          kind: 'select',
-          helperText: 'Required. Choose the document type shown on the card. This controls the top Type label on the design.',
-          options: TYPE_OPTIONS.personal.map((value) => ({ label: value, value })),
+          key: "type",
+          label: "Insurance type",
+          kind: "select",
+          helperText:
+            "Required. Choose the insurance card format you are saving.",
+          options: TYPE_OPTIONS.insurance.map((value) => ({
+            label: value,
+            value,
+          })),
         },
         {
-          key: 'issuer',
-          label: 'Issuer',
-          helperText: 'Issuing DMV, ministry or licensing authority.',
+          key: "provider",
+          label: "Provider",
+          helperText: "Insurance company or plan administrator name.",
         },
         {
-          key: 'nameOnCard',
-          label: 'Full name',
-          helperText: 'Use the legal name printed on the licence.',
+          key: "nameOnCard",
+          label: "Member name",
+          helperText: "Enter the member name exactly as printed on the card.",
         },
         {
-          key: 'cardNumber',
-          label: 'License number',
-          kind: 'doc-code',
-          helperText: 'Licence number is usually alphanumeric and jurisdiction-specific.',
+          key: "policyNumber",
+          label: "Policy number",
+          kind: "doc-code",
+          helperText:
+            "Policy, certificate or coverage number shown on the card.",
         },
         {
-          key: 'secondaryNumber',
-          label: 'Class / restrictions',
-          kind: 'doc-code',
-          helperText: 'Use the class, endorsements or restrictions exactly as shown.',
+          key: "planName",
+          label: "Plan name",
+          helperText: "Optional plan name such as Basic, Plus or Premium.",
         },
       ],
       back: [
         {
-          key: 'address',
-          label: 'Address',
-          helperText: 'Residential address printed on the licence.',
+          key: "memberId",
+          label: "Member ID",
+          kind: "doc-code",
+          helperText: "Subscriber or member identifier if the card shows one.",
         },
         {
-          key: 'dateOfIssue',
-          label: 'Date of issue',
-          kind: 'date',
-          helperText: 'Pick the issue date from the document.',
+          key: "groupNumber",
+          label: "Group number",
+          kind: "doc-code",
+          helperText: "Employer or plan group number if applicable.",
         },
         {
-          key: 'dateOfExpiry',
-          label: 'Date of expiry',
-          kind: 'date',
-          helperText: 'Pick the expiry date from the document.',
+          key: "phoneNumber",
+          label: "Support phone",
+          kind: "phone",
+          keyboardType: "phone-pad",
+          helperText:
+            "Customer support or assistance phone number on the card.",
         },
         {
-          key: 'dateOfBirth',
-          label: 'Date of birth',
-          kind: 'date',
-          helperText: 'Pick the holder birth date.',
+          key: "dateOfIssue",
+          label: "Issue date",
+          kind: "date",
+          helperText: "Pick the effective or issue date if the card shows one.",
         },
         {
-          key: 'sex',
-          label: 'Sex',
-          kind: 'select',
-          helperText: 'Use the marker printed on the document: M, F or X.',
+          key: "dateOfExpiry",
+          label: "Expiry date",
+          kind: "date",
+          helperText:
+            "Pick the expiration date if coverage or the card expires.",
+        },
+      ],
+    };
+  }
+
+  if (values.category === "vehicle") {
+    return {
+      front: [
+        {
+          key: "type",
+          label: "Document type",
+          kind: "select",
+          helperText: "Required. Choose the vehicle document style.",
+          options: TYPE_OPTIONS.vehicle.map((value) => ({
+            label: value,
+            value,
+          })),
+        },
+        {
+          key: "vehicleAuthority",
+          label: "Authority",
+          helperText: "Agency, insurer or roadside assistance provider name.",
+        },
+        {
+          key: "nameOnCard",
+          label: "Owner name",
+          helperText: "Owner or policyholder name shown on the document.",
+        },
+        {
+          key: "registrationNumber",
+          label: "Registration number",
+          kind: "doc-code",
+          helperText: "Plate or registration identifier.",
+        },
+        {
+          key: "model",
+          label: "Vehicle model",
+          helperText: "Optional make or model shown on the document.",
+        },
+      ],
+      back: [
+        {
+          key: "vin",
+          label: "VIN / chassis number",
+          kind: "doc-code",
+          helperText: "Vehicle identification number or chassis code.",
+        },
+        {
+          key: "dateOfIssue",
+          label: "Issue date",
+          kind: "date",
+          helperText: "Pick the date the document was issued.",
+        },
+        {
+          key: "dateOfExpiry",
+          label: "Expiry date",
+          kind: "date",
+          helperText: "Pick the validity end date on the document.",
+        },
+      ],
+    };
+  }
+
+  if (values.category === "access") {
+    return {
+      front: [
+        {
+          key: "type",
+          label: "Badge type",
+          kind: "select",
+          helperText: "Required. Choose the badge or access card style.",
+          options: TYPE_OPTIONS.access.map((value) => ({
+            label: value,
+            value,
+          })),
+        },
+        {
+          key: "companyName",
+          label: "Company",
+          helperText: "Employer, host or office name.",
+        },
+        {
+          key: "nameOnCard",
+          label: "Badge holder",
+          helperText: "Name printed on the badge.",
+        },
+        {
+          key: "employeeId",
+          label: "Employee ID",
+          kind: "doc-code",
+          helperText: "Badge number, employee number or visitor code.",
+        },
+        {
+          key: "department",
+          label: "Department",
+          helperText: "Optional team, division or host department.",
+        },
+      ],
+      back: [
+        {
+          key: "accessLevel",
+          label: "Access level",
+          helperText: "Examples: Full access, Floor 12, Contractor, Visitor.",
+        },
+        {
+          key: "dateOfIssue",
+          label: "Issue date",
+          kind: "date",
+          helperText: "Pick the activation or issue date.",
+        },
+        {
+          key: "dateOfExpiry",
+          label: "Expiry date",
+          kind: "date",
+          helperText: "Pick the badge expiration date if one exists.",
+        },
+      ],
+    };
+  }
+
+  if (values.type === "Driving License") {
+    return {
+      front: [
+        {
+          key: "type",
+          label: "Type",
+          kind: "select",
+          helperText:
+            "Required. Choose the document type shown on the card. This controls the top Type label on the design.",
+          options: TYPE_OPTIONS.personal.map((value) => ({
+            label: value,
+            value,
+          })),
+        },
+        {
+          key: "issuer",
+          label: "Issuer",
+          helperText: "Issuing DMV, ministry or licensing authority.",
+        },
+        {
+          key: "nameOnCard",
+          label: "Full name",
+          helperText: "Use the legal name printed on the licence.",
+        },
+        {
+          key: "cardNumber",
+          label: "License number",
+          kind: "doc-code",
+          helperText:
+            "Licence number is usually alphanumeric and jurisdiction-specific.",
+        },
+        {
+          key: "secondaryNumber",
+          label: "Class / restrictions",
+          kind: "doc-code",
+          helperText:
+            "Use the class, endorsements or restrictions exactly as shown.",
+        },
+      ],
+      back: [
+        {
+          key: "address",
+          label: "Address",
+          helperText: "Residential address printed on the licence.",
+        },
+        {
+          key: "dateOfIssue",
+          label: "Date of issue",
+          kind: "date",
+          helperText: "Pick the issue date from the document.",
+        },
+        {
+          key: "dateOfExpiry",
+          label: "Date of expiry",
+          kind: "date",
+          helperText: "Pick the expiry date from the document.",
+        },
+        {
+          key: "dateOfBirth",
+          label: "Date of birth",
+          kind: "date",
+          helperText: "Pick the holder birth date.",
+        },
+        {
+          key: "sex",
+          label: "Sex",
+          kind: "select",
+          helperText: "Use the marker printed on the document: M, F or X.",
           options: [
-            { label: 'M', value: 'M' },
-            { label: 'F', value: 'F' },
-            { label: 'X', value: 'X' },
+            { label: "M", value: "M" },
+            { label: "F", value: "F" },
+            { label: "X", value: "X" },
           ],
         },
       ],
     };
   }
 
-  if (values.type === 'Passport') {
+  if (values.type === "Passport") {
     return {
       front: [
         {
-          key: 'type',
-          label: 'Type',
-          kind: 'select',
-          helperText: 'Required. Choose the document type shown on the card. This controls the top Type label on the design.',
-          options: TYPE_OPTIONS.personal.map((value) => ({ label: value, value })),
+          key: "type",
+          label: "Type",
+          kind: "select",
+          helperText:
+            "Required. Choose the document type shown on the card. This controls the top Type label on the design.",
+          options: TYPE_OPTIONS.personal.map((value) => ({
+            label: value,
+            value,
+          })),
         },
         {
-          key: 'issuer',
-          label: 'Issuer',
-          helperText: 'Passport office, ministry or issuing state authority.',
+          key: "issuer",
+          label: "Issuer",
+          helperText: "Passport office, ministry or issuing state authority.",
         },
         {
-          key: 'nameOnCard',
-          label: 'Full name',
-          helperText: 'Use the passport holder name exactly as printed.',
+          key: "nameOnCard",
+          label: "Full name",
+          helperText: "Use the passport holder name exactly as printed.",
         },
         {
-          key: 'cardNumber',
-          label: 'Passport number',
-          kind: 'doc-code',
-          helperText: 'Passport numbers are alphanumeric and should be entered exactly.',
+          key: "cardNumber",
+          label: "Passport number",
+          kind: "doc-code",
+          helperText:
+            "Passport numbers are alphanumeric and should be entered exactly.",
         },
         {
-          key: 'nationality',
-          label: 'Nationality',
-          kind: 'nationality',
-          helperText: 'Use the 2–3 letter nationality code when shown, e.g. MKD or USA.',
+          key: "nationality",
+          label: "Nationality",
+          kind: "nationality",
+          helperText:
+            "Use the 2–3 letter nationality code when shown, e.g. MKD or USA.",
         },
       ],
       back: [
         {
-          key: 'dateOfBirth',
-          label: 'Date of birth',
-          kind: 'date',
-          helperText: 'Pick the holder birth date.',
+          key: "dateOfBirth",
+          label: "Date of birth",
+          kind: "date",
+          helperText: "Pick the holder birth date.",
         },
         {
-          key: 'dateOfIssue',
-          label: 'Date of issue',
-          kind: 'date',
-          helperText: 'Pick the issue date from the passport.',
+          key: "dateOfIssue",
+          label: "Date of issue",
+          kind: "date",
+          helperText: "Pick the issue date from the passport.",
         },
         {
-          key: 'dateOfExpiry',
-          label: 'Date of expiry',
-          kind: 'date',
-          helperText: 'Pick the expiry date from the passport.',
+          key: "dateOfExpiry",
+          label: "Date of expiry",
+          kind: "date",
+          helperText: "Pick the expiry date from the passport.",
         },
         {
-          key: 'sex',
-          label: 'Sex',
-          kind: 'select',
-          helperText: 'Use the passport sex marker: M, F or X.',
+          key: "sex",
+          label: "Sex",
+          kind: "select",
+          helperText: "Use the passport sex marker: M, F or X.",
           options: [
-            { label: 'M', value: 'M' },
-            { label: 'F', value: 'F' },
-            { label: 'X', value: 'X' },
+            { label: "M", value: "M" },
+            { label: "F", value: "F" },
+            { label: "X", value: "X" },
           ],
         },
       ],
@@ -344,74 +577,80 @@ function getFormSections(values: CardFormValues): { front: FieldConfig[]; back: 
   return {
     front: [
       {
-        key: 'type',
-        label: 'Type',
-        kind: 'select',
-        helperText: 'Required. Choose the document type shown on the card. This controls the top Type label on the design.',
-        options: TYPE_OPTIONS.personal.map((value) => ({ label: value, value })),
+        key: "type",
+        label: "Type",
+        kind: "select",
+        helperText:
+          "Required. Choose the document type shown on the card. This controls the top Type label on the design.",
+        options: TYPE_OPTIONS.personal.map((value) => ({
+          label: value,
+          value,
+        })),
       },
       {
-        key: 'issuer',
-        label: 'Issuer',
-        helperText: 'Issuing authority or ministry shown on the ID card.',
+        key: "issuer",
+        label: "Issuer",
+        helperText: "Issuing authority or ministry shown on the ID card.",
       },
       {
-        key: 'nameOnCard',
-        label: 'Full name',
-        helperText: 'Use the legal name exactly as printed on the card.',
+        key: "nameOnCard",
+        label: "Full name",
+        helperText: "Use the legal name exactly as printed on the card.",
       },
       {
-        key: 'personalIdNumber',
-        label: 'National ID number',
-        kind: 'doc-code',
-        helperText: 'National personal number or NIN as printed on the document.',
+        key: "personalIdNumber",
+        label: "National ID number",
+        kind: "doc-code",
+        helperText:
+          "National personal number or NIN as printed on the document.",
       },
       {
-        key: 'cardNumber',
-        label: 'Identity card number',
-        kind: 'doc-code',
-        helperText: 'Physical document number, usually letters/numbers and separators.',
+        key: "cardNumber",
+        label: "Identity card number",
+        kind: "doc-code",
+        helperText:
+          "Physical document number, usually letters/numbers and separators.",
       },
     ],
     back: [
       {
-        key: 'address',
-        label: 'Address',
-        helperText: 'Residential address printed on the card.',
+        key: "address",
+        label: "Address",
+        helperText: "Residential address printed on the card.",
       },
       {
-        key: 'dateOfIssue',
-        label: 'Date of issue',
-        kind: 'date',
-        helperText: 'Pick the issue date from the document.',
+        key: "dateOfIssue",
+        label: "Date of issue",
+        kind: "date",
+        helperText: "Pick the issue date from the document.",
       },
       {
-        key: 'dateOfExpiry',
-        label: 'Date of expiry',
-        kind: 'date',
-        helperText: 'Pick the expiry date from the document.',
+        key: "dateOfExpiry",
+        label: "Date of expiry",
+        kind: "date",
+        helperText: "Pick the expiry date from the document.",
       },
       {
-        key: 'dateOfBirth',
-        label: 'Date of birth',
-        kind: 'date',
-        helperText: 'Pick the holder birth date.',
+        key: "dateOfBirth",
+        label: "Date of birth",
+        kind: "date",
+        helperText: "Pick the holder birth date.",
       },
       {
-        key: 'nationality',
-        label: 'Nationality',
-        kind: 'nationality',
-        helperText: 'Use a 2–3 letter nationality code, e.g. MKD or USA.',
+        key: "nationality",
+        label: "Nationality",
+        kind: "nationality",
+        helperText: "Use a 2–3 letter nationality code, e.g. MKD or USA.",
       },
       {
-        key: 'sex',
-        label: 'Sex',
-        kind: 'select',
-        helperText: 'Use the document sex marker: M, F or X.',
+        key: "sex",
+        label: "Sex",
+        kind: "select",
+        helperText: "Use the document sex marker: M, F or X.",
         options: [
-          { label: 'M', value: 'M' },
-          { label: 'F', value: 'F' },
-          { label: 'X', value: 'X' },
+          { label: "M", value: "M" },
+          { label: "F", value: "F" },
+          { label: "X", value: "X" },
         ],
       },
     ],
@@ -419,23 +658,62 @@ function getFormSections(values: CardFormValues): { front: FieldConfig[]; back: 
 }
 
 function getRequiredFields(values: CardFormValues): FieldName[] {
-  return values.category === 'bank'
-    ? ['type', 'bankName', 'holderName', 'cardNumber', 'expiry', 'cvc']
-    : values.category === 'club'
-      ? ['type', 'clubName', 'nameOnCard', 'memberId', 'tier']
-      : values.type === 'Driving License'
-        ? ['type', 'issuer', 'nameOnCard', 'cardNumber', 'address', 'dateOfIssue', 'dateOfExpiry']
-        : values.type === 'Passport'
-          ? ['type', 'issuer', 'nameOnCard', 'cardNumber', 'nationality', 'dateOfIssue', 'dateOfExpiry']
-          : ['type', 'issuer', 'nameOnCard', 'personalIdNumber', 'cardNumber', 'dateOfIssue', 'dateOfExpiry'];
+  return values.category === "bank"
+    ? ["type", "bankName", "holderName", "cardNumber", "expiry", "cvc"]
+    : values.category === "club"
+      ? ["type", "clubName", "nameOnCard", "memberId", "tier"]
+      : values.category === "insurance"
+        ? ["type", "provider", "nameOnCard", "policyNumber"]
+        : values.category === "vehicle"
+          ? [
+              "type",
+              "vehicleAuthority",
+              "nameOnCard",
+              "registrationNumber",
+              "dateOfExpiry",
+            ]
+          : values.category === "access"
+            ? ["type", "companyName", "nameOnCard", "employeeId"]
+            : values.type === "Driving License"
+              ? [
+                  "type",
+                  "issuer",
+                  "nameOnCard",
+                  "cardNumber",
+                  "address",
+                  "dateOfIssue",
+                  "dateOfExpiry",
+                ]
+              : values.type === "Passport"
+                ? [
+                    "type",
+                    "issuer",
+                    "nameOnCard",
+                    "cardNumber",
+                    "nationality",
+                    "dateOfIssue",
+                    "dateOfExpiry",
+                  ]
+                : [
+                    "type",
+                    "issuer",
+                    "nameOnCard",
+                    "personalIdNumber",
+                    "cardNumber",
+                    "dateOfIssue",
+                    "dateOfExpiry",
+                  ];
 }
 
-function validateField(field: FieldName, values: CardFormValues): string | undefined {
-  const value = String(values[field] ?? '').trim();
+function validateField(
+  field: FieldName,
+  values: CardFormValues,
+): string | undefined {
+  const value = String(values[field] ?? "").trim();
   const requiredFields = getRequiredFields(values);
 
   if (requiredFields.includes(field) && !value) {
-    return 'This field is required.';
+    return "This field is required.";
   }
 
   if (!value) {
@@ -443,56 +721,90 @@ function validateField(field: FieldName, values: CardFormValues): string | undef
   }
 
   switch (field) {
-    case 'holderName':
-    case 'nameOnCard':
-      return /^[-A-ZÀ-ÿ'.,\s]{2,}$/i.test(value) ? undefined : 'Use letters, spaces and standard punctuation only.';
-    case 'bankName':
-    case 'clubName':
-    case 'issuer':
-    case 'tier':
-      return value.length >= 2 ? undefined : 'Please enter at least 2 characters.';
-    case 'cardNumber': {
-      if (values.category === 'bank') {
-        const digits = value.replace(/\D/g, '');
-        if (digits.length < 12 || digits.length > 19) return 'Card numbers should contain 12 to 19 digits.';
-        return passesLuhnCheck(digits) ? undefined : 'Card number checksum looks invalid.';
+    case "holderName":
+    case "nameOnCard":
+      return /^[-A-ZÀ-ÿ'.,\s]{2,}$/i.test(value)
+        ? undefined
+        : "Use letters, spaces and standard punctuation only.";
+    case "bankName":
+    case "clubName":
+    case "issuer":
+    case "tier":
+    case "provider":
+    case "vehicleAuthority":
+    case "companyName":
+    case "planName":
+    case "department":
+    case "accessLevel":
+      return value.length >= 2
+        ? undefined
+        : "Please enter at least 2 characters.";
+    case "cardNumber": {
+      if (values.category === "bank") {
+        const digits = value.replace(/\D/g, "");
+        if (digits.length < 12 || digits.length > 19)
+          return "Card numbers should contain 12 to 19 digits.";
+        return passesLuhnCheck(digits)
+          ? undefined
+          : "Card number checksum looks invalid.";
       }
       return /^[A-Z0-9\-\/ ]{4,24}$/i.test(value)
         ? undefined
-        : 'Use 4–24 letters, digits, hyphens, slashes or spaces.';
+        : "Use 4–24 letters, digits, hyphens, slashes or spaces.";
     }
-    case 'memberId':
-      if (values.category === 'club' && values.memberIdFormat === 'barcode') {
+    case "memberId":
+      if (values.category === "club" && values.memberIdFormat === "barcode") {
         return /^\d{6,18}$/.test(value)
           ? undefined
-          : 'Barcode mode needs 6 to 18 digits.';
+          : "Barcode mode needs 6 to 18 digits.";
       }
       return /^[A-Z0-9\-\/ ]{3,24}$/i.test(value)
         ? undefined
-        : 'Use letters, digits, hyphens, slashes or spaces only.';
-    case 'personalIdNumber':
-    case 'secondaryNumber':
+        : "Use letters, digits, hyphens, slashes or spaces only.";
+    case "policyNumber":
+    case "groupNumber":
+    case "registrationNumber":
+    case "employeeId":
+    case "personalIdNumber":
+    case "secondaryNumber":
+    case "vin":
       return /^[A-Z0-9\-\/ ]{3,24}$/i.test(value)
         ? undefined
-        : 'Use letters, digits, hyphens, slashes or spaces only.';
-    case 'cvc':
-      return /^\d{3,4}$/.test(value) ? undefined : 'CVC should contain 3 or 4 digits.';
-    case 'accountNumber':
-      return /^[A-Z0-9\- ]{6,34}$/i.test(value) ? undefined : 'Use 6–34 letters, digits, spaces or hyphens.';
-    case 'dateOfBirth':
-    case 'dateOfIssue':
-    case 'dateOfExpiry':
-      return isValidDisplayDate(value) ? undefined : 'Please pick a valid date.';
-    case 'expiry':
-      return isValidExpiry(value) ? undefined : 'Please pick a valid expiry date.';
-    case 'nationality':
-      return /^[A-Z]{2,3}$/.test(value) ? undefined : 'Use a 2–3 letter country code, e.g. USA or MKD.';
-    case 'sex':
-      return /^(M|F|X)$/.test(value.toUpperCase()) ? undefined : 'Use M, F or X.';
-    case 'address':
-      return value.length >= 6 ? undefined : 'Please enter a fuller address.';
-    case 'type':
-      return value ? undefined : 'Please choose a card or document type.';
+        : "Use letters, digits, hyphens, slashes or spaces only.";
+    case "cvc":
+      return /^\d{3,4}$/.test(value)
+        ? undefined
+        : "CVC should contain 3 or 4 digits.";
+    case "accountNumber":
+      return /^[A-Z0-9\- ]{6,34}$/i.test(value)
+        ? undefined
+        : "Use 6–34 letters, digits, spaces or hyphens.";
+    case "dateOfBirth":
+    case "dateOfIssue":
+    case "dateOfExpiry":
+      return isValidDisplayDate(value)
+        ? undefined
+        : "Please pick a valid date.";
+    case "expiry":
+      return isValidExpiry(value)
+        ? undefined
+        : "Please pick a valid expiry date.";
+    case "nationality":
+      return /^[A-Z]{2,3}$/.test(value)
+        ? undefined
+        : "Use a 2–3 letter country code, e.g. USA or MKD.";
+    case "sex":
+      return /^(M|F|X)$/.test(value.toUpperCase())
+        ? undefined
+        : "Use M, F or X.";
+    case "phoneNumber":
+      return /^[0-9+()\-\s]{6,20}$/.test(value)
+        ? undefined
+        : "Use a valid phone number format.";
+    case "address":
+      return value.length >= 6 ? undefined : "Please enter a fuller address.";
+    case "type":
+      return value ? undefined : "Please choose a card or document type.";
     default:
       return undefined;
   }
@@ -507,28 +819,44 @@ function validate(values: CardFormValues) {
   return errors;
 }
 
-function formatFieldValue(field: FieldName, value: string, values: CardFormValues) {
+function formatFieldValue(
+  field: FieldName,
+  value: string,
+  values: CardFormValues,
+) {
   switch (field) {
-    case 'cardNumber':
-      return values.category === 'bank' ? formatBankCardInput(value) : sanitizeDocumentCode(value);
-    case 'cvc':
-      return value.replace(/\D/g, '').slice(0, 4);
-    case 'personalIdNumber':
-    case 'secondaryNumber':
-    case 'accountNumber':
+    case "cardNumber":
+      return values.category === "bank"
+        ? formatBankCardInput(value)
+        : sanitizeDocumentCode(value);
+    case "cvc":
+      return value.replace(/\D/g, "").slice(0, 4);
+    case "policyNumber":
+    case "groupNumber":
+    case "registrationNumber":
+    case "vin":
+    case "employeeId":
+    case "personalIdNumber":
+    case "secondaryNumber":
+    case "accountNumber":
       return sanitizeDocumentCode(value);
-    case 'memberId':
-      if (values.category === 'club' && values.memberIdFormat === 'barcode') {
-        return value.replace(/\D/g, '').slice(0, 18);
+    case "memberId":
+      if (values.category === "club" && values.memberIdFormat === "barcode") {
+        return value.replace(/\D/g, "").slice(0, 18);
       }
       return sanitizeDocumentCode(value);
-    case 'nationality':
-      return value.replace(/[^a-z]/gi, '').toUpperCase().slice(0, 3);
-    case 'dateOfBirth':
-    case 'dateOfIssue':
-    case 'dateOfExpiry':
+    case "nationality":
+      return value
+        .replace(/[^a-z]/gi, "")
+        .toUpperCase()
+        .slice(0, 3);
+    case "phoneNumber":
+      return value.replace(/[^0-9+()\-\s]/g, "").slice(0, 20);
+    case "dateOfBirth":
+    case "dateOfIssue":
+    case "dateOfExpiry":
       return formatLooseDisplayDate(value);
-    case 'expiry':
+    case "expiry":
       return formatLooseExpiry(value);
     default:
       return value;
@@ -551,31 +879,34 @@ function passesLuhnCheck(digits: string) {
 }
 
 function formatBankCardInput(value: string) {
-  const digits = value.replace(/\D/g, '').slice(0, 19);
-  return digits.match(/.{1,4}/g)?.join('-') ?? digits;
+  const digits = value.replace(/\D/g, "").slice(0, 19);
+  return digits.match(/.{1,4}/g)?.join("-") ?? digits;
 }
 
 function sanitizeDocumentCode(value: string) {
-  return value.toUpperCase().replace(/[^A-Z0-9\-\/ ]/g, '').slice(0, 34);
+  return value
+    .toUpperCase()
+    .replace(/[^A-Z0-9\-\/ ]/g, "")
+    .slice(0, 34);
 }
 
 function formatDisplayDate(date: Date) {
-  const day = `${date.getDate()}`.padStart(2, '0');
-  const month = `${date.getMonth() + 1}`.padStart(2, '0');
+  const day = `${date.getDate()}`.padStart(2, "0");
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
   const year = date.getFullYear();
   return `${day}.${month}.${year}`;
 }
 
 function formatExpiryDate(date: Date) {
-  const month = `${date.getMonth() + 1}`.padStart(2, '0');
+  const month = `${date.getMonth() + 1}`.padStart(2, "0");
   const year = `${date.getFullYear()}`.slice(-2);
   return `${month}/${year}`;
 }
 
-function parseDisplayDate(value: string, kind: 'date' | 'expiry') {
+function parseDisplayDate(value: string, kind: "date" | "expiry") {
   if (!value) return new Date();
 
-  if (kind === 'expiry') {
+  if (kind === "expiry") {
     const match = value.match(/^(\d{2})\/(\d{2})$/);
     if (!match) return new Date();
     return new Date(Number(`20${match[2]}`), Number(match[1]) - 1, 1);
@@ -598,14 +929,14 @@ function isValidExpiry(value: string) {
 }
 
 function formatLooseDisplayDate(value: string) {
-  const digits = value.replace(/\D/g, '').slice(0, 8);
+  const digits = value.replace(/\D/g, "").slice(0, 8);
   if (digits.length <= 2) return digits;
   if (digits.length <= 4) return `${digits.slice(0, 2)}.${digits.slice(2)}`;
   return `${digits.slice(0, 2)}.${digits.slice(2, 4)}.${digits.slice(4)}`;
 }
 
 function formatLooseExpiry(value: string) {
-  const digits = value.replace(/\D/g, '').slice(0, 4);
+  const digits = value.replace(/\D/g, "").slice(0, 4);
   if (digits.length <= 2) return digits;
   return `${digits.slice(0, 2)}/${digits.slice(2)}`;
 }
@@ -623,10 +954,17 @@ function FieldHelper({
 }) {
   return (
     <View style={fieldSt.helperRow}>
-      <Text style={[fieldSt.helperText, { color: error ? colors.danger : colors.textSoft }]}>
+      <Text
+        style={[
+          fieldSt.helperText,
+          { color: error ? colors.danger : colors.textSoft },
+        ]}
+      >
         {error || helperText}
       </Text>
-      {valid ? <Feather name="check-circle" size={16} color={colors.success} /> : null}
+      {valid ? (
+        <Feather name="check-circle" size={16} color={colors.success} />
+      ) : null}
     </View>
   );
 }
@@ -644,7 +982,7 @@ function FormRow({
   label: string;
   value: string;
   onChange: (v: string) => void;
-  keyboardType?: 'default' | 'number-pad';
+  keyboardType?: "default" | "number-pad" | "phone-pad";
   colors: ThemeColors;
   error?: string;
   helperText: string;
@@ -657,12 +995,18 @@ function FormRow({
           fieldSt.pill,
           {
             backgroundColor: colors.input,
-            borderColor: error ? colors.danger : valid ? colors.success : colors.inputBorder,
+            borderColor: error
+              ? colors.danger
+              : valid
+                ? colors.success
+                : colors.inputBorder,
           },
         ]}
       >
         <View style={fieldSt.pillInner}>
-          <Text style={[fieldSt.rowLabel, { color: colors.textSoft }]}>{label.toUpperCase()}</Text>
+          <Text style={[fieldSt.rowLabel, { color: colors.textSoft }]}>
+            {label.toUpperCase()}
+          </Text>
           <TextInput
             style={[fieldSt.input, { color: colors.text }]}
             value={value}
@@ -673,7 +1017,12 @@ function FormRow({
           />
         </View>
       </View>
-      <FieldHelper error={error} helperText={helperText} valid={valid} colors={colors} />
+      <FieldHelper
+        error={error}
+        helperText={helperText}
+        valid={valid}
+        colors={colors}
+      />
     </View>
   );
 }
@@ -699,7 +1048,7 @@ function SelectRow({
 }) {
   const [modalVisible, setModalVisible] = useState(false);
   const translateY = useSharedValue(400);
-  const selectedLabel = options.find((o) => o.value === value)?.label ?? '';
+  const selectedLabel = options.find((o) => o.value === value)?.label ?? "";
 
   const openSheet = () => {
     translateY.value = 400;
@@ -724,27 +1073,56 @@ function SelectRow({
           fieldSt.pill,
           {
             backgroundColor: colors.input,
-            borderColor: error ? colors.danger : valid ? colors.success : colors.inputBorder,
+            borderColor: error
+              ? colors.danger
+              : valid
+                ? colors.success
+                : colors.inputBorder,
           },
         ]}
         onPress={openSheet}
         accessibilityRole="button"
       >
         <View style={fieldSt.pillInner}>
-          <Text style={[fieldSt.rowLabel, { color: colors.textSoft }]}>{label.toUpperCase()}</Text>
-          <Text style={[fieldSt.selectValue, { color: selectedLabel ? colors.text : colors.textSoft }]}>
-            {selectedLabel || 'Choose one'}
+          <Text style={[fieldSt.rowLabel, { color: colors.textSoft }]}>
+            {label.toUpperCase()}
+          </Text>
+          <Text
+            style={[
+              fieldSt.selectValue,
+              { color: selectedLabel ? colors.text : colors.textSoft },
+            ]}
+          >
+            {selectedLabel || "Choose one"}
           </Text>
         </View>
         <Feather name="chevron-down" size={18} color={colors.textMuted} />
       </Pressable>
 
-      <FieldHelper error={error} helperText={helperText} valid={valid} colors={colors} />
+      <FieldHelper
+        error={error}
+        helperText={helperText}
+        valid={valid}
+        colors={colors}
+      />
 
-      <Modal transparent visible={modalVisible} animationType="none" onRequestClose={closeSheet}>
+      <Modal
+        transparent
+        visible={modalVisible}
+        animationType="none"
+        onRequestClose={closeSheet}
+      >
         <Pressable style={sheetSt.backdrop} onPress={closeSheet} />
-        <Animated.View style={[sheetSt.sheet, sheetAnim, { backgroundColor: colors.surface }] }>
-          <View style={[sheetSt.handle, { backgroundColor: colors.textSoft }]} />
+        <Animated.View
+          style={[
+            sheetSt.sheet,
+            sheetAnim,
+            { backgroundColor: colors.surface },
+          ]}
+        >
+          <View
+            style={[sheetSt.handle, { backgroundColor: colors.textSoft }]}
+          />
           {options.map((option) => {
             const active = option.value === value;
             return (
@@ -757,10 +1135,17 @@ function SelectRow({
                 }}
                 accessibilityRole="radio"
               >
-                <Text style={[sheetSt.itemText, { color: active ? colors.text : colors.textMuted }]}>
+                <Text
+                  style={[
+                    sheetSt.itemText,
+                    { color: active ? colors.text : colors.textMuted },
+                  ]}
+                >
                   {option.label}
                 </Text>
-                {active ? <Feather name="check" size={18} color={colors.text} /> : null}
+                {active ? (
+                  <Feather name="check" size={18} color={colors.text} />
+                ) : null}
               </Pressable>
             );
           })}
@@ -782,7 +1167,7 @@ function DateRow({
 }: {
   label: string;
   value: string;
-  kind: 'date' | 'expiry';
+  kind: "date" | "expiry";
   onChange: (v: string) => void;
   colors: ThemeColors;
   error?: string;
@@ -790,35 +1175,41 @@ function DateRow({
   valid: boolean;
 }) {
   const [iosPickerVisible, setIosPickerVisible] = useState(false);
-  const [iosDate, setIosDate] = useState<Date>(() => parseDisplayDate(value, kind));
+  const [iosDate, setIosDate] = useState<Date>(() =>
+    parseDisplayDate(value, kind),
+  );
 
   const openPicker = () => {
     const initialValue = parseDisplayDate(value, kind);
 
     if (!hasNativeDatePicker()) {
       Alert.alert(
-        'Date picker unavailable',
-        `This ${Platform.OS === 'ios' ? 'iOS' : 'Android'} build does not include the native date picker yet. You can still type the date manually for now.`
+        "Date picker unavailable",
+        `This ${Platform.OS === "ios" ? "iOS" : "Android"} build does not include the native date picker yet. You can still type the date manually for now.`,
       );
       return;
     }
 
-    if (Platform.OS === 'android') {
+    if (Platform.OS === "android") {
       if (!DateTimePickerAndroid?.open) {
         Alert.alert(
-          'Date picker unavailable',
-          'This Android build does not expose the native date picker yet. You can still type the date manually for now.'
+          "Date picker unavailable",
+          "This Android build does not expose the native date picker yet. You can still type the date manually for now.",
         );
         return;
       }
 
       DateTimePickerAndroid.open({
         value: initialValue,
-        mode: 'date',
+        mode: "date",
         is24Hour: true,
         onChange: (_event, selectedDate) => {
           if (!selectedDate) return;
-          onChange(kind === 'expiry' ? formatExpiryDate(selectedDate) : formatDisplayDate(selectedDate));
+          onChange(
+            kind === "expiry"
+              ? formatExpiryDate(selectedDate)
+              : formatDisplayDate(selectedDate),
+          );
         },
       });
       return;
@@ -835,20 +1226,26 @@ function DateRow({
           fieldSt.pill,
           {
             backgroundColor: colors.input,
-            borderColor: error ? colors.danger : valid ? colors.success : colors.inputBorder,
+            borderColor: error
+              ? colors.danger
+              : valid
+                ? colors.success
+                : colors.inputBorder,
           },
         ]}
       >
         <View style={fieldSt.pillInner}>
-          <Text style={[fieldSt.rowLabel, { color: colors.textSoft }]}>{label.toUpperCase()}</Text>
+          <Text style={[fieldSt.rowLabel, { color: colors.textSoft }]}>
+            {label.toUpperCase()}
+          </Text>
           <TextInput
             style={[fieldSt.input, { color: colors.text }]}
             value={value}
             onChangeText={onChange}
             keyboardType="number-pad"
-            placeholder={kind === 'expiry' ? 'MM/YY' : 'DD.MM.YYYY'}
+            placeholder={kind === "expiry" ? "MM/YY" : "DD.MM.YYYY"}
             placeholderTextColor={colors.textSoft}
-            maxLength={kind === 'expiry' ? 5 : 10}
+            maxLength={kind === "expiry" ? 5 : 10}
           />
         </View>
         <Pressable onPress={openPicker} hitSlop={10} style={fieldSt.iconButton}>
@@ -856,13 +1253,27 @@ function DateRow({
         </Pressable>
       </Pressable>
 
-      <FieldHelper error={error} helperText={helperText} valid={valid} colors={colors} />
+      <FieldHelper
+        error={error}
+        helperText={helperText}
+        valid={valid}
+        colors={colors}
+      />
 
-      {Platform.OS !== 'android' && iosPickerVisible ? (
-        <Modal transparent visible={iosPickerVisible} animationType="fade" onRequestClose={() => setIosPickerVisible(false)}>
+      {Platform.OS !== "android" && iosPickerVisible ? (
+        <Modal
+          transparent
+          visible={iosPickerVisible}
+          animationType="fade"
+          onRequestClose={() => setIosPickerVisible(false)}
+        >
           <View style={[iosSt.backdrop, { backgroundColor: colors.overlay }]}>
-            <View style={[iosSt.modalCard, { backgroundColor: colors.surface }] }>
-              <Text style={[iosSt.modalTitle, { color: colors.text }]}>{label}</Text>
+            <View
+              style={[iosSt.modalCard, { backgroundColor: colors.surface }]}
+            >
+              <Text style={[iosSt.modalTitle, { color: colors.text }]}>
+                {label}
+              </Text>
               <DateTimePicker
                 value={iosDate}
                 mode="date"
@@ -878,16 +1289,24 @@ function DateRow({
                   }}
                   style={iosSt.actionBtn}
                 >
-                  <Text style={[iosSt.actionText, { color: colors.textMuted }]}>Cancel</Text>
+                  <Text style={[iosSt.actionText, { color: colors.textMuted }]}>
+                    Cancel
+                  </Text>
                 </Pressable>
                 <Pressable
                   onPress={() => {
-                    onChange(kind === 'expiry' ? formatExpiryDate(iosDate) : formatDisplayDate(iosDate));
+                    onChange(
+                      kind === "expiry"
+                        ? formatExpiryDate(iosDate)
+                        : formatDisplayDate(iosDate),
+                    );
                     setIosPickerVisible(false);
                   }}
                   style={iosSt.actionBtn}
                 >
-                  <Text style={[iosSt.actionText, { color: colors.text }]}>Confirm</Text>
+                  <Text style={[iosSt.actionText, { color: colors.text }]}>
+                    Confirm
+                  </Text>
                 </Pressable>
               </View>
             </View>
@@ -898,32 +1317,52 @@ function DateRow({
   );
 }
 
-export function CardForm({ onSubmit, initialValues, initialPalette, submitLabel }: CardFormProps) {
+export function CardForm({
+  onSubmit,
+  initialValues,
+  initialPalette,
+  submitLabel,
+  contentHorizontalPadding = 20,
+  forcedTheme,
+}: CardFormProps) {
   const insets = useSafeAreaInsets();
   const deviceScheme = useColorScheme();
   const themePreference = useCardStore((state) => state.themePreference);
-  const resolvedTheme = resolveTheme(themePreference, deviceScheme);
+  const resolvedTheme =
+    forcedTheme ?? resolveTheme(themePreference, deviceScheme);
   const colors = APP_THEME[resolvedTheme];
   const sideToggleColors = CARD_SIDE_TOGGLE_THEME[resolvedTheme];
-  const [values, setValues] = useState<CardFormValues>(initialValues ?? DEFAULT_FORM_VALUES);
+  const [values, setValues] = useState<CardFormValues>(
+    initialValues ?? DEFAULT_FORM_VALUES,
+  );
   const [errors, setErrors] = useState<Partial<Record<FieldName, string>>>({});
-  const [touched, setTouched] = useState<Partial<Record<FieldName, boolean>>>({});
-  const [previewPalette, setPreviewPalette] = useState<CardPalette>(() => initialPalette ?? getRandomPastelPalette());
-  const [previewSide, setPreviewSide] = useState<'front' | 'back'>('front');
-  const [submitErrorMessage, setSubmitErrorMessage] = useState('');
+  const [touched, setTouched] = useState<Partial<Record<FieldName, boolean>>>(
+    {},
+  );
+  const [previewPalette, setPreviewPalette] = useState<CardPalette>(
+    () => initialPalette ?? getRandomPastelPalette(),
+  );
+  const [previewSide, setPreviewSide] = useState<"front" | "back">("front");
+  const [submitErrorMessage, setSubmitErrorMessage] = useState("");
   const [submitAreaHeight, setSubmitAreaHeight] = useState(96);
 
   const sections = useMemo(() => getFormSections(values), [values]);
-  const previewCard = useMemo(() => createPreviewCard(values, previewPalette), [previewPalette, values]);
+  const previewCard = useMemo(
+    () => createPreviewCard(values, previewPalette),
+    [previewPalette, values],
+  );
 
   const updateField = (field: FieldName, rawValue: string) => {
     const formattedValue = formatFieldValue(field, rawValue, values);
     const nextValues = { ...values, [field]: formattedValue };
     setValues(nextValues);
-    setSubmitErrorMessage('');
+    setSubmitErrorMessage("");
 
     if (touched[field] || errors[field]) {
-      setErrors((current) => ({ ...current, [field]: validateField(field, nextValues) }));
+      setErrors((current) => ({
+        ...current,
+        [field]: validateField(field, nextValues),
+      }));
     } else {
       setErrors((current) => ({ ...current, [field]: undefined }));
     }
@@ -933,7 +1372,10 @@ export function CardForm({ onSubmit, initialValues, initialPalette, submitLabel 
     if (!touched[field]) {
       setTouched((current) => ({ ...current, [field]: true }));
     }
-    setErrors((current) => ({ ...current, [field]: validateField(field, sourceValues) }));
+    setErrors((current) => ({
+      ...current,
+      [field]: validateField(field, sourceValues),
+    }));
   };
 
   const handleCategoryChange = (category: string) => {
@@ -943,43 +1385,44 @@ export function CardForm({ onSubmit, initialValues, initialPalette, submitLabel 
       category: next,
       nameOnCard: current.nameOnCard,
       holderName: current.holderName,
-      memberIdFormat: 'text',
+      memberIdFormat: "text",
     }));
     setTouched({});
     setErrors({});
-    setSubmitErrorMessage('');
-    setPreviewSide('front');
+    setSubmitErrorMessage("");
+    setPreviewSide("front");
     setPreviewPalette((current) => getRandomPastelPalette([current.id]));
   };
 
   const handleSubmit = () => {
     const nextErrors = validate(values);
-    const nextTouched = (Object.keys(values) as FieldName[]).reduce<Partial<Record<FieldName, boolean>>>(
-      (accumulator, key) => {
-        accumulator[key] = true;
-        return accumulator;
-      },
-      {}
-    );
+    const nextTouched = (Object.keys(values) as FieldName[]).reduce<
+      Partial<Record<FieldName, boolean>>
+    >((accumulator, key) => {
+      accumulator[key] = true;
+      return accumulator;
+    }, {});
 
     setTouched(nextTouched);
     setErrors(nextErrors);
 
     if (Object.keys(nextErrors).length > 0) {
-      setSubmitErrorMessage('Please fix the highlighted fields before adding this card.');
+      setSubmitErrorMessage(
+        "Please fix the highlighted fields before adding this card.",
+      );
       return;
     }
 
-    setSubmitErrorMessage('');
+    setSubmitErrorMessage("");
     onSubmit(values, previewPalette);
   };
 
   const renderField = (field: FieldConfig) => {
-    const value = String(values[field.key] ?? '');
+    const value = String(values[field.key] ?? "");
     const error = touched[field.key] ? errors[field.key] : undefined;
     const valid = !!value.trim() && !validateField(field.key, values);
 
-    if (field.kind === 'select' && field.options) {
+    if (field.kind === "select" && field.options) {
       return (
         <SelectRow
           key={field.key}
@@ -987,15 +1430,16 @@ export function CardForm({ onSubmit, initialValues, initialPalette, submitLabel 
           value={value}
           options={field.options}
           onChange={(nextValue) => {
-            const nextValues = field.key === 'memberIdFormat'
-              ? {
-                  ...values,
-                  memberIdFormat: nextValue as ClubMemberIdFormat,
-                  memberId: '',
-                }
-              : { ...values, [field.key]: nextValue };
+            const nextValues =
+              field.key === "memberIdFormat"
+                ? {
+                    ...values,
+                    memberIdFormat: nextValue as ClubMemberIdFormat,
+                    memberId: "",
+                  }
+                : { ...values, [field.key]: nextValue };
             setValues(nextValues);
-            setSubmitErrorMessage('');
+            setSubmitErrorMessage("");
             markTouched(field.key, nextValues);
           }}
           colors={colors}
@@ -1006,7 +1450,7 @@ export function CardForm({ onSubmit, initialValues, initialPalette, submitLabel 
       );
     }
 
-    if (field.kind === 'date' || field.kind === 'expiry') {
+    if (field.kind === "date" || field.kind === "expiry") {
       return (
         <DateRow
           key={field.key}
@@ -1016,7 +1460,7 @@ export function CardForm({ onSubmit, initialValues, initialPalette, submitLabel 
           onChange={(nextValue) => {
             const nextValues = { ...values, [field.key]: nextValue };
             setValues(nextValues);
-            setSubmitErrorMessage('');
+            setSubmitErrorMessage("");
             markTouched(field.key, nextValues);
           }}
           colors={colors}
@@ -1035,7 +1479,10 @@ export function CardForm({ onSubmit, initialValues, initialPalette, submitLabel 
         onChange={(nextValue) => {
           updateField(field.key, nextValue);
           if (touched[field.key]) {
-            markTouched(field.key, { ...values, [field.key]: formatFieldValue(field.key, nextValue, values) });
+            markTouched(field.key, {
+              ...values,
+              [field.key]: formatFieldValue(field.key, nextValue, values),
+            });
           }
         }}
         keyboardType={field.keyboardType}
@@ -1050,14 +1497,17 @@ export function CardForm({ onSubmit, initialValues, initialPalette, submitLabel 
   return (
     <KeyboardAvoidingView
       style={{ flex: 1 }}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={0}
     >
       <ScrollView
         style={formSt.scroll}
         contentContainerStyle={[
           formSt.content,
-          { paddingBottom: submitAreaHeight + 24 },
+          {
+            paddingBottom: submitAreaHeight + 24,
+            paddingHorizontal: contentHorizontalPadding,
+          },
         ]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
@@ -1065,21 +1515,33 @@ export function CardForm({ onSubmit, initialValues, initialPalette, submitLabel 
         <SelectRow
           label="Card category"
           value={values.category}
-          options={CATEGORY_OPTIONS.map((option) => ({ label: option.label, value: option.value }))}
+          options={CATEGORY_OPTIONS.map((option) => ({
+            label: option.label,
+            value: option.value,
+          }))}
           onChange={handleCategoryChange}
           colors={colors}
           helperText="Choose the broad card family first — this changes the available fields below."
           valid
         />
 
-        <Text style={[formSt.sectionLabel, { color: colors.text }]}>Front details</Text>
+        <Text style={[formSt.sectionLabel, { color: colors.text }]}>
+          Front details
+        </Text>
         {sections.front.map(renderField)}
 
-        <Text style={[formSt.sectionLabel, { color: colors.text }]}>Back details</Text>
+        <Text style={[formSt.sectionLabel, { color: colors.text }]}>
+          Back details
+        </Text>
         {sections.back.map(renderField)}
 
-        <View style={[formSt.sideToggle, { backgroundColor: sideToggleColors.containerBackground }] }>
-          {(['front', 'back'] as const).map((side) => {
+        <View
+          style={[
+            formSt.sideToggle,
+            { backgroundColor: sideToggleColors.containerBackground },
+          ]}
+        >
+          {(["front", "back"] as const).map((side) => {
             const active = previewSide === side;
             return (
               <Pressable
@@ -1087,16 +1549,24 @@ export function CardForm({ onSubmit, initialValues, initialPalette, submitLabel 
                 onPress={() => setPreviewSide(side)}
                 style={[
                   formSt.sideToggleBtn,
-                  { backgroundColor: active ? sideToggleColors.activeBackground : 'transparent' },
+                  {
+                    backgroundColor: active
+                      ? sideToggleColors.activeBackground
+                      : "transparent",
+                  },
                 ]}
               >
                 <Text
                   style={[
                     formSt.sideToggleText,
-                    { color: active ? sideToggleColors.activeText : sideToggleColors.inactiveText },
+                    {
+                      color: active
+                        ? sideToggleColors.activeText
+                        : sideToggleColors.inactiveText,
+                    },
                   ]}
                 >
-                  {side === 'front' ? 'Front' : 'Back'}
+                  {side === "front" ? "Front" : "Back"}
                 </Text>
               </Pressable>
             );
@@ -1104,19 +1574,29 @@ export function CardForm({ onSubmit, initialValues, initialPalette, submitLabel 
         </View>
         <Pressable
           style={formSt.previewWrap}
-          onPress={() => setPreviewSide((current) => (current === 'front' ? 'back' : 'front'))}
+          onPress={() =>
+            setPreviewSide((current) =>
+              current === "front" ? "back" : "front",
+            )
+          }
           accessibilityRole="button"
           accessibilityLabel="Flip card preview"
         >
           <CardPreview previewSide={previewSide} card={previewCard} />
-          <Text style={[formSt.previewHint, { color: colors.textSoft }]}>Tap the card preview to flip</Text>
+          <Text style={[formSt.previewHint, { color: colors.textSoft }]}>
+            Tap the card preview to flip
+          </Text>
         </Pressable>
       </ScrollView>
 
       <View
         style={[
           formSt.submitContainer,
-          { paddingBottom: Math.max(insets.bottom, 12), backgroundColor: colors.surface },
+          {
+            paddingBottom: Math.max(insets.bottom, 12),
+            paddingHorizontal: contentHorizontalPadding,
+            backgroundColor: colors.surface,
+          },
         ]}
         onLayout={(event) => {
           const nextHeight = Math.ceil(event.nativeEvent.layout.height);
@@ -1126,10 +1606,17 @@ export function CardForm({ onSubmit, initialValues, initialPalette, submitLabel 
         }}
       >
         {submitErrorMessage ? (
-          <Text style={[formSt.submitErrorText, { color: colors.danger }]}>{submitErrorMessage}</Text>
+          <Text style={[formSt.submitErrorText, { color: colors.danger }]}>
+            {submitErrorMessage}
+          </Text>
         ) : null}
-        <Pressable style={[formSt.submitBtn, { backgroundColor: colors.accent }]} onPress={handleSubmit}>
-          <Text style={[formSt.submitText, { color: colors.accentText }]}>{submitLabel ?? 'Add Card'}</Text>
+        <Pressable
+          style={[formSt.submitBtn, { backgroundColor: colors.accent }]}
+          onPress={handleSubmit}
+        >
+          <Text style={[formSt.submitText, { color: colors.accentText }]}>
+            {submitLabel ?? "Add Card"}
+          </Text>
         </Pressable>
       </View>
     </KeyboardAvoidingView>
@@ -1143,8 +1630,8 @@ const fieldSt = StyleSheet.create({
   pill: {
     borderRadius: 24,
     borderWidth: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 18,
     paddingVertical: 12,
   },
@@ -1152,47 +1639,47 @@ const fieldSt = StyleSheet.create({
     flex: 1,
   },
   rowLabel: {
-    fontFamily: 'ReadexPro-Regular',
+    fontFamily: "ReadexPro-Regular",
     fontSize: 10,
-    textTransform: 'uppercase',
+    textTransform: "uppercase",
     letterSpacing: 0.8,
     marginBottom: 2,
   },
   input: {
-    fontFamily: 'ReadexPro-Regular',
+    fontFamily: "ReadexPro-Regular",
     fontSize: 18,
     padding: 0,
   },
   selectValue: {
-    fontFamily: 'ReadexPro-Regular',
+    fontFamily: "ReadexPro-Regular",
     fontSize: 18,
   },
   helperRow: {
     minHeight: 18,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     gap: 8,
     paddingHorizontal: 6,
   },
   helperText: {
     flex: 1,
-    fontFamily: 'ReadexPro-Regular',
+    fontFamily: "ReadexPro-Regular",
     fontSize: 11,
     lineHeight: 16,
   },
   iconButton: {
     width: 32,
     height: 32,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
 });
 
 const sheetSt = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'transparent',
+    backgroundColor: "transparent",
   },
   sheet: {
     borderTopLeftRadius: 28,
@@ -1200,29 +1687,29 @@ const sheetSt = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 40,
     paddingTop: 10,
-    shadowColor: '#000000',
+    shadowColor: "#000000",
     shadowOpacity: 0.2,
     shadowRadius: 22,
     shadowOffset: { width: 0, height: -8 },
     elevation: 20,
   },
   handle: {
-    alignSelf: 'center',
+    alignSelf: "center",
     width: 40,
     height: 4,
     borderRadius: 2,
     marginBottom: 16,
   },
   item: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingVertical: 16,
     paddingHorizontal: 8,
     borderRadius: 14,
   },
   itemText: {
-    fontFamily: 'ReadexPro-Regular',
+    fontFamily: "ReadexPro-Regular",
     fontSize: 18,
   },
 });
@@ -1230,24 +1717,24 @@ const sheetSt = StyleSheet.create({
 const iosSt = StyleSheet.create({
   backdrop: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: 20,
   },
   modalCard: {
-    width: '100%',
+    width: "100%",
     borderRadius: 24,
     padding: 18,
   },
   modalTitle: {
-    fontFamily: 'ReadexPro-Medium',
+    fontFamily: "ReadexPro-Medium",
     fontSize: 18,
     marginBottom: 8,
-    textAlign: 'center',
+    textAlign: "center",
   },
   actions: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
+    flexDirection: "row",
+    justifyContent: "flex-end",
     gap: 18,
     marginTop: 8,
   },
@@ -1255,7 +1742,7 @@ const iosSt = StyleSheet.create({
     paddingVertical: 8,
   },
   actionText: {
-    fontFamily: 'ReadexPro-Medium',
+    fontFamily: "ReadexPro-Medium",
     fontSize: 15,
   },
 });
@@ -1266,12 +1753,12 @@ const formSt = StyleSheet.create({
   sectionLabel: {
     marginTop: 10,
     marginBottom: 2,
-    fontFamily: 'ReadexPro-Medium',
+    fontFamily: "ReadexPro-Medium",
     fontSize: 14,
   },
   sideToggle: {
-    flexDirection: 'row',
-    alignSelf: 'center',
+    flexDirection: "row",
+    alignSelf: "center",
     borderRadius: 999,
     padding: 4,
     marginTop: 14,
@@ -1283,18 +1770,18 @@ const formSt = StyleSheet.create({
     paddingVertical: 8,
   },
   sideToggleText: {
-    fontFamily: 'ReadexPro-Regular',
+    fontFamily: "ReadexPro-Regular",
     fontSize: 13,
   },
   previewWrap: { marginTop: 6 },
   previewHint: {
     marginTop: 10,
-    textAlign: 'center',
-    fontFamily: 'ReadexPro-Regular',
+    textAlign: "center",
+    fontFamily: "ReadexPro-Regular",
     fontSize: 12,
   },
   submitContainer: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
@@ -1303,18 +1790,18 @@ const formSt = StyleSheet.create({
   },
   submitErrorText: {
     marginBottom: 10,
-    textAlign: 'center',
-    fontFamily: 'ReadexPro-Regular',
+    textAlign: "center",
+    fontFamily: "ReadexPro-Regular",
     fontSize: 13,
   },
   submitBtn: {
     height: 55,
     borderRadius: 30,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   submitText: {
-    fontFamily: 'ReadexPro-Regular',
+    fontFamily: "ReadexPro-Regular",
     fontSize: 20,
   },
 });

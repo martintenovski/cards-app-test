@@ -26,11 +26,7 @@ export function CardList({
           style={styles.item}
           onPress={() => onCardPress?.(card.id)}
         >
-          <CardItem
-            card={card}
-            size="full"
-            side={card.category === "club" ? "back" : "front"}
-          />
+          <CardItem card={card} size="full" side="front" />
         </Pressable>
       ))}
     </ScrollView>
@@ -42,7 +38,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    paddingTop: 10,
+    paddingTop: 0,
     paddingHorizontal: 25,
     gap: 16,
   },

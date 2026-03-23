@@ -1,10 +1,12 @@
-import { LinearGradient } from 'expo-linear-gradient';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { StyleSheet, Text, View } from 'react-native';
-import Svg, { Rect } from 'react-native-svg';
+import { LinearGradient } from "expo-linear-gradient";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { StyleSheet, Text, View } from "react-native";
+import Svg, { Rect } from "react-native-svg";
 
-import { getCardSideContent, getContrastColor } from '@/types/card';
-import type { WalletCard } from '@/types/card';
+import { ExpiryBadge } from "@/components/ExpiryBadge";
+import { getCardSideContent, getContrastColor } from "@/types/card";
+import type { WalletCard } from "@/types/card";
+import { supportsValidityBadge } from "@/utils/expiry";
 
 // Sizes derived directly from Figma design
 const SIZES = {
@@ -56,18 +58,27 @@ const SIZES = {
   },
 };
 
-type CardSize = 'full' | 'compact' | 'small';
+type CardSize = "full" | "compact" | "small";
 
 type CardItemProps = {
   card: WalletCard;
-  side?: 'front' | 'back';
+  side?: "front" | "back";
   size?: CardSize;
   onFlip?: () => void;
+  showExpirySuffix?: boolean;
+  showExpiryBadge?: boolean;
 };
 
-export function CardItem({ card, side = 'front', size = 'full', onFlip }: CardItemProps) {
+export function CardItem({
+  card,
+  side = "front",
+  size = "full",
+  onFlip,
+  showExpirySuffix = false,
+  showExpiryBadge = true,
+}: CardItemProps) {
   const s = SIZES[size];
-  const withShadow = size === 'full';
+  const withShadow = size === "full";
   const content = getCardSideContent(card, side);
 
   const gradientStyle = [
@@ -80,48 +91,94 @@ export function CardItem({ card, side = 'front', size = 'full', onFlip }: CardIt
     withShadow && styles.shadow,
   ];
 
-  const gradient = card.palette.gradient ?? [card.palette.background, card.palette.background];
+  const gradient = card.palette.gradient ?? [
+    card.palette.background,
+    card.palette.background,
+  ];
   // Always derive from gradient at render time — immune to stale persisted palette values
   const primaryColor = getContrastColor(gradient[0]);
-  const mutedColor = primaryColor === '#1D1D1D' ? 'rgba(29,29,29,0.65)' : 'rgba(255,255,255,0.65)';
-  const iconColor = primaryColor === '#1D1D1D' ? 'rgba(29,29,29,0.85)' : 'rgba(255,255,255,0.9)';
+  const mutedColor =
+    primaryColor === "#1D1D1D"
+      ? "rgba(29,29,29,0.65)"
+      : "rgba(255,255,255,0.65)";
+  const iconColor =
+    primaryColor === "#1D1D1D"
+      ? "rgba(29,29,29,0.85)"
+      : "rgba(255,255,255,0.9)";
   const hasMiddleContent = Boolean(content.middleLabel || content.middleValue);
-  const hasBottomLeft = Boolean(content.bottomLeftLabel || content.bottomLeftValue);
-  const hasBottomRight = Boolean(content.bottomRightLabel || content.bottomRightValue);
+  const hasBottomLeft = Boolean(
+    content.bottomLeftLabel || content.bottomLeftValue,
+  );
+  const hasBottomRight = Boolean(
+    content.bottomRightLabel || content.bottomRightValue,
+  );
+  const shouldShowBadge = showExpiryBadge && supportsValidityBadge(card);
 
   return (
     <LinearGradient
-      colors={side === 'back' ? [gradient[1], gradient[0]] : gradient}
+      colors={side === "back" ? [gradient[1], gradient[0]] : gradient}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 0 }}
       style={gradientStyle}
     >
+      {shouldShowBadge ? (
+        <View
+          style={[styles.badgeWrap, { top: s.padding + 36, right: s.padding }]}
+        >
+          <ExpiryBadge
+            card={card}
+            compact={size !== "full"}
+            showSuffix={showExpirySuffix}
+          />
+        </View>
+      ) : null}
+
       <View style={styles.row}>
         <View style={styles.headerTextWrap}>
-          <Text style={[styles.topLabel, { fontSize: s.topLabelSize, color: mutedColor }]}>
+          <Text
+            style={[
+              styles.topLabel,
+              { fontSize: s.topLabelSize, color: mutedColor },
+            ]}
+          >
             {content.topLabel}
           </Text>
           <Text
-            style={[styles.topValue, { fontSize: s.topValueSize, color: primaryColor }]}
+            style={[
+              styles.topValue,
+              { fontSize: s.topValueSize, color: primaryColor },
+            ]}
             numberOfLines={1}
             adjustsFontSizeToFit
           >
             {content.topValue}
           </Text>
         </View>
-        <MaterialCommunityIcons name={content.iconName} size={s.iconSize} color={iconColor} />
+        <MaterialCommunityIcons
+          name={content.iconName}
+          size={s.iconSize}
+          color={iconColor}
+        />
       </View>
 
       {hasMiddleContent ? (
-        <View style={[styles.middleWrap, { marginTop: s.sectionGap }] }>
+        <View style={[styles.middleWrap, { marginTop: s.sectionGap }]}>
           {content.middleLabel ? (
-            <Text style={[styles.middleLabel, { fontSize: s.middleLabelSize, color: mutedColor }]}>
+            <Text
+              style={[
+                styles.middleLabel,
+                { fontSize: s.middleLabelSize, color: mutedColor },
+              ]}
+            >
               {content.middleLabel}
             </Text>
           ) : null}
           {content.middleValue ? (
             <Text
-              style={[styles.middleValue, { fontSize: s.middleValueSize, color: primaryColor }]}
+              style={[
+                styles.middleValue,
+                { fontSize: s.middleValueSize, color: primaryColor },
+              ]}
               numberOfLines={1}
               adjustsFontSizeToFit
             >
@@ -133,24 +190,34 @@ export function CardItem({ card, side = 'front', size = 'full', onFlip }: CardIt
         <View style={styles.middleSpacer} />
       )}
 
-      <View style={[styles.footerRow, { marginTop: s.footerGap }] }>
-        {content.footerVariant === 'barcode' && content.barcodeValue ? (
+      <View style={[styles.footerRow, { marginTop: s.footerGap }]}>
+        {content.footerVariant === "barcode" && content.barcodeValue ? (
           <View style={styles.barcodeWrap}>
             <BarcodeStrip value={content.barcodeValue} color={primaryColor} />
-            <Text style={[styles.barcodeDigits, { color: primaryColor }]}>{content.barcodeValue}</Text>
+            <Text style={[styles.barcodeDigits, { color: primaryColor }]}>
+              {content.barcodeValue}
+            </Text>
           </View>
         ) : (
           <>
             {hasBottomLeft ? (
               <View style={styles.footerColLeft}>
                 {content.bottomLeftLabel ? (
-                  <Text style={[styles.metaLabel, { fontSize: s.metaLabelSize, color: mutedColor }]}>
+                  <Text
+                    style={[
+                      styles.metaLabel,
+                      { fontSize: s.metaLabelSize, color: mutedColor },
+                    ]}
+                  >
                     {content.bottomLeftLabel}
                   </Text>
                 ) : null}
                 {content.bottomLeftValue ? (
                   <Text
-                    style={[styles.metaValue, { fontSize: s.metaValueSize, color: primaryColor }]}
+                    style={[
+                      styles.metaValue,
+                      { fontSize: s.metaValueSize, color: primaryColor },
+                    ]}
                     numberOfLines={1}
                     adjustsFontSizeToFit
                   >
@@ -162,13 +229,22 @@ export function CardItem({ card, side = 'front', size = 'full', onFlip }: CardIt
             {hasBottomRight ? (
               <View style={styles.footerColRight}>
                 {content.bottomRightLabel ? (
-                  <Text style={[styles.metaLabel, { fontSize: s.metaLabelSize, color: mutedColor }]}>
+                  <Text
+                    style={[
+                      styles.metaLabel,
+                      { fontSize: s.metaLabelSize, color: mutedColor },
+                    ]}
+                  >
                     {content.bottomRightLabel}
                   </Text>
                 ) : null}
                 {content.bottomRightValue ? (
                   <Text
-                    style={[styles.metaValue, styles.metaValueRight, { fontSize: s.metaValueSize, color: primaryColor }]}
+                    style={[
+                      styles.metaValue,
+                      styles.metaValueRight,
+                      { fontSize: s.metaValueSize, color: primaryColor },
+                    ]}
                     numberOfLines={1}
                     adjustsFontSizeToFit
                   >
@@ -186,84 +262,108 @@ export function CardItem({ card, side = 'front', size = 'full', onFlip }: CardIt
 }
 
 const EAN_DIGIT_PATTERNS: Record<string, string> = {
-  '0': '0001101',
-  '1': '0011001',
-  '2': '0010011',
-  '3': '0111101',
-  '4': '0100011',
-  '5': '0110001',
-  '6': '0101111',
-  '7': '0111011',
-  '8': '0110111',
-  '9': '0001011',
+  "0": "0001101",
+  "1": "0011001",
+  "2": "0010011",
+  "3": "0111101",
+  "4": "0100011",
+  "5": "0110001",
+  "6": "0101111",
+  "7": "0111011",
+  "8": "0110111",
+  "9": "0001011",
 };
 
 function BarcodeStrip({ value, color }: { value: string; color: string }) {
-  const digits = value.replace(/\D/g, '').slice(0, 18);
-  const pattern = ['101', ...digits.split('').map((digit) => EAN_DIGIT_PATTERNS[digit] ?? '0010011'), '101'].join('01');
+  const digits = value.replace(/\D/g, "").slice(0, 18);
+  const pattern = [
+    "101",
+    ...digits.split("").map((digit) => EAN_DIGIT_PATTERNS[digit] ?? "0010011"),
+    "101",
+  ].join("01");
   const width = pattern.length;
 
   return (
-    <Svg width="100%" height={46} viewBox={`0 0 ${width} 46`} preserveAspectRatio="none">
-      {pattern.split('').map((bar, index) =>
-        bar === '1' ? <Rect key={`${value}-${index}`} x={index} y={0} width={1} height={46} fill={color} /> : null
-      )}
+    <Svg
+      width="100%"
+      height={46}
+      viewBox={`0 0 ${width} 46`}
+      preserveAspectRatio="none"
+    >
+      {pattern
+        .split("")
+        .map((bar, index) =>
+          bar === "1" ? (
+            <Rect
+              key={`${value}-${index}`}
+              x={index}
+              y={0}
+              width={1}
+              height={46}
+              fill={color}
+            />
+          ) : null,
+        )}
     </Svg>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    width: '100%',
-    overflow: 'hidden',
-    flexDirection: 'column',
+    width: "100%",
+    overflow: "hidden",
+    flexDirection: "column",
   },
   shadow: {
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOpacity: 0.25,
     shadowRadius: 12,
     shadowOffset: { width: 0, height: -5 },
     elevation: 8,
   },
   row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+  },
+  badgeWrap: {
+    position: "absolute",
+    zIndex: 4,
   },
   headerTextWrap: {
     flex: 1,
     paddingRight: 12,
   },
   topLabel: {
-    fontFamily: 'ReadexPro-Regular',
+    fontFamily: "ReadexPro-Regular",
     letterSpacing: 0.2,
   },
   topValue: {
-    fontFamily: 'ReadexPro-Medium',
+    fontFamily: "ReadexPro-Medium",
     marginTop: 2,
     lineHeight: 24,
   },
   middleWrap: {
     flex: 1,
-    justifyContent: 'flex-start',
+    justifyContent: "flex-start",
     minHeight: 48,
   },
   middleSpacer: {
     flex: 1,
   },
   middleLabel: {
-    fontFamily: 'ReadexPro-Regular',
-    textTransform: 'uppercase',
+    fontFamily: "ReadexPro-Regular",
+    textTransform: "uppercase",
     letterSpacing: 0.3,
   },
   middleValue: {
-    fontFamily: 'OpenSans-SemiBold',
+    fontFamily: "OpenSans-SemiBold",
     marginTop: 2,
     lineHeight: 26,
   },
   footerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     gap: 16,
     minHeight: 46,
   },
@@ -272,32 +372,32 @@ const styles = StyleSheet.create({
   },
   footerColRight: {
     flex: 1,
-    alignItems: 'flex-end',
+    alignItems: "flex-end",
   },
   metaLabel: {
-    fontFamily: 'ReadexPro-Regular',
+    fontFamily: "ReadexPro-Regular",
     marginBottom: 4,
   },
   metaValue: {
-    fontFamily: 'OpenSans-Bold',
+    fontFamily: "OpenSans-Bold",
     lineHeight: 22,
   },
   metaValueRight: {
-    textAlign: 'right',
+    textAlign: "right",
   },
   barcodeWrap: {
-    width: '100%',
+    width: "100%",
     marginTop: 2,
   },
   barcodeDigits: {
     marginTop: 6,
-    textAlign: 'center',
-    fontFamily: 'OpenSans-SemiBold',
+    textAlign: "center",
+    fontFamily: "OpenSans-SemiBold",
     fontSize: 12,
     letterSpacing: 1.2,
   },
   hiddenFlipTapArea: {
-    position: 'absolute',
+    position: "absolute",
     width: 0,
     height: 0,
   },

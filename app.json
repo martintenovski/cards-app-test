@@ -2,8 +2,8 @@
   "expo": {
     "name": "Pocket ID",
     "slug": "cards-app",
-    "scheme": "cards-app",
-    "version": "1.0.0",
+    "scheme": "pocketid",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "backgroundColor": "#ffffff",
@@ -13,6 +13,18 @@
       "expo-secure-store",
       "expo-font",
       [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Allow Pocket ID to use Face ID so only you can open your saved cards and documents."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#239BFF"
+        }
+      ],
+      [
         "expo-build-properties",
         {
           "ios": {
@@ -21,15 +33,17 @@
           "android": {}
         }
       ],
-
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      "expo-web-browser"
     ],
     "ios": {
       "supportsTablet": true,
+      "buildNumber": "2",
       "bundleIdentifier": "com.tenovski.cardsapp",
       "infoPlist": {
         "NSCameraUsageDescription": "Camera is required to scan identity documents and bank cards",
         "NFCReaderUsageDescription": "Allow Cards App to use NFC to read compatible cards and tags when you choose to scan them.",
+        "NSUserNotificationsUsageDescription": "Pocket ID uses notifications to remind you before cards and documents expire.",
         "ITSAppUsesNonExemptEncryption": false
       },
       "entitlements": {
@@ -43,7 +57,11 @@
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.tenovski.cardsapp",
-      "permissions": ["android.permission.CAMERA", "android.permission.NFC"]
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.NFC",
+        "android.permission.POST_NOTIFICATIONS"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png",

@@ -1,11 +1,11 @@
-import { useEffect } from "react";
-import { Gesture, GestureDetector } from "react-native-gesture-handler";
-import { Stack, useRouter } from "expo-router";
+import { useEffect, useMemo } from "react";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import {
   Dimensions,
   Pressable,
   StyleSheet,
+  Text,
   View,
   useColorScheme,
 } from "react-native";
@@ -15,6 +15,8 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 import { CardForm } from "@/components/CardForm";
 import {
@@ -22,6 +24,7 @@ import {
   formSheetScaffoldStyles,
 } from "@/components/FormSheetScaffold";
 import { useCardStore } from "@/store/useCardStore";
+import { decodeSharedCardPayload } from "@/utils/cardShare";
 import { APP_THEME, resolveTheme } from "@/utils/theme";
 import type { CardFormValues, CardPalette } from "@/types/card";
 
@@ -40,14 +43,18 @@ const SPRING_CLOSE = {
   overshootClamping: true,
 } as const;
 
-export default function AddCardScreen() {
+export default function ImportCardScreen() {
+  const { payload } = useLocalSearchParams<{ payload?: string }>();
   const router = useRouter();
   const addCard = useCardStore((state) => state.addCard);
   const themePreference = useCardStore((state) => state.themePreference);
   const deviceScheme = useColorScheme();
   const resolvedTheme = resolveTheme(themePreference, deviceScheme);
+  const sharedPayload = useMemo(
+    () => decodeSharedCardPayload(payload),
+    [payload],
+  );
   const colors = APP_THEME[resolvedTheme];
-
   const translateY = useSharedValue(SHEET_HEIGHT);
   const backdropOpacity = useSharedValue(0);
 
@@ -56,7 +63,7 @@ export default function AddCardScreen() {
     backdropOpacity.value = withSpring(0.55, SPRING_OPEN);
   }, []);
 
-  const dismiss = () => router.back();
+  const dismiss = () => router.replace("/");
 
   const dismissWithAnimation = () => {
     translateY.value = withSpring(SHEET_HEIGHT, SPRING_CLOSE);
@@ -96,14 +103,14 @@ export default function AddCardScreen() {
 
   const handleSubmit = (values: CardFormValues, palette: CardPalette) => {
     addCard(values, palette);
-    router.back();
+    router.replace("/");
   };
 
   return (
     <>
       <StatusBar style={resolvedTheme === "dark" ? "light" : "dark"} />
       <Stack.Screen options={{ headerShown: false }} />
-      <View style={StyleSheet.absoluteFill}>
+      <SafeAreaView style={StyleSheet.absoluteFill}>
         <Animated.View
           style={[StyleSheet.absoluteFill, styles.backdrop, backdropStyle]}
         >
@@ -123,19 +130,54 @@ export default function AddCardScreen() {
           <GestureDetector gesture={dragGesture}>
             <View style={styles.sheetContent}>
               <FormSheetScaffold
-                title="Add Card"
+                title="Import Card"
                 backgroundColor={colors.surface}
                 titleColor={colors.text}
                 closeColor={colors.textMuted}
                 handleColor={colors.textSoft}
                 onClose={dismissWithAnimation}
               >
-                <CardForm onSubmit={handleSubmit} />
+                {sharedPayload ? (
+                  <CardForm
+                    onSubmit={handleSubmit}
+                    initialValues={sharedPayload.values}
+                    initialPalette={sharedPayload.palette}
+                    submitLabel="Add Imported Card"
+                  />
+                ) : (
+                  <View style={styles.errorState}>
+                    <Text style={[styles.errorTitle, { color: colors.text }]}>
+                      Invalid Card Link
+                    </Text>
+                    <Text
+                      style={[styles.errorBody, { color: colors.textMuted }]}
+                    >
+                      This shared card could not be opened. Ask the sender to
+                      share it again.
+                    </Text>
+                    <Pressable
+                      onPress={dismissWithAnimation}
+                      style={[
+                        styles.errorButton,
+                        { backgroundColor: colors.accent },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.errorButtonText,
+                          { color: colors.accentText },
+                        ]}
+                      >
+                        Back To Wallet
+                      </Text>
+                    </Pressable>
+                  </View>
+                )}
               </FormSheetScaffold>
             </View>
           </GestureDetector>
         </Animated.View>
-      </View>
+      </SafeAreaView>
     </>
   );
 }
@@ -149,5 +191,30 @@ const styles = StyleSheet.create({
   },
   sheetContent: {
     flex: 1,
+  },
+  errorState: {
+    flex: 1,
+    justifyContent: "center",
+    gap: 14,
+  },
+  errorTitle: {
+    fontFamily: "ReadexPro-Bold",
+    fontSize: 28,
+  },
+  errorBody: {
+    fontFamily: "ReadexPro-Regular",
+    fontSize: 16,
+    lineHeight: 24,
+  },
+  errorButton: {
+    marginTop: 12,
+    height: 55,
+    borderRadius: 30,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  errorButtonText: {
+    fontFamily: "ReadexPro-Bold",
+    fontSize: 18,
   },
 });

@@ -1,17 +1,24 @@
-import { useEffect, useState } from 'react';
-import { Feather } from '@expo/vector-icons';
-import { Modal, Pressable, StyleSheet, Text, View, useColorScheme } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useEffect, useState } from "react";
+import { Feather } from "@expo/vector-icons";
+import {
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  useColorScheme,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withTiming,
-} from 'react-native-reanimated';
+} from "react-native-reanimated";
 
-import { useCardStore } from '@/store/useCardStore';
-import type { HomeFilter } from '@/types/card';
-import { FILTER_LABELS } from '@/types/card';
-import { APP_THEME, resolveTheme } from '@/utils/theme';
+import { useCardStore } from "@/store/useCardStore";
+import type { HomeFilter } from "@/types/card";
+import { FILTER_LABELS } from "@/types/card";
+import { APP_THEME, resolveTheme } from "@/utils/theme";
 
 type TopMenuProps = {
   isOpen: boolean;
@@ -20,9 +27,22 @@ type TopMenuProps = {
   onSelect: (filter: HomeFilter) => void;
 };
 
-const MENU_ITEMS: HomeFilter[] = ['everything', 'personal', 'bank', 'club'];
+const MENU_ITEMS: HomeFilter[] = [
+  "everything",
+  "personal",
+  "bank",
+  "club",
+  "insurance",
+  "vehicle",
+  "access",
+];
 
-export function TopMenu({ isOpen, selectedFilter, onClose, onSelect }: TopMenuProps) {
+export function TopMenu({
+  isOpen,
+  selectedFilter,
+  onClose,
+  onSelect,
+}: TopMenuProps) {
   const insets = useSafeAreaInsets();
   const themePreference = useCardStore((state) => state.themePreference);
   const deviceScheme = useColorScheme();
@@ -83,17 +103,19 @@ export function TopMenu({ isOpen, selectedFilter, onClose, onSelect }: TopMenuPr
         ]}
       >
         {/* Header */}
-        <View style={styles.sheetHeader}>
-          <Text style={[styles.sheetTitle, { color: colors.text }]}>Manage</Text>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Close menu"
-            style={styles.closeBtn}
-            onPress={onClose}
-          >
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Close menu"
+          style={styles.sheetHeader}
+          onPress={onClose}
+        >
+          <Text style={[styles.sheetTitle, { color: colors.text }]}>
+            Manage
+          </Text>
+          <View style={styles.closeBtn}>
             <Feather name="chevron-up" size={22} color={colors.text} />
-          </Pressable>
-        </View>
+          </View>
+        </Pressable>
 
         {/* Filter options */}
         <View style={styles.optionsList}>
@@ -104,7 +126,10 @@ export function TopMenu({ isOpen, selectedFilter, onClose, onSelect }: TopMenuPr
                 key={item}
                 accessibilityRole="button"
                 style={styles.optionRow}
-                onPress={() => { onSelect(item); onClose(); }}
+                onPress={() => {
+                  onSelect(item);
+                  onClose();
+                }}
               >
                 <Text
                   style={[
@@ -131,7 +156,7 @@ export function TopMenu({ isOpen, selectedFilter, onClose, onSelect }: TopMenuPr
 const styles = StyleSheet.create({
   backdrop: {},
   sheet: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     right: 0,
@@ -141,21 +166,20 @@ const styles = StyleSheet.create({
     paddingBottom: 32,
   },
   sheetHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   sheetTitle: {
-    fontFamily: 'ReadexPro-Bold',
+    fontFamily: "ReadexPro-Bold",
     fontSize: 36,
     lineHeight: 36,
-    color: '#FFFFFF',
+    color: "#FFFFFF",
   },
   closeBtn: {
-    width: 55,
-    height: 55,
-    alignItems: 'center',
-    justifyContent: 'center',
+    paddingTop: 4,
+    alignItems: "center",
+    justifyContent: "center",
   },
   closeIcon: {
     width: 18,
@@ -166,13 +190,13 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   optionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingVertical: 12,
   },
   optionText: {
-    fontFamily: 'ReadexPro-Medium',
+    fontFamily: "ReadexPro-Medium",
     fontSize: 22,
   },
   checkIcon: {
@@ -180,4 +204,3 @@ const styles = StyleSheet.create({
     height: 20,
   },
 });
-

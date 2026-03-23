@@ -1,13 +1,16 @@
 # Cards App Test
 
-A wallet-style Expo app for managing bank cards, personal documents, and club cards with a polished card UI, local persistence, and an ML Kit-powered scanning flow.
+A wallet-style Expo app for managing bank cards, personal documents, club cards, insurance cards, vehicle documents, and access badges with a polished card UI, local persistence, biometric app lock, expiry reminders, and an ML Kit-powered scanning flow.
 
 ## Highlights
 
 - Wallet dashboard with **stack** and **list** views
-- Filter cards by category: **Everything**, **Bank Cards**, **Personal Docs**, and **Club Cards**
+- Filter cards by category: **Everything**, **Bank Cards**, **Personal Docs**, **Club Cards**, **Insurance Cards**, **Vehicle Docs**, and **Access Badges**
 - Add and edit cards with a live preview
 - Card detail screen for reviewing saved entries
+- Biometric app lock with Face ID, Touch ID, or device PIN/pattern fallback
+- Expiry badges for bank cards and personal documents
+- Local push notifications 1 month, 2 weeks, and 2 days before expiry
 - Local persistence with Zustand so saved cards survive app restarts
 - Card scanner flow with camera capture + on-device OCR extraction + confirmation before saving
 - Expo Router navigation with tab-based sections
@@ -49,13 +52,25 @@ Cards can be filtered by category from the top menu.
 
 ### Add / edit card flow
 
-The app supports three categories:
+The app supports six categories:
 
 - **Bank cards**
 - **Personal documents**
 - **Club cards**
+- **Insurance cards**
+- **Vehicle documents**
+- **Access badges**
 
 The add/edit sheet includes dynamic fields based on the selected category and shows a live card preview while typing.
+
+### Security and expiry tracking
+
+- The app locks on launch and after returning from the background, using **Face ID**, **Touch ID**, or the device credential fallback supported by `expo-local-authentication`
+- Bank cards and personal documents show a **green / yellow / red** validity badge based on the saved expiry date
+- Cards and documents with expiry dates schedule local reminders for:
+  - **1 month before expiry**
+  - **2 weeks before expiry**
+  - **2 days before expiry**
 
 ### Scanner flow
 
@@ -181,7 +196,7 @@ On mobile, there are usually **two different kinds of releases**:
 - **JavaScript / asset updates**: can be delivered quickly with Expo update infrastructure
 - **Native changes**: require a new app binary and usually App Store / Play Store submission
 
-In this app, changes involving packages like ML Kit OCR, camera modules, or other native scanner SDKs should be treated as **native-impacting** changes and should go through a fresh build.
+In this app, changes involving packages like ML Kit OCR, camera modules, local authentication, or notification modules should be treated as **native-impacting** changes and should go through a fresh build.
 
 ### Practical mapping for this repo
 
