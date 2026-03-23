@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Feather } from "@expo/vector-icons";
+import * as Haptics from "expo-haptics";
 import {
   Pressable,
   StyleSheet,
@@ -17,10 +18,16 @@ import Animated, {
 import { useRouter } from "expo-router";
 
 import { CardList } from "@/components/CardList";
+import { CardQuickView } from "@/components/CardQuickView";
 import { CardStack } from "@/components/CardStack";
 import { TopMenu } from "@/components/TopMenu";
 import { useCardStore } from "@/store/useCardStore";
-import { FILTER_LABELS, getCardsByFilter, type HomeFilter } from "@/types/card";
+import {
+  FILTER_LABELS,
+  getCardsByFilter,
+  type HomeFilter,
+  type WalletCard,
+} from "@/types/card";
 import { APP_THEME, resolveTheme } from "@/utils/theme";
 
 type WalletDashboardProps = {
@@ -32,6 +39,7 @@ export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
   const deviceScheme = useColorScheme();
   const { width } = useWindowDimensions();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [quickViewCard, setQuickViewCard] = useState<WalletCard | null>(null);
   const cards = useCardStore((state) => state.cards);
   const viewMode = useCardStore((state) => state.viewMode);
   const homeFilter = useCardStore((state) => state.homeFilter);
@@ -42,7 +50,6 @@ export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
   const resolvedTheme = resolveTheme(themePreference, deviceScheme);
   const colors = APP_THEME[resolvedTheme];
   const isCompact = width < 390;
-  const contentInset = isCompact ? 8 : 12;
 
   // Chevron rotation animation
   const chevronRotate = useSharedValue(0);
@@ -71,8 +78,18 @@ export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
     // Filter in place — no navigation
   };
 
+  const handleCardLongPress = (id: string) => {
+    const card = filteredCards.find((c) => c.id === id);
+    if (!card) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setQuickViewCard(card);
+  };
+
   return (
-    <SafeAreaView style={[styles.root, { backgroundColor: colors.background }]}>
+    <SafeAreaView
+      edges={["top"]}
+      style={[styles.root, { backgroundColor: colors.background }]}
+    >
       {/* ── Header ─────────────────────────────────────────── */}
       <Pressable
         accessibilityRole="button"
@@ -96,15 +113,7 @@ export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
       </Pressable>
 
       {/* ── Cards area ─────────────────────────────────────── */}
-      <View
-        style={[
-          styles.cardsArea,
-          {
-            paddingTop: contentInset,
-            paddingBottom: contentInset,
-          },
-        ]}
-      >
+      <View style={styles.cardsArea}>
         {cards.length === 0 ? (
           <Pressable
             style={[
@@ -142,15 +151,17 @@ export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
               onCardPress={(id) =>
                 router.push({ pathname: "/card-detail", params: { id } })
               }
+              onCardLongPress={handleCardLongPress}
             />
           </View>
         ) : (
           <CardList
             cards={filteredCards}
-            bottomSpacing={contentInset}
+            bottomSpacing={20}
             onCardPress={(id) =>
               router.push({ pathname: "/card-detail", params: { id } })
             }
+            onCardLongPress={handleCardLongPress}
           />
         )}
       </View>
@@ -159,6 +170,10 @@ export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
         onClose={() => setMenuOpen(false)}
         onSelect={handleSelectFilter}
         selectedFilter={activeFilter}
+      />
+      <CardQuickView
+        card={quickViewCard}
+        onDismiss={() => setQuickViewCard(null)}
       />
     </SafeAreaView>
   );
@@ -174,18 +189,18 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     justifyContent: "space-between",
     paddingHorizontal: 25,
-    paddingTop: 25,
+    paddingTop: 20,
   },
   headingMain: {
     fontFamily: "ReadexPro-Bold",
     fontSize: 36,
-    lineHeight: 44,
+    lineHeight: 36,
     color: "#1D1D1D",
   },
   headingSub: {
     fontFamily: "ReadexPro-Bold",
-    fontSize: 36,
-    lineHeight: 44,
+    fontSize: 30,
+    lineHeight: 30,
     color: "#939393",
   },
   chevronBtn: {
@@ -198,6 +213,8 @@ const styles = StyleSheet.create({
   cardsArea: {
     flex: 1,
     overflow: "hidden",
+    marginTop: 20,
+    marginBottom: 20,
   },
   stackStage: {
     flex: 1,

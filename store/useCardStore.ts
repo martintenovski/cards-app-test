@@ -58,6 +58,7 @@ interface CardStoreState {
   themePreference: ThemePreference;
   appLockEnabled: boolean;
   expiryNotificationsEnabled: boolean;
+  addCardSheetOpen: boolean;
   hasHydrated: boolean;
   lastModifiedAt: string;
   lastFieldScanResult: FieldScanResult | null;
@@ -70,6 +71,8 @@ interface CardStoreState {
   setExpiryNotificationsEnabled: (enabled: boolean) => void;
   setLastFieldScanResult: (result: FieldScanResult) => void;
   clearLastFieldScanResult: () => void;
+  openAddCardSheet: () => void;
+  closeAddCardSheet: () => void;
   addCard: (values: CardFormValues, palette: CardPalette) => void;
   prependCard: (card: WalletCard) => void;
   replaceCards: (cards: WalletCard[], lastModifiedAt?: string) => void;
@@ -98,6 +101,9 @@ export const useCardStore = create<CardStoreState>()(
       hasHydrated: false,
       lastModifiedAt: new Date().toISOString(),
       lastFieldScanResult: null,
+      addCardSheetOpen: false,
+      openAddCardSheet: () => set({ addCardSheetOpen: true }),
+      closeAddCardSheet: () => set({ addCardSheetOpen: false }),
       setViewMode: (viewMode) => set({ viewMode }),
       toggleViewMode: () =>
         set((state) => ({
@@ -139,23 +145,20 @@ export const useCardStore = create<CardStoreState>()(
               })();
           return {
             cards: [createCardFromForm(values, ensuredPalette), ...state.cards],
-            homeFilter: values.category,
-            viewMode: "list",
+            homeFilter: "everything",
             lastModifiedAt: new Date().toISOString(),
           };
         }),
       prependCard: (card) =>
         set((state) => ({
           cards: [card, ...state.cards],
-          homeFilter: card.category,
-          viewMode: "list",
+          homeFilter: "everything",
           lastModifiedAt: new Date().toISOString(),
         })),
       replaceCards: (cards, lastModifiedAt) =>
         set({
           cards,
           homeFilter: "everything",
-          viewMode: cards.length > 0 ? "list" : "stack",
           lastModifiedAt: lastModifiedAt ?? new Date().toISOString(),
         }),
       updateCard: (id, values, palette) =>

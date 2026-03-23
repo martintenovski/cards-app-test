@@ -1,3 +1,4 @@
+import * as Notifications from "expo-notifications";
 import {
   Pressable,
   ScrollView,
@@ -10,6 +11,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { useCardStore } from "@/store/useCardStore";
+import { getCardExpiryDate } from "@/utils/expiry";
 import type { ThemePreference } from "@/utils/theme";
 import { APP_THEME, resolveTheme } from "@/utils/theme";
 
@@ -61,6 +63,8 @@ function SettingToggle({
 export default function SettingsScreen() {
   const themePreference = useCardStore((state) => state.themePreference);
   const setThemePreference = useCardStore((state) => state.setThemePreference);
+  const viewMode = useCardStore((state) => state.viewMode);
+  const setViewMode = useCardStore((state) => state.setViewMode);
   const appLockEnabled = useCardStore((state) => state.appLockEnabled);
   const setAppLockEnabled = useCardStore((state) => state.setAppLockEnabled);
   const expiryNotificationsEnabled = useCardStore(
@@ -69,10 +73,32 @@ export default function SettingsScreen() {
   const setExpiryNotificationsEnabled = useCardStore(
     (state) => state.setExpiryNotificationsEnabled,
   );
+  const cards = useCardStore((state) => state.cards);
   const deviceScheme = useColorScheme();
   const resolvedTheme = resolveTheme(themePreference, deviceScheme);
   const colors = APP_THEME[resolvedTheme];
   const isDark = resolvedTheme === "dark";
+
+  const sendTestNotification = async () => {
+    const { granted } = await Notifications.requestPermissionsAsync();
+    if (!granted) return;
+    // Pick the first card that has an expiry date, fall back to any card
+    const target = cards.find((c) => getCardExpiryDate(c) !== null) ?? cards[0];
+    const cardId = target?.id ?? "";
+    const cardTitle = target?.title ?? "My Card";
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: `${cardTitle} expires soon`,
+        body: `Your card expires in 2 days. Tap to view details.`,
+        sound: "default",
+        data: { kind: "expiry-reminder", cardId },
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+        seconds: 5,
+      },
+    });
+  };
 
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: colors.background }]}>
@@ -132,6 +158,44 @@ export default function SettingsScreen() {
 
         <View style={[styles.section, { backgroundColor: colors.surface }]}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            Card View
+          </Text>
+          <Text style={[styles.sectionBody, { color: colors.textMuted }]}>
+            Choose how cards are displayed on the home screen.
+          </Text>
+          <View
+            style={[
+              styles.themeOptionRow,
+              { backgroundColor: colors.surfaceMuted },
+            ]}
+          >
+            {(["stack", "list"] as const).map((option) => {
+              const active = viewMode === option;
+              return (
+                <Pressable
+                  key={option}
+                  onPress={() => setViewMode(option)}
+                  style={[
+                    styles.themeOption,
+                    { backgroundColor: active ? colors.accent : "transparent" },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.themeOptionText,
+                      { color: active ? colors.accentText : colors.textMuted },
+                    ]}
+                  >
+                    {option === "stack" ? "Animated Stack" : "List"}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+        </View>
+
+        <View style={[styles.section, { backgroundColor: colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
             Security
           </Text>
           <SettingToggle
@@ -160,6 +224,14 @@ export default function SettingsScreen() {
             accentColor={colors.accent}
             isDark={isDark}
           />
+          <Pressable
+            onPress={sendTestNotification}
+            style={[styles.testBtn, { backgroundColor: colors.surfaceMuted }]}
+          >
+            <Text style={[styles.testBtnText, { color: colors.textMuted }]}>
+              Send test notification (5 s)
+            </Text>
+          </Pressable>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -218,6 +290,16 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   themeOptionText: {
+    fontFamily: "ReadexPro-Medium",
+    fontSize: 14,
+  },
+  testBtn: {
+    marginTop: 18,
+    borderRadius: 18,
+    paddingVertical: 14,
+    alignItems: "center",
+  },
+  testBtnText: {
     fontFamily: "ReadexPro-Medium",
     fontSize: 14,
   },

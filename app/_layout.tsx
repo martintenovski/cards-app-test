@@ -18,9 +18,10 @@ import { AuthSessionManager } from "@/components/AuthSessionManager";
 import { CloudSyncManager } from "@/components/CloudSyncManager";
 import { ExpiryNotificationManager } from "@/components/ExpiryNotificationManager";
 import { GluestackUIProvider } from "@/components/ui/gluestack-ui-provider";
+import * as Notifications from "expo-notifications";
 import * as SplashScreen from "expo-splash-screen";
 import { useFonts } from "expo-font";
-import { Stack } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { LogBox, useColorScheme } from "react-native";
@@ -37,6 +38,7 @@ LogBox.ignoreLogs([
 ]);
 
 export default function RootLayout() {
+  const router = useRouter();
   const deviceScheme = useColorScheme();
   const themePreference = useCardStore((state) => state.themePreference);
   const resolvedTheme = resolveTheme(themePreference, deviceScheme);
@@ -56,6 +58,28 @@ export default function RootLayout() {
       SplashScreen.hideAsync();
     }
   }, [fontsLoaded]);
+
+  // Navigate to card-detail when a notification is tapped
+  useEffect(() => {
+    const sub = Notifications.addNotificationResponseReceivedListener(
+      (response) => {
+        const data = response.notification.request.content.data as Record<
+          string,
+          unknown
+        >;
+        if (
+          data?.kind === "expiry-reminder" &&
+          typeof data.cardId === "string"
+        ) {
+          router.push({
+            pathname: "/card-detail",
+            params: { id: data.cardId },
+          });
+        }
+      },
+    );
+    return () => sub.remove();
+  }, [router]);
 
   if (!fontsLoaded) {
     return null;

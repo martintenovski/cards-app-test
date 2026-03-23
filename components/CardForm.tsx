@@ -1,7 +1,9 @@
 import { Feather } from "@expo/vector-icons";
-import { useMemo, useState } from "react";
+import { LinearGradient } from "expo-linear-gradient";
+import { useMemo, useRef, useState } from "react";
 import {
   Alert,
+  Dimensions,
   KeyboardAvoidingView,
   Modal,
   NativeModules,
@@ -28,6 +30,7 @@ import DateTimePicker, {
 } from "@react-native-community/datetimepicker";
 
 import { CardPreview } from "@/components/CardPreview";
+import { GRADIENTS } from "@/constants/gradients";
 import { useCardStore } from "@/store/useCardStore";
 import {
   CATEGORY_OPTIONS,
@@ -35,13 +38,39 @@ import {
   DEFAULT_FORM_VALUES,
   TYPE_OPTIONS,
   createPreviewCard,
+  getContrastColor,
   getRandomPastelPalette,
   type CardPalette,
   type CardCategory,
   type CardFormValues,
 } from "@/types/card";
 import { APP_THEME, CARD_SIDE_TOGGLE_THEME, resolveTheme } from "@/utils/theme";
+import {
+  buildPaletteFromGradient,
+  deriveGradient,
+  hslToHex,
+} from "@/utils/colorUtils";
 import type { ResolvedTheme } from "@/utils/theme";
+
+const HUE_SPECTRUM = [
+  "#FF0000",
+  "#FF8000",
+  "#FFFF00",
+  "#00FF00",
+  "#00FFFF",
+  "#0000FF",
+  "#FF00FF",
+  "#FF0000",
+] as const;
+
+function pickPresetGradients(count = 4): [string, string][] {
+  const pool = [...GRADIENTS] as [string, string][];
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [pool[i], pool[j]] = [pool[j], pool[i]];
+  }
+  return pool.slice(0, count);
+}
 
 type CardFormProps = {
   onSubmit: (values: CardFormValues, palette: CardPalette) => void;
@@ -1317,6 +1346,210 @@ function DateRow({
   );
 }
 
+// Estimate initial bar width from screen so the thumb position is stable
+// before onLayout fires (modal card: paddingH 24 + modal paddingH 24, both sides = 96)
+const INITIAL_BAR_WIDTH = Math.max(200, Dimensions.get("window").width - 96);
+
+function CardColorPicker({
+  presets,
+  selectedGradient,
+  onSelectGradient,
+  colors,
+}: {
+  presets: [string, string][];
+  selectedGradient: [string, string] | null;
+  onSelectGradient: (gradient: [string, string]) => void;
+  colors: ThemeColors;
+}) {
+  const [customOpen, setCustomOpen] = useState(false);
+  const [huePercent, setHuePercent] = useState(0.5);
+  // Use a ref for barWidth so layout updates don't trigger a full re-render
+  // and cause the thumb to jump position. Re-render only when huePercent changes.
+  const barWidthRef = useRef(INITIAL_BAR_WIDTH);
+  const [barWidthReady, setBarWidthReady] = useState(false);
+
+  const barWidth = barWidthRef.current;
+  const customHue = huePercent * 360;
+  const customHex = hslToHex(customHue, 0.78, 0.55);
+  const customGradient = deriveGradient(customHex);
+  const thumbLeft = huePercent * Math.max(0, barWidth - 28);
+
+  const isPresetSelected = (grad: [string, string]) =>
+    selectedGradient?.[0] === grad[0] && selectedGradient?.[1] === grad[1];
+  const isCustomSelected =
+    selectedGradient !== null && !presets.some(isPresetSelected);
+
+  const updateHue = (locationX: number) => {
+    setHuePercent(Math.max(0, Math.min(1, locationX / Math.max(1, barWidth))));
+  };
+
+  return (
+    <View style={cpSt.wrap}>
+      <Text style={[cpSt.sectionLabel, { color: colors.textSoft }]}>
+        CARD COLOR
+      </Text>
+
+      <View style={cpSt.row}>
+        {presets.map((grad) => {
+          const isSelected = isPresetSelected(grad);
+          const textColor = getContrastColor(grad[0]);
+          // Use gradient colors as key so identity is stable even if array order shifts
+          return (
+            <Pressable
+              key={`${grad[0]}-${grad[1]}`}
+              onPress={() => onSelectGradient(grad)}
+              style={[
+                cpSt.swatchRing,
+                {
+                  backgroundColor: isSelected ? colors.text : "transparent",
+                },
+              ]}
+              accessibilityRole="radio"
+              accessibilityChecked={isSelected}
+            >
+              <LinearGradient
+                colors={[grad[0], grad[1]]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+                style={cpSt.swatchGradient}
+              >
+                {isSelected ? (
+                  <View style={cpSt.checkBadge}>
+                    <Feather name="check" size={13} color={textColor} />
+                  </View>
+                ) : null}
+              </LinearGradient>
+            </Pressable>
+          );
+        })}
+
+        {/*
+         * Custom color button.
+         * IMPORTANT: we always keep TWO LinearGradients mounted and toggle
+         * visibility via opacity — never conditionally swap children.
+         * Swapping children forces React Native to destroy/recreate the native
+         * view, which briefly shows both (the "two buttons" / flash bug).
+         */}
+        <Pressable
+          onPress={() => setCustomOpen(true)}
+          style={[
+            cpSt.swatchRing,
+            {
+              backgroundColor: isCustomSelected ? colors.text : "transparent",
+            },
+          ]}
+          accessibilityRole="button"
+          accessibilityLabel="Pick a custom color"
+        >
+          {/* Base layer: hue spectrum, always visible underneath */}
+          <LinearGradient
+            colors={HUE_SPECTRUM as unknown as string[]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={[cpSt.swatchGradient, StyleSheet.absoluteFill]}
+          />
+          {/* Overlay layer: selected custom gradient, fades over the spectrum */}
+          <LinearGradient
+            colors={
+              isCustomSelected && selectedGradient
+                ? selectedGradient
+                : ["transparent", "transparent"]
+            }
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={[cpSt.swatchGradient, StyleSheet.absoluteFill]}
+          />
+          {/* Icon: always rendered, centered over both gradient layers */}
+          <View style={cpSt.centeredBadge}>
+            <View style={isCustomSelected ? cpSt.checkBadge : cpSt.plusBadge}>
+              <Feather
+                name={isCustomSelected ? "edit-2" : "plus"}
+                size={isCustomSelected ? 11 : 14}
+                color={
+                  isCustomSelected && selectedGradient
+                    ? getContrastColor(selectedGradient[0])
+                    : "#FFFFFF"
+                }
+              />
+            </View>
+          </View>
+        </Pressable>
+      </View>
+
+      {/* Custom color picker modal */}
+      <Modal
+        transparent
+        visible={customOpen}
+        animationType="fade"
+        onRequestClose={() => setCustomOpen(false)}
+      >
+        <View style={[cpSt.modalOverlay, { backgroundColor: colors.overlay }]}>
+          <View style={[cpSt.pickerCard, { backgroundColor: colors.surface }]}>
+            <Text style={[cpSt.pickerTitle, { color: colors.text }]}>
+              Pick a color
+            </Text>
+
+            {/* Live gradient preview */}
+            <LinearGradient
+              colors={customGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={cpSt.gradientPreview}
+            />
+
+            {/* Hue spectrum bar */}
+            <View
+              style={cpSt.hueBarOuter}
+              onLayout={(e) => {
+                const w = e.nativeEvent.layout.width;
+                if (w > 0 && w !== barWidthRef.current) {
+                  barWidthRef.current = w;
+                  // Only trigger a re-render once to lock in the real width
+                  if (!barWidthReady) setBarWidthReady(true);
+                }
+              }}
+              onStartShouldSetResponder={() => true}
+              onMoveShouldSetResponder={() => true}
+              onResponderGrant={(e) => updateHue(e.nativeEvent.locationX)}
+              onResponderMove={(e) => updateHue(e.nativeEvent.locationX)}
+            >
+              <LinearGradient
+                colors={HUE_SPECTRUM as unknown as string[]}
+                start={{ x: 0, y: 0.5 }}
+                end={{ x: 1, y: 0.5 }}
+                style={[StyleSheet.absoluteFill, { borderRadius: 18 }]}
+              />
+              <View style={[cpSt.hueThumb, { left: thumbLeft }]} />
+            </View>
+
+            <View style={cpSt.pickerActions}>
+              <Pressable
+                onPress={() => setCustomOpen(false)}
+                style={cpSt.cancelBtn}
+              >
+                <Text style={[cpSt.cancelText, { color: colors.textMuted }]}>
+                  Cancel
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => {
+                  onSelectGradient(customGradient);
+                  setCustomOpen(false);
+                }}
+                style={[cpSt.applyBtn, { backgroundColor: colors.accent }]}
+              >
+                <Text style={[cpSt.applyText, { color: colors.accentText }]}>
+                  Apply
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+    </View>
+  );
+}
+
 export function CardForm({
   onSubmit,
   initialValues,
@@ -1345,6 +1578,12 @@ export function CardForm({
   const [previewSide, setPreviewSide] = useState<"front" | "back">("front");
   const [submitErrorMessage, setSubmitErrorMessage] = useState("");
   const [submitAreaHeight, setSubmitAreaHeight] = useState(96);
+  const [presetGradients, setPresetGradients] = useState<[string, string][]>(
+    () => pickPresetGradients(),
+  );
+  const [selectedGradient, setSelectedGradient] = useState<
+    [string, string] | null
+  >(null);
 
   const sections = useMemo(() => getFormSections(values), [values]);
   const previewCard = useMemo(
@@ -1392,6 +1631,13 @@ export function CardForm({
     setSubmitErrorMessage("");
     setPreviewSide("front");
     setPreviewPalette((current) => getRandomPastelPalette([current.id]));
+    setPresetGradients(pickPresetGradients());
+    setSelectedGradient(null);
+  };
+
+  const handleSelectGradient = (gradient: [string, string]) => {
+    setSelectedGradient(gradient);
+    setPreviewPalette(buildPaletteFromGradient(gradient));
   };
 
   const handleSubmit = () => {
@@ -1587,6 +1833,13 @@ export function CardForm({
             Tap the card preview to flip
           </Text>
         </Pressable>
+
+        <CardColorPicker
+          presets={presetGradients}
+          selectedGradient={selectedGradient}
+          onSelectGradient={handleSelectGradient}
+          colors={colors}
+        />
       </ScrollView>
 
       <View
@@ -1803,5 +2056,133 @@ const formSt = StyleSheet.create({
   submitText: {
     fontFamily: "ReadexPro-Regular",
     fontSize: 20,
+  },
+});
+
+const cpSt = StyleSheet.create({
+  wrap: {
+    marginTop: 14,
+    gap: 10,
+  },
+  sectionLabel: {
+    fontFamily: "ReadexPro-Regular",
+    fontSize: 10,
+    textTransform: "uppercase",
+    letterSpacing: 0.8,
+    marginLeft: 4,
+  },
+  row: {
+    flexDirection: "row",
+    gap: 10,
+    justifyContent: "center",
+  },
+  swatchRing: {
+    width: 54,
+    height: 54,
+    borderRadius: 18,
+    padding: 3,
+  },
+  swatchGradient: {
+    flex: 1,
+    borderRadius: 15,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  checkBadge: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: "rgba(0,0,0,0.18)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  plusBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "rgba(0,0,0,0.22)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  // Full-bounds transparent overlay for centering the icon badge
+  centeredBadge: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalOverlay: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 24,
+  },
+  pickerCard: {
+    width: "100%",
+    borderRadius: 28,
+    padding: 24,
+    gap: 18,
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 12,
+  },
+  pickerTitle: {
+    fontFamily: "ReadexPro-Medium",
+    fontSize: 18,
+    textAlign: "center",
+  },
+  gradientPreview: {
+    height: 58,
+    borderRadius: 18,
+  },
+  hueBarOuter: {
+    height: 36,
+    borderRadius: 18,
+    justifyContent: "center",
+  },
+  hueThumb: {
+    position: "absolute",
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 3,
+    borderColor: "#FFFFFF",
+    backgroundColor: "transparent",
+    top: 4,
+    shadowColor: "#000",
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 4,
+  },
+  pickerActions: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    alignItems: "center",
+    gap: 16,
+  },
+  cancelBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+  },
+  cancelText: {
+    fontFamily: "ReadexPro-Regular",
+    fontSize: 16,
+  },
+  applyBtn: {
+    paddingVertical: 12,
+    paddingHorizontal: 28,
+    borderRadius: 999,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  applyText: {
+    fontFamily: "ReadexPro-Medium",
+    fontSize: 16,
   },
 });

@@ -1,6 +1,5 @@
 import { Feather } from "@expo/vector-icons";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
-import { useRouter } from "expo-router";
 import {
   Platform,
   Pressable,
@@ -55,16 +54,13 @@ function NavAction({
 }
 
 export function AppTabBar({ state, navigation }: BottomTabBarProps) {
-  const router = useRouter();
   const insets = useSafeAreaInsets();
   const deviceScheme = useColorScheme();
   const themePreference = useCardStore((store) => store.themePreference);
-  const viewMode = useCardStore((store) => store.viewMode);
-  const toggleViewMode = useCardStore((store) => store.toggleViewMode);
+  const openAddCardSheet = useCardStore((store) => store.openAddCardSheet);
   const resolvedTheme = resolveTheme(themePreference, deviceScheme);
   const colors = APP_THEME[resolvedTheme];
   const currentRouteName = state.routes[state.index]?.name;
-  const viewIcon = viewMode === "list" ? "copy" : "list";
   const activeColor = colors.text;
   const inactiveColor = colors.textSoft;
 
@@ -89,18 +85,12 @@ export function AppTabBar({ state, navigation }: BottomTabBarProps) {
         ]}
       >
         <NavAction
-          label="View"
-          icon={viewIcon}
+          label="Home"
+          icon="home"
           active={currentRouteName === "index"}
           activeColor={activeColor}
           inactiveColor={inactiveColor}
-          onPress={() => {
-            if (currentRouteName !== "index") {
-              navigation.navigate("index");
-              return;
-            }
-            toggleViewMode();
-          }}
+          onPress={() => navigation.navigate("index")}
         />
         <NavAction
           label="Search"
@@ -121,7 +111,7 @@ export function AppTabBar({ state, navigation }: BottomTabBarProps) {
               shadowColor: colors.shadow,
             },
           ]}
-          onPress={() => router.push("/add-card")}
+          onPress={openAddCardSheet}
         >
           <Feather name="plus" size={22} color={colors.accentText} />
           <Text style={[styles.addButtonText, { color: colors.accentText }]}>
@@ -153,45 +143,42 @@ export function AppTabBar({ state, navigation }: BottomTabBarProps) {
 const styles = StyleSheet.create({
   shell: {
     paddingHorizontal: 14,
-    paddingTop: 2,
+    paddingTop: 0,
+    marginBottom: 5,
   },
   inner: {
-    minHeight: 76,
+    minHeight: 70,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    borderRadius: 30,
+    borderRadius: 50,
     borderWidth: 1,
     paddingHorizontal: 10,
-    paddingVertical: 8,
-    gap: 6,
+    gap: 5,
   },
   sideAction: {
     flex: 1,
-    minHeight: 52,
-    borderRadius: 22,
+    minHeight: 50,
+    borderRadius: 30,
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
+    gap: 5,
   },
   sideActionText: {
     fontFamily: "ReadexPro-Medium",
-    fontSize: 11,
+    fontSize: 10,
   },
   addButton: {
-    width: 92,
-    height: 62,
-    borderRadius: 24,
+    width: 80,
+    height: 60,
+    borderRadius: 30,
     alignItems: "center",
     justifyContent: "center",
-    gap: 4,
-    shadowOpacity: 0.2,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 6,
+    gap: 2,
+    elevation: 4,
   },
   addButtonText: {
     fontFamily: "ReadexPro-Bold",
-    fontSize: 11,
+    fontSize: 10,
   },
 });

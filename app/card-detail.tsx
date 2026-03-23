@@ -54,12 +54,16 @@ export default function CardDetailScreen() {
 
   const [toastMessage, setToastMessage] = useState("");
   const [toastVisible, setToastVisible] = useState(false);
-  const initialCategory = cards.find((c) => c.id === id)?.category;
-  const [isFlipped, setIsFlipped] = useState(initialCategory === "club");
+  const initialCard = cards.find((c) => c.id === id);
+  const defaultsToBack =
+    initialCard?.category === "club" &&
+    (initialCard as import("@/types/card").ClubCard).memberIdFormat ===
+      "barcode";
+  const [isFlipped, setIsFlipped] = useState(defaultsToBack);
   const [editSheetOpen, setEditSheetOpen] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
   const [shareSheetOpen, setShareSheetOpen] = useState(false);
-  const flipProgress = useSharedValue(initialCategory === "club" ? 1 : 0);
+  const flipProgress = useSharedValue(defaultsToBack ? 1 : 0);
   const shareCaptureRef = useRef<ViewShot | null>(null);
   const currentSide = isFlipped ? "back" : "front";
 

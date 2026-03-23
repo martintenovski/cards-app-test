@@ -6,12 +6,14 @@ import type { WalletCard } from "@/types/card";
 type CardListProps = {
   cards: WalletCard[];
   onCardPress?: (id: string) => void;
+  onCardLongPress?: (id: string) => void;
   bottomSpacing?: number;
 };
 
 export function CardList({
   cards,
   onCardPress,
+  onCardLongPress,
   bottomSpacing = 120,
 }: CardListProps) {
   return (
@@ -25,6 +27,8 @@ export function CardList({
           key={card.id}
           style={styles.item}
           onPress={() => onCardPress?.(card.id)}
+          onLongPress={() => onCardLongPress?.(card.id)}
+          delayLongPress={600}
         >
           <CardItem card={card} size="full" side="front" />
         </Pressable>

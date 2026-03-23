@@ -76,6 +76,8 @@ export type CardStackProps = {
   onCycleBwd: () => void;
   /** Called when the user taps the active (focused) card */
   onCardPress?: (cardId: string) => void;
+  /** Called when any card is long-pressed — triggers quick fullscreen view */
+  onCardLongPress?: (cardId: string) => void;
 };
 
 // ─── AnimatedCard ─────────────────────────────────────────────────────────────
@@ -89,6 +91,7 @@ type AnimatedCardProps = {
   isActive: boolean;
   onSnapTo: (index: number) => void;
   onActivePress?: (cardId: string) => void;
+  onLongPress?: (cardId: string) => void;
 };
 
 function AnimatedCard({
@@ -99,6 +102,7 @@ function AnimatedCard({
   isActive,
   onSnapTo,
   onActivePress,
+  onLongPress,
 }: AnimatedCardProps) {
   const defaultSide: "front" | "back" = "front";
   const [side, setSide] = useState<"front" | "back">(defaultSide);
@@ -156,10 +160,13 @@ function AnimatedCard({
   return (
     <Animated.View style={[styles.card, cardStyle]}>
       {/* Active card: tap opens detail. Non-active: tap snaps to it. */}
+      {/* Long-press on any card opens the quick fullscreen view. */}
       <Pressable
         onPress={
           isActive ? () => onActivePress?.(card.id) : () => onSnapTo(index)
         }
+        onLongPress={() => onLongPress?.(card.id)}
+        delayLongPress={600}
         style={styles.pressable}
       >
         <Animated.View style={[styles.flipWrapper, flipStyle]}>
@@ -177,7 +184,11 @@ function AnimatedCard({
 
 // ─── CardStack ────────────────────────────────────────────────────────────────
 
-export function CardStack({ cards, onCardPress }: CardStackProps) {
+export function CardStack({
+  cards,
+  onCardPress,
+  onCardLongPress,
+}: CardStackProps) {
   const scrollOffsetSV = useSharedValue(0);
   const startOffsetSV = useSharedValue(0);
   // Stored as shared value so gesture worklets always read the latest length
@@ -261,6 +272,7 @@ export function CardStack({ cards, onCardPress }: CardStackProps) {
             isActive={index === activeIndex}
             onSnapTo={snapTo}
             onActivePress={onCardPress}
+            onLongPress={onCardLongPress}
           />
         ))}
       </View>

@@ -2,6 +2,7 @@ import { Feather } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
 import {
   Dimensions,
+  Modal,
   Pressable,
   StyleSheet,
   Text,
@@ -9,10 +10,11 @@ import {
   useColorScheme,
 } from "react-native";
 import Animated, {
+  Easing as REasing,
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
-  withSpring,
+  withTiming,
 } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 
@@ -23,19 +25,10 @@ import { APP_THEME, resolveTheme } from "@/utils/theme";
 
 const { height } = Dimensions.get("window");
 const SHEET_HEIGHT = height * 0.85;
-const CLOSE_THRESHOLD = 100;
+const CLOSE_THRESHOLD = 80;
 
-const SPRING_OPEN = {
-  damping: 20,
-  stiffness: 90,
-  mass: 0.8,
-  overshootClamping: true,
-} as const;
-const SPRING_CLOSE = {
-  damping: 20,
-  stiffness: 90,
-  overshootClamping: true,
-} as const;
+const OPEN_CFG = { duration: 260, easing: REasing.out(REasing.cubic) } as const;
+const CLOSE_CFG = { duration: 200, easing: REasing.in(REasing.quad) } as const;
 
 type AddCardSheetProps = {
   isOpen: boolean;
@@ -49,17 +42,27 @@ export function AddCardSheet({ isOpen, onClose }: AddCardSheetProps) {
   const resolvedTheme = resolveTheme(themePreference, deviceScheme);
   const colors = APP_THEME[resolvedTheme];
   const [formKey, setFormKey] = useState(0);
+  const [modalVisible, setModalVisible] = useState(false);
 
   const translateY = useSharedValue(SHEET_HEIGHT);
   const backdropOpacity = useSharedValue(0);
 
   useEffect(() => {
     if (isOpen) {
-      translateY.value = withSpring(0, SPRING_OPEN);
-      backdropOpacity.value = withSpring(0.55, SPRING_OPEN);
+      setModalVisible(true);
+      translateY.value = withTiming(0, OPEN_CFG);
+      backdropOpacity.value = withTiming(0.55, {
+        duration: 220,
+        easing: REasing.out(REasing.quad),
+      });
     } else {
-      translateY.value = withSpring(SHEET_HEIGHT, SPRING_CLOSE);
-      backdropOpacity.value = withSpring(0, SPRING_CLOSE);
+      translateY.value = withTiming(SHEET_HEIGHT, CLOSE_CFG);
+      backdropOpacity.value = withTiming(0, {
+        duration: 180,
+        easing: REasing.in(REasing.quad),
+      });
+      const timer = setTimeout(() => setModalVisible(false), 210);
+      return () => clearTimeout(timer);
     }
   }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -74,13 +77,13 @@ export function AddCardSheet({ isOpen, onClose }: AddCardSheetProps) {
       }
     })
     .onEnd((e) => {
-      if (e.translationY > CLOSE_THRESHOLD || e.velocityY > 800) {
-        translateY.value = withSpring(SHEET_HEIGHT, SPRING_CLOSE);
-        backdropOpacity.value = withSpring(0, SPRING_CLOSE);
+      if (e.translationY > CLOSE_THRESHOLD || e.velocityY > 600) {
+        translateY.value = withTiming(SHEET_HEIGHT, CLOSE_CFG);
+        backdropOpacity.value = withTiming(0, { duration: 180 });
         runOnJS(onClose)();
       } else {
-        translateY.value = withSpring(0, SPRING_OPEN);
-        backdropOpacity.value = withSpring(0.55, SPRING_OPEN);
+        translateY.value = withTiming(0, OPEN_CFG);
+        backdropOpacity.value = withTiming(0.55, { duration: 220 });
       }
     });
 
@@ -99,9 +102,12 @@ export function AddCardSheet({ isOpen, onClose }: AddCardSheetProps) {
   };
 
   return (
-    <View
-      style={StyleSheet.absoluteFill}
-      pointerEvents={isOpen ? "box-none" : "none"}
+    <Modal
+      transparent
+      visible={modalVisible}
+      animationType="none"
+      onRequestClose={onClose}
+      statusBarTranslucent
     >
       {/* Backdrop */}
       <Animated.View
@@ -136,7 +142,7 @@ export function AddCardSheet({ isOpen, onClose }: AddCardSheetProps) {
         {/* Form */}
         <CardForm key={formKey} onSubmit={handleSubmit} />
       </Animated.View>
-    </View>
+    </Modal>
   );
 }
 
