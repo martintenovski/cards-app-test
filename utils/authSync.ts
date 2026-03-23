@@ -10,15 +10,37 @@ import {
   supabase,
   upsertWalletSnapshot,
 } from "@/lib/supabase";
+import {
+  decryptWalletCards,
+  encryptWalletCards,
+  getStoredSyncPassphrase,
+  isEncryptedWalletCardsPayload,
+} from "@/utils/cloudVault";
+import {
+  getPrimaryAppScheme,
+  getRuntimeAppScheme,
+  getSupportedAppSchemes,
+} from "@/utils/deepLink";
 import type { WalletSnapshotRow } from "@/lib/supabase";
 import type { AuthProfile } from "@/store/useAuthStore";
 import type { WalletCard } from "@/types/card";
 
+export type ResolvedWalletSnapshot = Omit<WalletSnapshotRow, "cards"> & {
+  cards: WalletCard[];
+  storage: "encrypted" | "legacy-plain";
+};
+
 WebBrowser.maybeCompleteAuthSession();
 
-const redirectTo = makeRedirectUri();
+const AUTH_CALLBACK_PATH = "auth/callback";
 
-const createSessionFromUrl = async (url: string) => {
+export const redirectTo = makeRedirectUri({
+  scheme: getRuntimeAppScheme(),
+  path: AUTH_CALLBACK_PATH,
+  native: `${getRuntimeAppScheme()}://${AUTH_CALLBACK_PATH}`,
+});
+
+export const createSessionFromUrl = async (url: string) => {
   const { params, errorCode } = QueryParams.getQueryParams(url);
   if (errorCode) throw new Error(errorCode);
 
@@ -73,15 +95,26 @@ export function onAuthStateChange(callback: (session: Session | null) => void) {
   return subscription;
 }
 
-export async function signInWithProvider(provider: "google" | "apple") {
+export async function signInWithProvider(
+  provider: "google" | "apple",
+  options?: {
+    selectAccount?: boolean;
+  },
+) {
   if (!supabase || !isSupabaseConfigured) {
     throw new Error("Supabase is not configured.");
   }
+
+  const queryParams =
+    provider === "google" && options?.selectAccount
+      ? { prompt: "select_account" }
+      : undefined;
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider,
     options: {
       redirectTo,
+      queryParams,
       skipBrowserRedirect: true,
     },
   });
@@ -91,7 +124,18 @@ export async function signInWithProvider(provider: "google" | "apple") {
 
   const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
 
-  if (result.type !== "success") return null;
+  if (result.type !== "success") {
+    const fallbackUrl = await Linking.getInitialURL();
+    if (
+      fallbackUrl &&
+      getSupportedAppSchemes().some((scheme) =>
+        fallbackUrl.startsWith(`${scheme}://`),
+      )
+    ) {
+      return await createSessionFromUrl(fallbackUrl);
+    }
+    return null;
+  }
 
   return await createSessionFromUrl(result.url);
 }
@@ -107,7 +151,7 @@ export async function reconcileWalletSnapshot(params: {
   cards: WalletCard[];
   lastModifiedAt: string;
 }) {
-  const remote = await fetchWalletSnapshot(params.user.id);
+  const remote = await fetchResolvedWalletSnapshot(params.user.id);
 
   if (!remote) {
     return {
@@ -144,13 +188,55 @@ export async function pushWalletSnapshot(params: {
   cards: WalletCard[];
   lastModifiedAt: string;
 }) {
+  const passphrase = await getStoredSyncPassphrase(params.user.id);
+
+  if (!passphrase) {
+    throw new Error(
+      "Cloud sync is locked on this device until you add your sync passphrase.",
+    );
+  }
+
   const snapshot: WalletSnapshotRow = {
     user_id: params.user.id,
     display_name: params.user.displayName,
     email: params.user.email,
-    cards: params.cards,
+    cards: await encryptWalletCards(params.cards, passphrase),
     updated_at: params.lastModifiedAt,
   };
 
   await upsertWalletSnapshot(snapshot);
+}
+
+export async function fetchResolvedWalletSnapshot(userId: string) {
+  const remote = await fetchWalletSnapshot(userId);
+
+  if (!remote) {
+    return null;
+  }
+
+  if (Array.isArray(remote.cards)) {
+    return {
+      ...remote,
+      cards: remote.cards,
+      storage: "legacy-plain" as const,
+    };
+  }
+
+  if (!isEncryptedWalletCardsPayload(remote.cards)) {
+    throw new Error("Wallet snapshot format is not supported.");
+  }
+
+  const passphrase = await getStoredSyncPassphrase(userId);
+
+  if (!passphrase) {
+    throw new Error(
+      "This device needs your sync passphrase before it can decrypt cloud data.",
+    );
+  }
+
+  return {
+    ...remote,
+    cards: await decryptWalletCards(remote.cards, passphrase),
+    storage: "encrypted" as const,
+  };
 }

@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import {
   Alert,
   Dimensions,
@@ -79,6 +79,7 @@ type CardFormProps = {
   submitLabel?: string;
   contentHorizontalPadding?: number;
   forcedTheme?: ResolvedTheme;
+  topAccessory?: ReactNode;
 };
 
 type FieldName = keyof CardFormValues;
@@ -1405,7 +1406,7 @@ function CardColorPicker({
                 },
               ]}
               accessibilityRole="radio"
-              accessibilityChecked={isSelected}
+              accessibilityState={{ checked: isSelected }}
             >
               <LinearGradient
                 colors={[grad[0], grad[1]]}
@@ -1443,7 +1444,7 @@ function CardColorPicker({
         >
           {/* Base layer: hue spectrum, always visible underneath */}
           <LinearGradient
-            colors={HUE_SPECTRUM as unknown as string[]}
+            colors={HUE_SPECTRUM}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={[cpSt.swatchGradient, StyleSheet.absoluteFill]}
@@ -1453,7 +1454,7 @@ function CardColorPicker({
             colors={
               isCustomSelected && selectedGradient
                 ? selectedGradient
-                : ["transparent", "transparent"]
+                : (["transparent", "transparent"] as const)
             }
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
@@ -1514,7 +1515,7 @@ function CardColorPicker({
               onResponderMove={(e) => updateHue(e.nativeEvent.locationX)}
             >
               <LinearGradient
-                colors={HUE_SPECTRUM as unknown as string[]}
+                colors={HUE_SPECTRUM}
                 start={{ x: 0, y: 0.5 }}
                 end={{ x: 1, y: 0.5 }}
                 style={[StyleSheet.absoluteFill, { borderRadius: 18 }]}
@@ -1557,6 +1558,7 @@ export function CardForm({
   submitLabel,
   contentHorizontalPadding = 20,
   forcedTheme,
+  topAccessory,
 }: CardFormProps) {
   const insets = useSafeAreaInsets();
   const deviceScheme = useColorScheme();
@@ -1758,6 +1760,8 @@ export function CardForm({
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
+        {topAccessory ? topAccessory : null}
+
         <SelectRow
           label="Card category"
           value={values.category}

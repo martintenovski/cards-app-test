@@ -1,7 +1,9 @@
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import {
+  ActivityIndicator,
+  Alert,
   Dimensions,
   Pressable,
   StyleSheet,
@@ -9,6 +11,7 @@ import {
   View,
   useColorScheme,
 } from "react-native";
+import { Feather } from "@expo/vector-icons";
 import Animated, {
   runOnJS,
   useAnimatedStyle,
@@ -17,6 +20,7 @@ import Animated, {
 } from "react-native-reanimated";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { File } from "expo-file-system";
 
 import { CardForm } from "@/components/CardForm";
 import {
@@ -24,7 +28,11 @@ import {
   formSheetScaffoldStyles,
 } from "@/components/FormSheetScaffold";
 import { useCardStore } from "@/store/useCardStore";
-import { decodeSharedCardPayload } from "@/utils/cardShare";
+import {
+  decodeSharedCardPayload,
+  parseSharedCardPayload,
+  SHARED_CARD_FILE_EXTENSION,
+} from "@/utils/cardShare";
 import { APP_THEME, resolveTheme } from "@/utils/theme";
 import type { CardFormValues, CardPalette } from "@/types/card";
 
@@ -55,8 +63,15 @@ export default function ImportCardScreen() {
     [payload],
   );
   const colors = APP_THEME[resolvedTheme];
+  const [pickedPayload, setPickedPayload] = useState(sharedPayload);
+  const [isPickingFile, setIsPickingFile] = useState(false);
+  const didAutoOpenPicker = useRef(false);
   const translateY = useSharedValue(SHEET_HEIGHT);
   const backdropOpacity = useSharedValue(0);
+
+  useEffect(() => {
+    setPickedPayload(sharedPayload);
+  }, [sharedPayload]);
 
   useEffect(() => {
     translateY.value = withSpring(0, SPRING_OPEN);
@@ -106,6 +121,47 @@ export default function ImportCardScreen() {
     router.replace("/");
   };
 
+  const handlePickSharedCardFile = async () => {
+    try {
+      setIsPickingFile(true);
+      const selectedFile = await File.pickFileAsync();
+      const file = Array.isArray(selectedFile) ? selectedFile[0] : selectedFile;
+      const rawPayload = await file.text();
+      const parsedPayload = parseSharedCardPayload(rawPayload);
+
+      if (!parsedPayload) {
+        Alert.alert(
+          "Invalid shared card",
+          `This file is not a valid Pocket ID card export. Choose a ${SHARED_CARD_FILE_EXTENSION} file and try again.`,
+        );
+        return;
+      }
+
+      setPickedPayload(parsedPayload);
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        /cancel/i.test(error.message)
+      ) {
+        return;
+      }
+
+      Alert.alert(
+        "Could not open shared card",
+        "Pocket ID could not read that file. Try downloading it again from Gmail, Drive, or your Files app.",
+      );
+    } finally {
+      setIsPickingFile(false);
+    }
+  };
+
+  useEffect(() => {
+    if (sharedPayload || pickedPayload || didAutoOpenPicker.current) return;
+
+    didAutoOpenPicker.current = true;
+    handlePickSharedCardFile();
+  }, [pickedPayload, sharedPayload]);
+
   return (
     <>
       <StatusBar style={resolvedTheme === "dark" ? "light" : "dark"} />
@@ -137,40 +193,79 @@ export default function ImportCardScreen() {
                 handleColor={colors.textSoft}
                 onClose={dismissWithAnimation}
               >
-                {sharedPayload ? (
+                {pickedPayload ? (
                   <CardForm
                     onSubmit={handleSubmit}
-                    initialValues={sharedPayload.values}
-                    initialPalette={sharedPayload.palette}
+                    initialValues={pickedPayload.values}
+                    initialPalette={pickedPayload.palette}
                     submitLabel="Add Imported Card"
                   />
                 ) : (
                   <View style={styles.errorState}>
-                    <Text style={[styles.errorTitle, { color: colors.text }]}>
-                      Invalid Card Link
-                    </Text>
-                    <Text
-                      style={[styles.errorBody, { color: colors.textMuted }]}
-                    >
-                      This shared card could not be opened. Ask the sender to
-                      share it again.
-                    </Text>
-                    <Pressable
-                      onPress={dismissWithAnimation}
-                      style={[
-                        styles.errorButton,
-                        { backgroundColor: colors.accent },
-                      ]}
-                    >
-                      <Text
+                    <View style={styles.emptyStateCard}>
+                      <View
                         style={[
-                          styles.errorButtonText,
-                          { color: colors.accentText },
+                          styles.importIcon,
+                          { backgroundColor: colors.surfaceMuted },
                         ]}
                       >
-                        Back To Wallet
+                      {isPickingFile ? (
+                        <ActivityIndicator size="small" color={colors.text} />
+                      ) : (
+                        <Feather
+                          name="download-cloud"
+                          size={24}
+                          color={colors.text}
+                        />
+                      )}
+                      </View>
+                      <Text
+                        style={[styles.errorTitle, { color: colors.text }]}
+                      >
+                        Import A Shared Card
                       </Text>
-                    </Pressable>
+                      <Text
+                        style={[styles.errorBody, { color: colors.textMuted }]}
+                      >
+                        Choose a Pocket ID shared card file from Gmail,
+                        Google Drive, Downloads, or your Files app to prefill
+                        and save that one card here.
+                      </Text>
+                      <Pressable
+                        onPress={handlePickSharedCardFile}
+                        style={[
+                          styles.errorButton,
+                          { backgroundColor: colors.accent },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.errorButtonText,
+                            { color: colors.accentText },
+                          ]}
+                        >
+                          {isPickingFile
+                            ? "Opening Files…"
+                            : "Choose Shared Card File"}
+                        </Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={dismissWithAnimation}
+                        style={[
+                          styles.secondaryButton,
+                          { backgroundColor: colors.surfaceMuted },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.secondaryButtonText,
+                            { color: colors.text },
+                          ]}
+                        >
+                          Back To Wallet
+                        </Text>
+                      </Pressable>
+                    </View>
                   </View>
                 )}
               </FormSheetScaffold>
@@ -195,26 +290,56 @@ const styles = StyleSheet.create({
   errorState: {
     flex: 1,
     justifyContent: "center",
-    gap: 14,
+    alignItems: "center",
+    paddingHorizontal: 8,
+  },
+  emptyStateCard: {
+    width: "100%",
+    maxWidth: 360,
+    alignItems: "center",
+    gap: 16,
+  },
+  importIcon: {
+    width: 54,
+    height: 54,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
   },
   errorTitle: {
     fontFamily: "ReadexPro-Bold",
     fontSize: 28,
+    textAlign: "center",
   },
   errorBody: {
     fontFamily: "ReadexPro-Regular",
     fontSize: 16,
     lineHeight: 24,
+    textAlign: "center",
   },
   errorButton: {
     marginTop: 12,
     height: 55,
+    width: "100%",
     borderRadius: 30,
     alignItems: "center",
     justifyContent: "center",
+    paddingHorizontal: 20,
   },
   errorButtonText: {
     fontFamily: "ReadexPro-Bold",
     fontSize: 18,
+  },
+  secondaryButton: {
+    height: 52,
+    minWidth: 180,
+    borderRadius: 26,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 18,
+  },
+  secondaryButtonText: {
+    fontFamily: "ReadexPro-Bold",
+    fontSize: 16,
   },
 });

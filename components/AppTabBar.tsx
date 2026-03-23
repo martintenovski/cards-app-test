@@ -7,6 +7,7 @@ import {
   Text,
   View,
   useColorScheme,
+  useWindowDimensions,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -20,6 +21,8 @@ type NavActionProps = {
   activeColor: string;
   inactiveColor: string;
   onPress: () => void;
+  showLabel?: boolean;
+  compact?: boolean;
 };
 
 function NavAction({
@@ -29,26 +32,34 @@ function NavAction({
   activeColor,
   inactiveColor,
   onPress,
+  showLabel = true,
+  compact = false,
 }: NavActionProps) {
   return (
     <Pressable
       accessibilityRole="button"
       onPress={onPress}
-      style={styles.sideAction}
+      style={[styles.sideAction, compact && styles.sideActionCompact]}
     >
       <Feather
         name={icon}
         size={20}
         color={active ? activeColor : inactiveColor}
       />
-      <Text
-        style={[
-          styles.sideActionText,
-          { color: active ? activeColor : inactiveColor },
-        ]}
-      >
-        {label}
-      </Text>
+      {showLabel ? (
+        <Text
+          numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={0.85}
+          style={[
+            styles.sideActionText,
+            compact && styles.sideActionTextCompact,
+            { color: active ? activeColor : inactiveColor },
+          ]}
+        >
+          {label}
+        </Text>
+      ) : null}
     </Pressable>
   );
 }
@@ -56,6 +67,7 @@ function NavAction({
 export function AppTabBar({ state, navigation }: BottomTabBarProps) {
   const insets = useSafeAreaInsets();
   const deviceScheme = useColorScheme();
+  const { width } = useWindowDimensions();
   const themePreference = useCardStore((store) => store.themePreference);
   const openAddCardSheet = useCardStore((store) => store.openAddCardSheet);
   const resolvedTheme = resolveTheme(themePreference, deviceScheme);
@@ -63,12 +75,22 @@ export function AppTabBar({ state, navigation }: BottomTabBarProps) {
   const currentRouteName = state.routes[state.index]?.name;
   const activeColor = colors.text;
   const inactiveColor = colors.textSoft;
+  const isCompact = width < 390;
+  const isVeryCompact = width < 360;
+  const showSideLabels = !isVeryCompact;
+  const addButtonLabel = isVeryCompact ? "" : isCompact ? "Add" : "New Card";
+  const bottomClearance =
+    Platform.OS === "android"
+      ? Math.max(insets.bottom + 6, 18)
+      : Math.max(insets.bottom, 10);
 
   const shellStyle = [
     styles.shell,
     {
-      paddingBottom: Math.max(10, Math.min(insets.bottom, 12)),
+      paddingBottom: bottomClearance,
+      paddingHorizontal: isCompact ? 10 : 14,
       backgroundColor: colors.background,
+      marginBottom: 0,
     },
   ];
 
@@ -81,6 +103,9 @@ export function AppTabBar({ state, navigation }: BottomTabBarProps) {
             backgroundColor:
               resolvedTheme === "light" ? colors.surfaceStrong : colors.surface,
             borderColor: colors.border,
+            minHeight: isCompact ? 66 : 70,
+            paddingHorizontal: isCompact ? 8 : 10,
+            gap: isCompact ? 2 : 5,
           },
         ]}
       >
@@ -90,6 +115,8 @@ export function AppTabBar({ state, navigation }: BottomTabBarProps) {
           active={currentRouteName === "index"}
           activeColor={activeColor}
           inactiveColor={inactiveColor}
+          compact={isCompact}
+          showLabel={showSideLabels}
           onPress={() => navigation.navigate("index")}
         />
         <NavAction
@@ -98,6 +125,8 @@ export function AppTabBar({ state, navigation }: BottomTabBarProps) {
           active={currentRouteName === "search"}
           activeColor={activeColor}
           inactiveColor={inactiveColor}
+          compact={isCompact}
+          showLabel={showSideLabels}
           onPress={() => navigation.navigate("search")}
         />
 
@@ -106,17 +135,35 @@ export function AppTabBar({ state, navigation }: BottomTabBarProps) {
           accessibilityLabel="Add new card"
           style={[
             styles.addButton,
+            isCompact && styles.addButtonCompact,
             {
+              width: isVeryCompact ? 58 : isCompact ? 66 : 80,
+              height: isVeryCompact ? 58 : 60,
+              borderRadius: isVeryCompact ? 29 : 30,
               backgroundColor: colors.accent,
               shadowColor: colors.shadow,
             },
           ]}
           onPress={openAddCardSheet}
         >
-          <Feather name="plus" size={22} color={colors.accentText} />
-          <Text style={[styles.addButtonText, { color: colors.accentText }]}>
-            New Card
-          </Text>
+          <Feather
+            name="plus"
+            size={isVeryCompact ? 24 : 22}
+            color={colors.accentText}
+          />
+          {addButtonLabel ? (
+            <Text
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              style={[
+                styles.addButtonText,
+                isCompact && styles.addButtonTextCompact,
+                { color: colors.accentText },
+              ]}
+            >
+              {addButtonLabel}
+            </Text>
+          ) : null}
         </Pressable>
 
         <NavAction
@@ -125,6 +172,8 @@ export function AppTabBar({ state, navigation }: BottomTabBarProps) {
           active={currentRouteName === "profile"}
           activeColor={activeColor}
           inactiveColor={inactiveColor}
+          compact={isCompact}
+          showLabel={showSideLabels}
           onPress={() => navigation.navigate("profile")}
         />
         <NavAction
@@ -133,6 +182,8 @@ export function AppTabBar({ state, navigation }: BottomTabBarProps) {
           active={currentRouteName === "settings"}
           activeColor={activeColor}
           inactiveColor={inactiveColor}
+          compact={isCompact}
+          showLabel={showSideLabels}
           onPress={() => navigation.navigate("settings")}
         />
       </View>
@@ -144,7 +195,7 @@ const styles = StyleSheet.create({
   shell: {
     paddingHorizontal: 14,
     paddingTop: 0,
-    marginBottom: 5,
+    marginBottom: 0,
   },
   inner: {
     minHeight: 70,
@@ -163,10 +214,18 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 5,
+    paddingHorizontal: 2,
+  },
+  sideActionCompact: {
+    minHeight: 46,
+    gap: 3,
   },
   sideActionText: {
     fontFamily: "ReadexPro-Medium",
     fontSize: 10,
+  },
+  sideActionTextCompact: {
+    fontSize: 9,
   },
   addButton: {
     width: 80,
@@ -177,8 +236,14 @@ const styles = StyleSheet.create({
     gap: 2,
     elevation: 4,
   },
+  addButtonCompact: {
+    gap: 1,
+  },
   addButtonText: {
     fontFamily: "ReadexPro-Bold",
     fontSize: 10,
+  },
+  addButtonTextCompact: {
+    fontSize: 9,
   },
 });

@@ -58,7 +58,7 @@ const SIZES = {
   },
 };
 
-type CardSize = "full" | "compact" | "small";
+export type CardSize = "full" | "compact" | "small";
 
 type CardItemProps = {
   card: WalletCard;
@@ -146,7 +146,11 @@ export function CardItem({
           <Text
             style={[
               styles.topValue,
-              { fontSize: s.topValueSize, color: primaryColor },
+              {
+                fontSize: s.topValueSize,
+                lineHeight: Math.round(s.topValueSize * 1.25),
+                color: primaryColor,
+              },
             ]}
             numberOfLines={1}
             adjustsFontSizeToFit
@@ -177,7 +181,11 @@ export function CardItem({
             <Text
               style={[
                 styles.middleValue,
-                { fontSize: s.middleValueSize, color: primaryColor },
+                {
+                  fontSize: s.middleValueSize,
+                  lineHeight: Math.round(s.middleValueSize * 1.25),
+                  color: primaryColor,
+                },
               ]}
               numberOfLines={1}
               adjustsFontSizeToFit
@@ -216,7 +224,11 @@ export function CardItem({
                   <Text
                     style={[
                       styles.metaValue,
-                      { fontSize: s.metaValueSize, color: primaryColor },
+                      {
+                        fontSize: s.metaValueSize,
+                        lineHeight: Math.round(s.metaValueSize * 1.2),
+                        color: primaryColor,
+                      },
                     ]}
                     numberOfLines={1}
                     adjustsFontSizeToFit
@@ -243,7 +255,11 @@ export function CardItem({
                     style={[
                       styles.metaValue,
                       styles.metaValueRight,
-                      { fontSize: s.metaValueSize, color: primaryColor },
+                      {
+                        fontSize: s.metaValueSize,
+                        lineHeight: Math.round(s.metaValueSize * 1.2),
+                        color: primaryColor,
+                      },
                     ]}
                     numberOfLines={1}
                     adjustsFontSizeToFit
@@ -341,7 +357,6 @@ const styles = StyleSheet.create({
   topValue: {
     fontFamily: "ReadexPro-Medium",
     marginTop: 2,
-    lineHeight: 24,
   },
   middleWrap: {
     flex: 1,
@@ -359,7 +374,6 @@ const styles = StyleSheet.create({
   middleValue: {
     fontFamily: "OpenSans-SemiBold",
     marginTop: 2,
-    lineHeight: 26,
   },
   footerRow: {
     flexDirection: "row",
@@ -380,7 +394,6 @@ const styles = StyleSheet.create({
   },
   metaValue: {
     fontFamily: "OpenSans-Bold",
-    lineHeight: 22,
   },
   metaValueRight: {
     textAlign: "right",

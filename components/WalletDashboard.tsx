@@ -37,7 +37,7 @@ type WalletDashboardProps = {
 export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
   const router = useRouter();
   const deviceScheme = useColorScheme();
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const [menuOpen, setMenuOpen] = useState(false);
   const [quickViewCard, setQuickViewCard] = useState<WalletCard | null>(null);
   const cards = useCardStore((state) => state.cards);
@@ -50,6 +50,7 @@ export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
   const resolvedTheme = resolveTheme(themePreference, deviceScheme);
   const colors = APP_THEME[resolvedTheme];
   const isCompact = width < 390;
+  const isShort = height < 760;
 
   // Chevron rotation animation
   const chevronRotate = useSharedValue(0);
@@ -95,46 +96,120 @@ export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
         accessibilityRole="button"
         accessibilityLabel="Open filter menu"
         onPress={() => setMenuOpen(true)}
-        style={styles.header}
+        style={[
+          styles.header,
+          {
+            paddingHorizontal: isCompact ? 20 : 25,
+            paddingTop: isCompact ? 16 : 20,
+          },
+        ]}
       >
         <View>
-          <Text style={[styles.headingMain, { color: colors.text }]}>
+          <Text
+            style={[
+              styles.headingMain,
+              {
+                color: colors.text,
+                fontSize: isCompact ? 31 : 36,
+                lineHeight: isCompact ? 31 : 36,
+              },
+            ]}
+          >
             Manage
           </Text>
-          <Text style={[styles.headingSub, { color: colors.textMuted }]}>
+          <Text
+            numberOfLines={2}
+            style={[
+              styles.headingSub,
+              {
+                color: colors.textMuted,
+                fontSize: isCompact ? 24 : 30,
+                lineHeight: isCompact ? 24 : 30,
+              },
+            ]}
+          >
             {FILTER_LABELS[activeFilter]}
           </Text>
         </View>
-        <View style={styles.chevronBtn}>
+        <View
+          style={[
+            styles.chevronBtn,
+            {
+              width: isCompact ? 48 : 55,
+              height: isCompact ? 48 : 55,
+              marginTop: isCompact ? 2 : 8,
+            },
+          ]}
+        >
           <Animated.View style={chevronStyle}>
-            <Feather name="chevron-down" size={24} color={colors.text} />
+            <Feather
+              name="chevron-down"
+              size={isCompact ? 22 : 24}
+              color={colors.text}
+            />
           </Animated.View>
         </View>
       </Pressable>
 
       {/* ── Cards area ─────────────────────────────────────── */}
-      <View style={styles.cardsArea}>
+      <View
+        style={[
+          styles.cardsArea,
+          { marginTop: isCompact ? 14 : 20, marginBottom: isCompact ? 16 : 20 },
+        ]}
+      >
         {cards.length === 0 ? (
           <Pressable
             style={[
               styles.mockCard,
               {
+                marginHorizontal: isCompact ? 20 : 25,
+                height: isCompact ? 212 : 252,
+                borderRadius: isCompact ? 24 : 30,
                 borderColor: colors.border,
                 backgroundColor: colors.surface,
               },
             ]}
             onPress={() => router.push("/add-card")}
           >
-            <Feather name="credit-card" size={44} color={colors.textSoft} />
-            <Text style={[styles.mockCardText, { color: colors.textMuted }]}>
+            <Feather
+              name="credit-card"
+              size={isCompact ? 38 : 44}
+              color={colors.textSoft}
+            />
+            <Text
+              style={[
+                styles.mockCardText,
+                { color: colors.textMuted, fontSize: isCompact ? 17 : 18 },
+              ]}
+            >
               Add your first card
             </Text>
-            <Text style={[styles.mockCardSub, { color: colors.textSoft }]}>
+            <Text
+              style={[
+                styles.mockCardSub,
+                {
+                  color: colors.textSoft,
+                  fontSize: isCompact ? 12 : 13,
+                },
+              ]}
+            >
               Tap here to get started
             </Text>
           </Pressable>
         ) : filteredCards.length === 0 ? (
-          <View style={[styles.emptyBox, { backgroundColor: colors.surface }]}>
+          <View
+            style={[
+              styles.emptyBox,
+              {
+                backgroundColor: colors.surface,
+                marginHorizontal: isCompact ? 20 : 25,
+                marginTop: isShort ? 24 : 40,
+                borderRadius: isCompact ? 24 : 30,
+                padding: isCompact ? 20 : 25,
+              },
+            ]}
+          >
             <Text style={[styles.emptyTitle, { color: colors.text }]}>
               No cards here
             </Text>

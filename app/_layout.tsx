@@ -35,6 +35,9 @@ SplashScreen.preventAutoHideAsync();
 
 LogBox.ignoreLogs([
   "Sending `onAnimatedValueUpdate` with no listeners registered.",
+  'Attempted to import the module "C:\\Users\\PowerCube\\copilot-sonnet\\cards-app\\node_modules\\@noble\\ciphers\\chacha"',
+  'Attempted to import the module "C:\\Users\\PowerCube\\copilot-sonnet\\cards-app\\node_modules\\@noble\\ciphers\\utils"',
+  'Route "./cloud-passphrase.tsx" is missing the required default export.',
 ]);
 
 export default function RootLayout() {
@@ -119,6 +122,13 @@ export default function RootLayout() {
               />
               <Stack.Screen
                 name="import-card"
+                options={{
+                  headerShown: false,
+                  animation: "slide_from_right",
+                }}
+              />
+              <Stack.Screen
+                name="cloud-passphrase"
                 options={{
                   headerShown: false,
                   animation: "slide_from_right",

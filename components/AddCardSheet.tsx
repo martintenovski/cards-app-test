@@ -1,5 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
+import { useRouter } from "expo-router";
 import {
   Dimensions,
   Modal,
@@ -8,6 +9,7 @@ import {
   Text,
   View,
   useColorScheme,
+  useWindowDimensions,
 } from "react-native";
 import Animated, {
   Easing as REasing,
@@ -23,8 +25,6 @@ import { useCardStore } from "@/store/useCardStore";
 import type { CardFormValues, CardPalette } from "@/types/card";
 import { APP_THEME, resolveTheme } from "@/utils/theme";
 
-const { height } = Dimensions.get("window");
-const SHEET_HEIGHT = height * 0.85;
 const CLOSE_THRESHOLD = 80;
 
 const OPEN_CFG = { duration: 260, easing: REasing.out(REasing.cubic) } as const;
@@ -36,16 +36,26 @@ type AddCardSheetProps = {
 };
 
 export function AddCardSheet({ isOpen, onClose }: AddCardSheetProps) {
+  const router = useRouter();
   const addCard = useCardStore((state) => state.addCard);
   const themePreference = useCardStore((state) => state.themePreference);
   const deviceScheme = useColorScheme();
+  const { width, height } = useWindowDimensions();
   const resolvedTheme = resolveTheme(themePreference, deviceScheme);
   const colors = APP_THEME[resolvedTheme];
+  const isCompact = width < 390 || height < 760;
+  const sheetHeight = height * (isCompact ? 0.93 : 0.85);
   const [formKey, setFormKey] = useState(0);
   const [modalVisible, setModalVisible] = useState(false);
 
-  const translateY = useSharedValue(SHEET_HEIGHT);
+  const translateY = useSharedValue(sheetHeight);
   const backdropOpacity = useSharedValue(0);
+
+  useEffect(() => {
+    if (!isOpen) {
+      translateY.value = sheetHeight;
+    }
+  }, [isOpen, sheetHeight, translateY]);
 
   useEffect(() => {
     if (isOpen) {
@@ -56,7 +66,7 @@ export function AddCardSheet({ isOpen, onClose }: AddCardSheetProps) {
         easing: REasing.out(REasing.quad),
       });
     } else {
-      translateY.value = withTiming(SHEET_HEIGHT, CLOSE_CFG);
+      translateY.value = withTiming(sheetHeight, CLOSE_CFG);
       backdropOpacity.value = withTiming(0, {
         duration: 180,
         easing: REasing.in(REasing.quad),
@@ -64,7 +74,7 @@ export function AddCardSheet({ isOpen, onClose }: AddCardSheetProps) {
       const timer = setTimeout(() => setModalVisible(false), 210);
       return () => clearTimeout(timer);
     }
-  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isOpen, sheetHeight]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const dragGesture = Gesture.Pan()
     .onUpdate((e) => {
@@ -72,13 +82,13 @@ export function AddCardSheet({ isOpen, onClose }: AddCardSheetProps) {
         translateY.value = e.translationY;
         backdropOpacity.value = Math.max(
           0,
-          0.55 - (e.translationY / SHEET_HEIGHT) * 0.55,
+          0.55 - (e.translationY / sheetHeight) * 0.55,
         );
       }
     })
     .onEnd((e) => {
       if (e.translationY > CLOSE_THRESHOLD || e.velocityY > 600) {
-        translateY.value = withTiming(SHEET_HEIGHT, CLOSE_CFG);
+        translateY.value = withTiming(sheetHeight, CLOSE_CFG);
         backdropOpacity.value = withTiming(0, { duration: 180 });
         runOnJS(onClose)();
       } else {
@@ -101,6 +111,13 @@ export function AddCardSheet({ isOpen, onClose }: AddCardSheetProps) {
     onClose();
   };
 
+  const handleImportSharedCard = () => {
+    onClose();
+    requestAnimationFrame(() => {
+      router.push("/import-card");
+    });
+  };
+
   return (
     <Modal
       transparent
@@ -118,7 +135,16 @@ export function AddCardSheet({ isOpen, onClose }: AddCardSheetProps) {
 
       {/* Sheet panel */}
       <Animated.View
-        style={[styles.sheet, sheetStyle, { backgroundColor: colors.surface }]}
+        style={[
+          styles.sheet,
+          sheetStyle,
+          {
+            height: sheetHeight,
+            borderTopLeftRadius: isCompact ? 20 : 24,
+            borderTopRightRadius: isCompact ? 20 : 24,
+            backgroundColor: colors.surface,
+          },
+        ]}
       >
         {/* Drag handle */}
         <GestureDetector gesture={dragGesture}>
@@ -130,8 +156,18 @@ export function AddCardSheet({ isOpen, onClose }: AddCardSheetProps) {
         </GestureDetector>
 
         {/* Header */}
-        <View style={styles.header}>
-          <Text style={[styles.title, { color: colors.text }]}>
+        <View
+          style={[
+            styles.header,
+            { paddingHorizontal: isCompact ? 18 : 24, paddingBottom: isCompact ? 10 : 12 },
+          ]}
+        >
+          <Text
+            style={[
+              styles.title,
+              { color: colors.text, fontSize: isCompact ? 20 : 22 },
+            ]}
+          >
             Add New Card
           </Text>
           <Pressable onPress={onClose} hitSlop={12} style={styles.closeBtn}>
@@ -140,7 +176,50 @@ export function AddCardSheet({ isOpen, onClose }: AddCardSheetProps) {
         </View>
 
         {/* Form */}
-        <CardForm key={formKey} onSubmit={handleSubmit} />
+        <CardForm
+          key={formKey}
+          onSubmit={handleSubmit}
+          contentHorizontalPadding={isCompact ? 16 : 20}
+          topAccessory={
+            <Pressable
+              onPress={handleImportSharedCard}
+              style={[
+                styles.importCard,
+                {
+                  backgroundColor: colors.surfaceMuted,
+                  borderColor: colors.border,
+                },
+              ]}
+            >
+              <View
+                style={[
+                  styles.importIcon,
+                  { backgroundColor: colors.accent },
+                ]}
+              >
+                <Feather
+                  name="download-cloud"
+                  size={18}
+                  color={colors.accentText}
+                />
+              </View>
+              <View style={styles.importTextWrap}>
+                <Text style={[styles.importTitle, { color: colors.text }]}>
+                  Import shared card
+                </Text>
+                <Text style={[styles.importBody, { color: colors.textMuted }]}>
+                  Have a Pocket ID card file? Bring it in here instead of
+                  typing everything manually.
+                </Text>
+              </View>
+              <Feather
+                name="chevron-right"
+                size={18}
+                color={colors.textSoft}
+              />
+            </Pressable>
+          }
+        />
       </Animated.View>
     </Modal>
   );
@@ -155,7 +234,6 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: SHEET_HEIGHT,
     backgroundColor: "#1D1D1D",
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
@@ -189,5 +267,35 @@ const styles = StyleSheet.create({
     height: 36,
     alignItems: "center",
     justifyContent: "center",
+  },
+  importCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    borderWidth: 1,
+    borderRadius: 26,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    marginBottom: 18,
+  },
+  importIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  importTextWrap: {
+    flex: 1,
+    gap: 2,
+  },
+  importTitle: {
+    fontFamily: "ReadexPro-Bold",
+    fontSize: 16,
+  },
+  importBody: {
+    fontFamily: "ReadexPro-Regular",
+    fontSize: 12,
+    lineHeight: 18,
   },
 });

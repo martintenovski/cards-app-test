@@ -2,6 +2,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createClient } from "@supabase/supabase-js";
 
 import type { WalletCard } from "@/types/card";
+import type { EncryptedWalletCardsPayload } from "@/utils/cloudVault";
 
 const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
@@ -23,7 +24,7 @@ export type WalletSnapshotRow = {
   user_id: string;
   display_name: string | null;
   email: string | null;
-  cards: WalletCard[];
+  cards: WalletCard[] | EncryptedWalletCardsPayload;
   updated_at: string;
 };
 
@@ -49,6 +50,19 @@ export async function upsertWalletSnapshot(snapshot: WalletSnapshotRow) {
   const { error } = await supabase.from("wallet_snapshots").upsert(snapshot, {
     onConflict: "user_id",
   });
+
+  if (error) {
+    throw error;
+  }
+}
+
+export async function deleteWalletSnapshot(userId: string) {
+  if (!supabase) return;
+
+  const { error } = await supabase
+    .from("wallet_snapshots")
+    .delete()
+    .eq("user_id", userId);
 
   if (error) {
     throw error;

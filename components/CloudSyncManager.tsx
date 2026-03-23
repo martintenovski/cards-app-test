@@ -3,7 +3,16 @@ import { useEffect, useRef } from "react";
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useCardStore } from "@/store/useCardStore";
+import { useCloudVaultStore } from "@/store/useCloudVaultStore";
+import { hasStoredSyncPassphrase } from "@/utils/cloudVault";
 import { pushWalletSnapshot, reconcileWalletSnapshot } from "@/utils/authSync";
+
+function isPassphraseMissingError(error: unknown) {
+  return (
+    error instanceof Error &&
+    /sync passphrase|cloud sync is locked/i.test(error.message)
+  );
+}
 
 export function CloudSyncManager() {
   const user = useAuthStore((state) => state.user);
@@ -12,13 +21,14 @@ export function CloudSyncManager() {
   const hasHydrated = useCardStore((state) => state.hasHydrated);
   const lastModifiedAt = useCardStore((state) => state.lastModifiedAt);
   const replaceCards = useCardStore((state) => state.replaceCards);
+  const cloudVaultChangeToken = useCloudVaultStore((state) => state.changeToken);
   const hasReconciled = useRef(false);
   const lastPushedAt = useRef<string | null>(null);
 
   useEffect(() => {
     hasReconciled.current = false;
     lastPushedAt.current = null;
-  }, [user?.id]);
+  }, [cloudVaultChangeToken, user?.id]);
 
   useEffect(() => {
     if (!isSupabaseConfigured || !authReady || !hasHydrated || !user) {
@@ -31,6 +41,13 @@ export function CloudSyncManager() {
 
     async function reconcile() {
       try {
+        const hasPassphrase = await hasStoredSyncPassphrase(currentUser.id);
+
+        if (!hasPassphrase) {
+          hasReconciled.current = true;
+          return;
+        }
+
         const result = await reconcileWalletSnapshot({
           user: currentUser,
           cards,
@@ -42,6 +59,15 @@ export function CloudSyncManager() {
         if (result.action === "pull" && result.remote) {
           replaceCards(result.remote.cards, result.remote.updated_at);
           lastPushedAt.current = result.remote.updated_at;
+
+          if (result.remote.storage === "legacy-plain") {
+            await pushWalletSnapshot({
+              user: currentUser,
+              cards: result.remote.cards,
+              lastModifiedAt: result.remote.updated_at,
+            });
+            lastPushedAt.current = result.remote.updated_at;
+          }
         } else {
           await pushWalletSnapshot({
             user: currentUser,
@@ -52,7 +78,10 @@ export function CloudSyncManager() {
         }
 
         hasReconciled.current = true;
-      } catch {
+      } catch (error) {
+        if (!isPassphraseMissingError(error)) {
+          console.warn("Cloud sync reconcile failed", error);
+        }
         hasReconciled.current = true;
       }
     }
@@ -81,19 +110,33 @@ export function CloudSyncManager() {
     const currentUser = user;
 
     const timer = setTimeout(() => {
-      void pushWalletSnapshot({
-        user: currentUser,
-        cards,
-        lastModifiedAt,
-      })
-        .then(() => {
-          lastPushedAt.current = lastModifiedAt;
+      void hasStoredSyncPassphrase(currentUser.id)
+        .then((hasPassphrase) => {
+          if (!hasPassphrase) {
+            return;
+          }
+
+          return pushWalletSnapshot({
+            user: currentUser,
+            cards,
+            lastModifiedAt,
+          }).then(() => {
+            lastPushedAt.current = lastModifiedAt;
+          });
         })
-        .catch(() => undefined);
+        .then(() => {
+          return undefined;
+        })
+        .catch((error) => {
+          if (!isPassphraseMissingError(error)) {
+            console.warn("Cloud sync push failed", error);
+          }
+          return undefined;
+        });
     }, 800);
 
     return () => clearTimeout(timer);
-  }, [authReady, cards, hasHydrated, lastModifiedAt, user]);
+  }, [authReady, cards, cloudVaultChangeToken, hasHydrated, lastModifiedAt, user]);
 
   return null;
 }

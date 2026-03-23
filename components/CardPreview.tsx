@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { StyleSheet } from 'react-native';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { StyleSheet, useWindowDimensions } from 'react-native';
 import Animated, {
   runOnJS,
   useAnimatedStyle,
@@ -16,10 +16,17 @@ type CardPreviewProps = {
 };
 
 export function CardPreview({ card, previewSide = 'front' }: CardPreviewProps) {
+  const { width } = useWindowDimensions();
   const targetSide = previewSide;
   const [displayedSide, setDisplayedSide] = useState<'front' | 'back'>(targetSide);
   const prevTarget = useRef(targetSide);
   const scaleX = useSharedValue(1);
+  const previewSize = useMemo<"full" | "compact" | "small">(() => {
+    if (width < 360) return 'small';
+    if (width < 430) return 'compact';
+    return 'full';
+  }, [width]);
+  const maxWidth = previewSize === 'small' ? 302 : previewSize === 'compact' ? 335 : 380;
 
   useEffect(() => {
     if (prevTarget.current === targetSide) return;
@@ -39,10 +46,10 @@ export function CardPreview({ card, previewSide = 'front' }: CardPreviewProps) {
   }));
 
   return (
-    <Animated.View style={[styles.container, animStyle]}>
+    <Animated.View style={[styles.container, { maxWidth }, animStyle]}>
       <CardItem
         card={card}
-        size="full"
+        size={previewSize}
         side={displayedSide}
       />
     </Animated.View>
@@ -53,7 +60,6 @@ const styles = StyleSheet.create({
   container: {
     alignSelf: 'center',
     width: '100%',
-    maxWidth: 380,
   },
 });
 

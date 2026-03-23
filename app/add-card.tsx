@@ -2,10 +2,12 @@ import { useEffect } from "react";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { Stack, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import { Feather } from "@expo/vector-icons";
 import {
   Dimensions,
   Pressable,
   StyleSheet,
+  Text,
   View,
   useColorScheme,
 } from "react-native";
@@ -99,6 +101,10 @@ export default function AddCardScreen() {
     router.back();
   };
 
+  const handleImportSharedCard = () => {
+    router.replace("/import-card");
+  };
+
   return (
     <>
       <StatusBar style={resolvedTheme === "dark" ? "light" : "dark"} />
@@ -130,7 +136,49 @@ export default function AddCardScreen() {
                 handleColor={colors.textSoft}
                 onClose={dismissWithAnimation}
               >
-                <CardForm onSubmit={handleSubmit} />
+                <CardForm
+                  onSubmit={handleSubmit}
+                  topAccessory={
+                    <Pressable
+                      onPress={handleImportSharedCard}
+                      style={[
+                        styles.importCard,
+                        {
+                          backgroundColor: colors.surfaceMuted,
+                          borderColor: colors.border,
+                        },
+                      ]}
+                    >
+                      <View
+                        style={[
+                          styles.importIcon,
+                          { backgroundColor: colors.accent },
+                        ]}
+                      >
+                        <Feather
+                          name="download-cloud"
+                          size={18}
+                          color={colors.accentText}
+                        />
+                      </View>
+                      <View style={styles.importTextWrap}>
+                        <Text style={[styles.importTitle, { color: colors.text }]}>
+                          Import shared card
+                        </Text>
+                        <Text
+                          style={[styles.importBody, { color: colors.textMuted }]}
+                        >
+                          Have a Pocket ID card file? Bring it in here instead of typing everything manually.
+                        </Text>
+                      </View>
+                      <Feather
+                        name="chevron-right"
+                        size={18}
+                        color={colors.textSoft}
+                      />
+                    </Pressable>
+                  }
+                />
               </FormSheetScaffold>
             </View>
           </GestureDetector>
@@ -149,5 +197,35 @@ const styles = StyleSheet.create({
   },
   sheetContent: {
     flex: 1,
+  },
+  importCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 14,
+    borderWidth: 1,
+    borderRadius: 26,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    marginBottom: 18,
+  },
+  importIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  importTextWrap: {
+    flex: 1,
+    gap: 2,
+  },
+  importTitle: {
+    fontFamily: "ReadexPro-Bold",
+    fontSize: 16,
+  },
+  importBody: {
+    fontFamily: "ReadexPro-Regular",
+    fontSize: 12,
+    lineHeight: 18,
   },
 });

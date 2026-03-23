@@ -3,6 +3,7 @@ import {
   ActivityIndicator,
   Alert,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   Share,
@@ -15,6 +16,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
+import * as FileSystem from "expo-file-system/legacy";
 import * as Haptics from "expo-haptics";
 import Animated, {
   interpolate,
@@ -29,10 +31,11 @@ import { EditCardSheet } from "@/components/EditCardSheet";
 import { ExpiryBadge } from "@/components/ExpiryBadge";
 import { useCardStore } from "@/store/useCardStore";
 import {
+  createSharedCardFileName,
   createSharedCardPayload,
-  encodeSharedCardPayload,
+  SHARED_CARD_FILE_MIME_TYPE,
+  stringifySharedCardPayload,
 } from "@/utils/cardShare";
-import { createAppUrl } from "@/utils/deepLink";
 import {
   getCategoryLabel,
   supportsCardBack,
@@ -195,30 +198,128 @@ export default function CardDetailScreen() {
     }
   }
 
-  async function shareAsPocketIdLink() {
-    if (isSharing) return;
+  async function createPocketIdShareFile(fileName: string, payload: string) {
+    const writableDirectory =
+      FileSystem.cacheDirectory ?? FileSystem.documentDirectory;
 
+    if (!writableDirectory) {
+      throw new Error("No writable app directory is available.");
+    }
+
+    const exportFileUri = `${writableDirectory}${fileName}`;
+    const existingFile = await FileSystem.getInfoAsync(exportFileUri);
+
+    if (existingFile.exists) {
+      await FileSystem.deleteAsync(exportFileUri, { idempotent: true });
+    }
+
+    await FileSystem.writeAsStringAsync(exportFileUri, payload, {
+      encoding: FileSystem.EncodingType.UTF8,
+    });
+
+    return exportFileUri;
+  }
+
+  async function sharePocketIdFileThroughApps(fileName: string, payload: string) {
     try {
       setIsSharing(true);
-      const payload = encodeSharedCardPayload(
-        createSharedCardPayload(currentCard),
-      );
-      const importUrl = createAppUrl("import-card", { payload });
+      const exportFileUri = await createPocketIdShareFile(fileName, payload);
+      const shareUri =
+        Platform.OS === "android"
+          ? await FileSystem.getContentUriAsync(exportFileUri).catch(
+              () => exportFileUri,
+            )
+          : exportFileUri;
 
       await Share.share({
-        title: `Import ${currentCard.title} in Pocket ID`,
-        message: [
-          "Open this in Pocket ID to prefill the card and add it to your wallet:",
-          importUrl,
-        ].join("\n\n"),
-        url: importUrl,
+        title: `Send ${currentCard.title} as a Pocket ID card`,
+        url: shareUri,
       });
+    } catch (error) {
+      const details = error instanceof Error ? `\n\n${error.message}` : "";
+      Alert.alert(
+        "Share unavailable",
+        `We could not open the app share sheet right now. Please try again.${details}`,
+      );
     } finally {
       setIsSharing(false);
     }
   }
 
-  async function handleShareOption(option: "image" | "text" | "pocket-id") {
+  async function shareAsPocketIdFile() {
+    if (isSharing) return;
+
+    try {
+      setIsSharing(true);
+      const fileName = createSharedCardFileName(currentCard);
+      const payload = stringifySharedCardPayload(
+        createSharedCardPayload(currentCard),
+      );
+
+      if (Platform.OS === "android") {
+        const permissions =
+          await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
+
+        if (!permissions.granted || !permissions.directoryUri) {
+          return;
+        }
+
+        const exportedFileUri =
+          await FileSystem.StorageAccessFramework.createFileAsync(
+            permissions.directoryUri,
+            fileName,
+            SHARED_CARD_FILE_MIME_TYPE,
+          );
+
+        await FileSystem.StorageAccessFramework.writeAsStringAsync(
+          exportedFileUri,
+          payload,
+          { encoding: FileSystem.EncodingType.UTF8 },
+        );
+
+        Alert.alert(
+          "Pocket ID file saved",
+          `Saved ${fileName} to the folder you selected. If Viber, Messenger, WhatsApp, Gmail, Drive, or similar apps are installed, they will show up automatically when you tap Share now.`,
+          [
+            { text: "Done", style: "cancel" },
+            {
+              text: "Share now",
+              onPress: () => {
+                void sharePocketIdFileThroughApps(fileName, payload);
+              },
+            },
+          ],
+        );
+        return;
+      }
+
+      await createPocketIdShareFile(fileName, payload);
+
+      Alert.alert(
+        "Pocket ID file ready",
+        `Prepared ${fileName}. If Messages, Mail, WhatsApp, Messenger, Viber, Drive, or similar apps are installed, they will show up automatically when you tap Share now.`,
+        [
+          { text: "Done", style: "cancel" },
+          {
+            text: "Share now",
+            onPress: () => {
+              void sharePocketIdFileThroughApps(fileName, payload);
+            },
+          },
+        ],
+      );
+    } catch (error) {
+      const details = error instanceof Error ? `\n\n${error.message}` : "";
+      Alert.alert(
+        "Share unavailable",
+        `We could not export this Pocket ID card file right now. Please try again.${details}`,
+      );
+    } finally {
+      setIsSharing(false);
+    }
+  }
+
+  async function handleShareOption(option: "image" | "text" | "pocket-id-file") {
     setShareSheetOpen(false);
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
@@ -232,7 +333,7 @@ export default function CardDetailScreen() {
       return;
     }
 
-    await shareAsPocketIdLink();
+    await shareAsPocketIdFile();
   }
 
   const fields = getCardFields(card);
@@ -483,17 +584,18 @@ export default function CardDetailScreen() {
             </Pressable>
 
             <Pressable
-              onPress={() => handleShareOption("pocket-id")}
+              onPress={() => handleShareOption("pocket-id-file")}
               style={[styles.shareOption, { borderColor: colors.border }]}
             >
               <View>
                 <Text style={[styles.shareOptionTitle, { color: colors.text }]}>
-                  Pocket ID Link
+                  Pocket ID File
                 </Text>
                 <Text
                   style={[styles.shareOptionBody, { color: colors.textMuted }]}
                 >
-                  Open Pocket ID and prefill this card before saving it.
+                  Send one card through Gmail, Google Drive, or Files and import
+                  it on another device.
                 </Text>
               </View>
               <Feather
@@ -854,7 +956,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
-    marginTop: 32,
+    marginTop: 22,
     marginHorizontal: 20,
     paddingVertical: 16,
     borderRadius: 16,

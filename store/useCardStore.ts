@@ -93,7 +93,7 @@ export const useCardStore = create<CardStoreState>()(
   persist(
     (set) => ({
       cards: initialSeedCards,
-      viewMode: "stack",
+      viewMode: "list",
       homeFilter: "everything",
       themePreference: "system",
       appLockEnabled: true,
@@ -190,7 +190,7 @@ export const useCardStore = create<CardStoreState>()(
       resetCards: () =>
         set({
           cards: initialSeedCards,
-          viewMode: "stack",
+          viewMode: "list",
           homeFilter: "everything",
           themePreference: "system",
           appLockEnabled: true,
