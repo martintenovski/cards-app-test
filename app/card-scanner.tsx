@@ -1,7 +1,8 @@
-import { Feather, MaterialCommunityIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { useRef, useState } from 'react';
-import type { ComponentType } from 'react';
+import { Feather, MaterialCommunityIcons } from "@expo/vector-icons";
+import { manipulateAsync, SaveFormat } from "expo-image-manipulator";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useRef, useState } from "react";
+import type { ComponentType } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -10,77 +11,120 @@ import {
   StyleSheet,
   Text,
   View,
-} from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+} from "react-native";
+import {
+  SafeAreaView,
+  useSafeAreaInsets,
+} from "react-native-safe-area-context";
 
-import { scanImageWithOCR } from '@/utils/ocrScanner';
-import type { ScannedCardData } from '@/utils/ocrScanner';
+import { useCardStore } from "@/store/useCardStore";
+import {
+  FIELD_SCAN_CONFIG,
+  getFieldForScanTarget,
+  scanImageForField,
+  type FieldScanTarget,
+} from "@/utils/selectiveScanner";
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const VIEWFINDER_WIDTH = SCREEN_WIDTH - 48;
 const VIEWFINDER_HEIGHT = VIEWFINDER_WIDTH * 0.63;
 const CORNER_SIZE = 22;
 const CORNER_THICKNESS = 3;
+const SCAN_TARGET_WIDTH = 1600;
 
 type CameraPermissionResponse = {
   granted?: boolean;
 };
 
+function isFieldScanTarget(
+  value: string | undefined,
+): value is FieldScanTarget {
+  return Boolean(value && value in FIELD_SCAN_CONFIG);
+}
+
 export default function CardScannerScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
+  const params = useLocalSearchParams<{
+    requestId?: string;
+    target?: string;
+  }>();
+  const setLastFieldScanResult = useCardStore(
+    (state) => state.setLastFieldScanResult,
+  );
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [cameraModuleErrorMessage, setCameraModuleErrorMessage] = useState('');
-  const [CameraViewComponent, setCameraViewComponent] = useState<ComponentType<any> | null>(null);
+  const [cameraModuleErrorMessage, setCameraModuleErrorMessage] = useState("");
+  const [CameraViewComponent, setCameraViewComponent] =
+    useState<ComponentType<any> | null>(null);
   const cameraRef = useRef<any>(null);
+
+  const target = isFieldScanTarget(params.target)
+    ? params.target
+    : "bank_card_number";
+  const requestId =
+    typeof params.requestId === "string" ? params.requestId : "";
+  const config = FIELD_SCAN_CONFIG[target];
 
   const handleClose = () => {
     if (isCameraActive) {
       setIsCameraActive(false);
       return;
     }
-    if (router.canGoBack()) router.back();
-    else router.dismissTo('/');
+
+    if (router.canGoBack()) {
+      router.back();
+      return;
+    }
+
+    router.dismissTo("/");
   };
 
   const loadCameraModule = async (): Promise<
-    { status: 'granted' } | { status: 'denied' } | { status: 'unavailable'; message: string }
+    | { status: "granted" }
+    | { status: "denied" }
+    | { status: "unavailable"; message: string }
   > => {
     try {
-      const expoCamera = await import('expo-camera');
+      const expoCamera = await import("expo-camera");
 
       setCameraViewComponent(() => expoCamera.CameraView);
 
-      const currentPermission = await expoCamera.Camera.getCameraPermissionsAsync();
+      const currentPermission: CameraPermissionResponse =
+        await expoCamera.Camera.getCameraPermissionsAsync();
       if (currentPermission.granted) {
-        return { status: 'granted' };
+        return { status: "granted" };
       }
 
-      const requestedPermission = await expoCamera.Camera.requestCameraPermissionsAsync();
-      return requestedPermission.granted ? { status: 'granted' } : { status: 'denied' };
+      const requestedPermission: CameraPermissionResponse =
+        await expoCamera.Camera.requestCameraPermissionsAsync();
+      return requestedPermission.granted
+        ? { status: "granted" }
+        : { status: "denied" };
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : 'Expo camera native module is not available.';
+        error instanceof Error
+          ? error.message
+          : "Expo camera native module is not available.";
       setCameraModuleErrorMessage(message);
-      return { status: 'unavailable', message };
+      return { status: "unavailable", message };
     }
   };
 
   const handleStartScanner = async () => {
     const result = await loadCameraModule();
 
-    if (result.status !== 'granted') {
-      if (result.status === 'unavailable') {
+    if (result.status !== "granted") {
+      if (result.status === "unavailable") {
         Alert.alert(
-          'Camera module unavailable',
-          'This Android build does not include expo-camera yet. Rebuild the Android app and reopen it in the simulator.'
-            + `\n\nDetails: ${result.message}`
+          "Camera module unavailable",
+          "This build does not include expo-camera yet. Rebuild the native app and reopen it." +
+            `\n\nDetails: ${result.message}`,
         );
       } else {
         Alert.alert(
-          'Camera access required',
-          'Please enable camera access in Settings to scan cards and documents.'
+          "Camera access required",
+          "Please enable camera access in Settings to scan this field.",
         );
       }
       return;
@@ -90,49 +134,78 @@ export default function CardScannerScreen() {
   };
 
   const handleCapture = async () => {
-    if (!cameraRef.current || isProcessing) return;
+    if (!cameraRef.current || isProcessing) {
+      return;
+    }
+
     setIsProcessing(true);
     try {
-      const photo = await cameraRef.current.takePictureAsync({ quality: 0.9 });
-      if (!photo?.uri) throw new Error('Could not capture photo.');
-      const result = await scanImageWithOCR(photo.uri, 'auto');
-      router.push({
-        pathname: '/card-scan-confirm',
-        params: { payload: JSON.stringify(result) },
+      const photo = await cameraRef.current.takePictureAsync({ quality: 1 });
+      if (!photo?.uri) {
+        throw new Error("Could not capture photo.");
+      }
+
+      const preparedImageUri = await prepareCapturedImageForScan(photo);
+      const value = await scanImageForField(preparedImageUri, target);
+
+      if (!requestId) {
+        throw new Error(
+          "Missing scan request context. Reopen the scanner from the form and try again.",
+        );
+      }
+
+      setLastFieldScanResult({
+        requestId,
+        field: getFieldForScanTarget(target),
+        target,
+        value,
       });
+      router.back();
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : 'Something went wrong.';
-      Alert.alert('Scan error', message);
+      const message =
+        error instanceof Error ? error.message : "Something went wrong.";
+      Alert.alert("Scan error", message);
     } finally {
       setIsProcessing(false);
     }
   };
 
-  // ── Camera capture stage ──────────────────────────────────────────────────
   if (isCameraActive) {
     if (!CameraViewComponent) {
       return (
         <SafeAreaView style={styles.root}>
           <View style={styles.header}>
-            <Pressable onPress={handleClose} style={styles.headerButton} hitSlop={12}>
+            <Pressable
+              onPress={handleClose}
+              style={styles.headerButton}
+              hitSlop={12}
+            >
               <Feather name="arrow-left" size={24} color="#FFFFFF" />
             </Pressable>
-            <Text style={styles.headerTitle}>Scan Cards</Text>
+            <Text style={styles.headerTitle}>{config.title}</Text>
             <View style={styles.headerButton} />
           </View>
 
           <View style={styles.heroWrap}>
             <View style={styles.heroCard}>
               <View style={styles.heroIconWrap}>
-                <MaterialCommunityIcons name="camera-off-outline" size={42} color="#FFFFFF" />
+                <MaterialCommunityIcons
+                  name="camera-off-outline"
+                  size={42}
+                  color="#FFFFFF"
+                />
               </View>
               <Text style={styles.heroTitle}>Camera needs a rebuild</Text>
               <Text style={styles.heroSubtitle}>
-                This simulator build was launched without the native camera module, so the scanner can’t open yet.
+                This build was launched without the native camera module, so
+                field scanning cannot open yet.
               </Text>
               <Text style={styles.helperText}>
-                Rebuild Android with the current native dependencies, then reopen the app in the emulator.
-                {cameraModuleErrorMessage ? `\n\n${cameraModuleErrorMessage}` : ''}
+                Rebuild the native app with the current camera and ML Kit
+                dependencies, then reopen it.
+                {cameraModuleErrorMessage
+                  ? `\n\n${cameraModuleErrorMessage}`
+                  : ""}
               </Text>
             </View>
           </View>
@@ -141,105 +214,90 @@ export default function CardScannerScreen() {
     }
 
     return (
-      <View style={styles.cameraRoot}>
-        <CameraViewComponent ref={cameraRef} style={StyleSheet.absoluteFill} facing="back" />
-
-        {/* Dimmed overlay with transparent viewfinder slot */}
-        <View style={[StyleSheet.absoluteFill, styles.overlayColumn]}>
-          {/* top dark band */}
-          <View style={[styles.darkBand, styles.overlayTop]} />
-          {/* middle row */}
-          <View style={styles.overlayMiddle}>
-            <View style={styles.darkStrip} />
-            <View style={styles.viewfinder}>
-              <View style={[styles.corner, styles.cornerTL]} />
-              <View style={[styles.corner, styles.cornerTR]} />
-              <View style={[styles.corner, styles.cornerBL]} />
-              <View style={[styles.corner, styles.cornerBR]} />
-            </View>
-            <View style={styles.darkStrip} />
-          </View>
-          {/* bottom dark band — contains instruction text */}
-          <View style={[styles.darkBand, styles.overlayBottom]}>
-            <Text style={styles.instructionText}>
-              Hold any card or document inside the frame and we’ll detect the type automatically.
-            </Text>
-          </View>
-        </View>
-
-        {/* Header */}
-        <View style={[styles.cameraHeader, { paddingTop: insets.top + 8 }]}>
-          <Pressable onPress={handleClose} style={styles.cameraHeaderBtn} hitSlop={12}>
+      <SafeAreaView style={styles.root}>
+        <View style={styles.header}>
+          <Pressable
+            onPress={handleClose}
+            style={styles.headerButton}
+            hitSlop={12}
+          >
             <Feather name="arrow-left" size={24} color="#FFFFFF" />
           </Pressable>
-          <Text style={styles.cameraHeaderTitle}>Auto Scan</Text>
-          <View style={styles.cameraHeaderBtn} />
+          <Text style={styles.headerTitle}>{config.title}</Text>
+          <View style={styles.headerButton} />
         </View>
 
-        {/* Capture button */}
-        <View style={[styles.captureWrap, { paddingBottom: insets.bottom + 24 }]}>
+        <Text style={styles.cameraInstruction}>{config.captureHint}</Text>
+
+        <View style={styles.cameraFrameWrap}>
+          <CameraViewComponent
+            ref={cameraRef}
+            style={styles.cameraFrame}
+            facing="back"
+          />
+
+          <View pointerEvents="none" style={styles.viewfinderOverlay}>
+            <View style={styles.viewfinder}>
+              <View style={[styles.corner, styles.cornerTopLeft]} />
+              <View style={[styles.corner, styles.cornerTopRight]} />
+              <View style={[styles.corner, styles.cornerBottomLeft]} />
+              <View style={[styles.corner, styles.cornerBottomRight]} />
+            </View>
+          </View>
+        </View>
+
+        <View
+          style={[styles.bottomPanel, { paddingBottom: insets.bottom + 18 }]}
+        >
+          <Text style={styles.bottomPanelTitle}>{config.title}</Text>
+          <Text style={styles.bottomPanelCopy}>{config.description}</Text>
+
           <Pressable
+            style={styles.captureButton}
             onPress={handleCapture}
             disabled={isProcessing}
-            style={({ pressed }) => [styles.captureBtn, pressed && { opacity: 0.75 }]}
           >
-            {isProcessing ? (
-              <ActivityIndicator size="small" color="#1D1D1D" />
-            ) : (
-              <View style={styles.captureInner} />
-            )}
+            <Text style={styles.captureButtonText}>
+              {isProcessing ? "Scanning..." : "Capture"}
+            </Text>
           </Pressable>
-        </View>
 
-        {/* Full-screen processing overlay */}
-        {isProcessing && (
-          <View style={styles.processingOverlay}>
-            <ActivityIndicator size="large" color="#FFFFFF" />
-            <Text style={styles.processingText}>Scanning…</Text>
-          </View>
-        )}
-      </View>
+          {isProcessing ? (
+            <View style={styles.processingRow}>
+              <ActivityIndicator color="#FFFFFF" />
+              <Text style={styles.processingText}>Extracting field...</Text>
+            </View>
+          ) : null}
+        </View>
+      </SafeAreaView>
     );
   }
 
-  // ── Picker stage ──────────────────────────────────────────────────────────
   return (
     <SafeAreaView style={styles.root}>
       <View style={styles.header}>
-        <Pressable onPress={handleClose} style={styles.headerButton} hitSlop={12}>
+        <Pressable
+          onPress={handleClose}
+          style={styles.headerButton}
+          hitSlop={12}
+        >
           <Feather name="arrow-left" size={24} color="#FFFFFF" />
         </Pressable>
-        <Text style={styles.headerTitle}>Scan Cards</Text>
+        <Text style={styles.headerTitle}>{config.title}</Text>
         <View style={styles.headerButton} />
       </View>
 
       <View style={styles.heroWrap}>
         <View style={styles.heroCard}>
           <View style={styles.heroIconWrap}>
-            <MaterialCommunityIcons name="card-search-outline" size={42} color="#FFFFFF" />
+            <Feather name="camera" size={32} color="#FFFFFF" />
           </View>
-          <Text style={styles.heroTitle}>One-tap auto scan</Text>
-          <Text style={styles.heroSubtitle}>
-            Detects bank cards, IDs, passports and driving licences without making you pick a type first.
-          </Text>
-
-          <View style={styles.heroChipRow}>
-            <View style={styles.heroChip}>
-              <Text style={styles.heroChipText}>Bank</Text>
-            </View>
-            <View style={styles.heroChip}>
-              <Text style={styles.heroChipText}>ID</Text>
-            </View>
-            <View style={styles.heroChip}>
-              <Text style={styles.heroChipText}>License</Text>
-            </View>
-            <View style={styles.heroChip}>
-              <Text style={styles.heroChipText}>Passport</Text>
-            </View>
-          </View>
+          <Text style={styles.heroTitle}>{config.title}</Text>
+          <Text style={styles.heroSubtitle}>{config.description}</Text>
+          <Text style={styles.helperText}>{config.captureHint}</Text>
 
           <Pressable style={styles.heroButton} onPress={handleStartScanner}>
-            <Text style={styles.heroButtonText}>Start Auto Scan</Text>
+            <Text style={styles.heroButtonText}>Open Camera</Text>
           </Pressable>
         </View>
       </View>
@@ -247,234 +305,226 @@ export default function CardScannerScreen() {
   );
 }
 
+async function prepareCapturedImageForScan(photo: {
+  uri: string;
+  width?: number;
+  height?: number;
+}) {
+  const imageWidth = photo.width ?? VIEWFINDER_WIDTH;
+  const imageHeight = photo.height ?? VIEWFINDER_HEIGHT;
+  const cropWidth = imageWidth * 0.84;
+  const cropHeight = cropWidth * 0.63;
+  const originX = Math.max(0, (imageWidth - cropWidth) / 2);
+  const originY = Math.max(0, (imageHeight - cropHeight) / 2);
+  const targetWidth = Math.min(SCAN_TARGET_WIDTH, cropWidth);
+  const targetHeight = Math.round((cropHeight / cropWidth) * targetWidth);
+
+  const manipulated = await manipulateAsync(
+    photo.uri,
+    [
+      {
+        crop: {
+          originX,
+          originY,
+          width: cropWidth,
+          height: cropHeight,
+        },
+      },
+      {
+        resize: {
+          width: targetWidth,
+          height: targetHeight,
+        },
+      },
+    ],
+    {
+      compress: 1,
+      format: SaveFormat.JPEG,
+    },
+  );
+
+  return manipulated.uri;
+}
+
 const styles = StyleSheet.create({
-  // ── Picker stage ────────────────────────────────────────────────────────
   root: {
     flex: 1,
-    backgroundColor: '#1D1D1D',
+    backgroundColor: "#0F1012",
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 20,
-    paddingVertical: 14,
+    paddingTop: 8,
+    paddingBottom: 16,
   },
   headerButton: {
     width: 40,
-    alignItems: 'center',
+    height: 40,
+    alignItems: "center",
+    justifyContent: "center",
   },
   headerTitle: {
-    fontFamily: 'ReadexPro-Medium',
-    fontSize: 17,
-    color: '#FFFFFF',
+    flex: 1,
+    textAlign: "center",
+    color: "#FFFFFF",
+    fontFamily: "ReadexPro-Medium",
+    fontSize: 18,
+    marginHorizontal: 12,
   },
   heroWrap: {
     flex: 1,
-    paddingHorizontal: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingBottom: 40,
+    paddingHorizontal: 24,
+    justifyContent: "center",
   },
   heroCard: {
-    width: '100%',
-    maxWidth: 360,
-    borderRadius: 28,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
-    backgroundColor: '#252525',
+    borderRadius: 30,
+    backgroundColor: "#17191D",
     paddingHorizontal: 24,
-    paddingVertical: 28,
-    alignItems: 'center',
-    gap: 16,
+    paddingVertical: 30,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.08)",
   },
   heroIconWrap: {
-    width: 86,
-    height: 86,
-    borderRadius: 43,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.10)',
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.08)",
+    marginBottom: 18,
   },
   heroTitle: {
-    fontFamily: 'ReadexPro-Medium',
-    fontSize: 24,
-    color: '#FFFFFF',
+    color: "#FFFFFF",
+    fontFamily: "ReadexPro-Bold",
+    fontSize: 28,
+    lineHeight: 32,
   },
   heroSubtitle: {
-    fontFamily: 'ReadexPro-Regular',
+    marginTop: 10,
+    color: "rgba(255,255,255,0.76)",
+    fontFamily: "OpenSans-Regular",
     fontSize: 15,
-    lineHeight: 22,
-    color: 'rgba(255,255,255,0.55)',
-    textAlign: 'center',
-  },
-  heroChipRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  heroChip: {
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-  },
-  heroChipText: {
-    fontFamily: 'ReadexPro-Regular',
-    fontSize: 13,
-    color: '#FFFFFF',
-  },
-  heroButton: {
-    width: '100%',
-    marginTop: 6,
-    height: 58,
-    borderRadius: 999,
-    backgroundColor: '#EFEFEF',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  heroButtonText: {
-    fontFamily: 'ReadexPro-Medium',
-    fontSize: 18,
-    color: '#1D1D1D',
+    lineHeight: 23,
   },
   helperText: {
-    fontFamily: 'ReadexPro-Regular',
+    marginTop: 16,
+    color: "rgba(255,255,255,0.54)",
+    fontFamily: "OpenSans-Regular",
     fontSize: 13,
     lineHeight: 20,
-    color: 'rgba(255,255,255,0.68)',
-    textAlign: 'center',
   },
-  // ── Camera stage ─────────────────────────────────────────────────────────
-  cameraRoot: {
-    flex: 1,
-    backgroundColor: '#000',
+  heroButton: {
+    marginTop: 26,
+    borderRadius: 22,
+    backgroundColor: "#FFFFFF",
+    paddingVertical: 16,
+    alignItems: "center",
   },
-  overlayColumn: {
-    flexDirection: 'column',
+  heroButtonText: {
+    color: "#111215",
+    fontFamily: "ReadexPro-Medium",
+    fontSize: 16,
   },
-  darkBand: {
-    backgroundColor: 'rgba(0,0,0,0.62)',
+  cameraInstruction: {
+    color: "rgba(255,255,255,0.72)",
+    fontFamily: "OpenSans-Regular",
+    fontSize: 14,
+    lineHeight: 20,
+    paddingHorizontal: 24,
+    marginBottom: 18,
   },
-  overlayTop: {
-    flex: 1,
+  cameraFrameWrap: {
+    alignItems: "center",
+    justifyContent: "center",
   },
-  overlayMiddle: {
-    flexDirection: 'row',
+  cameraFrame: {
+    width: VIEWFINDER_WIDTH,
     height: VIEWFINDER_HEIGHT,
+    borderRadius: 28,
+    overflow: "hidden",
   },
-  darkStrip: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.62)',
-  },
-  overlayBottom: {
-    flex: 1.4,
-    alignItems: 'center',
-    paddingTop: 20,
+  viewfinderOverlay: {
+    position: "absolute",
+    inset: 0,
+    alignItems: "center",
+    justifyContent: "center",
   },
   viewfinder: {
     width: VIEWFINDER_WIDTH,
     height: VIEWFINDER_HEIGHT,
+    borderRadius: 28,
   },
   corner: {
-    position: 'absolute',
+    position: "absolute",
     width: CORNER_SIZE,
     height: CORNER_SIZE,
-    borderColor: '#FFFFFF',
+    borderColor: "#FFFFFF",
   },
-  cornerTL: {
-    top: 0,
-    left: 0,
+  cornerTopLeft: {
+    top: 16,
+    left: 16,
     borderTopWidth: CORNER_THICKNESS,
     borderLeftWidth: CORNER_THICKNESS,
-    borderTopLeftRadius: 4,
   },
-  cornerTR: {
-    top: 0,
-    right: 0,
+  cornerTopRight: {
+    top: 16,
+    right: 16,
     borderTopWidth: CORNER_THICKNESS,
     borderRightWidth: CORNER_THICKNESS,
-    borderTopRightRadius: 4,
   },
-  cornerBL: {
-    bottom: 0,
-    left: 0,
+  cornerBottomLeft: {
+    bottom: 16,
+    left: 16,
     borderBottomWidth: CORNER_THICKNESS,
     borderLeftWidth: CORNER_THICKNESS,
-    borderBottomLeftRadius: 4,
   },
-  cornerBR: {
-    bottom: 0,
-    right: 0,
+  cornerBottomRight: {
+    bottom: 16,
+    right: 16,
     borderBottomWidth: CORNER_THICKNESS,
     borderRightWidth: CORNER_THICKNESS,
-    borderBottomRightRadius: 4,
   },
-  cameraHeader: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingBottom: 14,
+  bottomPanel: {
+    marginTop: "auto",
+    paddingHorizontal: 24,
+    paddingTop: 28,
   },
-  cameraHeaderBtn: {
-    width: 40,
-    alignItems: 'center',
+  bottomPanelTitle: {
+    color: "#FFFFFF",
+    fontFamily: "ReadexPro-Medium",
+    fontSize: 18,
   },
-  cameraHeaderTitle: {
-    fontFamily: 'ReadexPro-Medium',
-    fontSize: 17,
-    color: '#FFFFFF',
-  },
-  instructionText: {
-    fontFamily: 'ReadexPro-Regular',
-    fontSize: 15,
+  bottomPanelCopy: {
+    marginTop: 8,
+    color: "rgba(255,255,255,0.62)",
+    fontFamily: "OpenSans-Regular",
+    fontSize: 14,
     lineHeight: 21,
-    color: 'rgba(255,255,255,0.7)',
-    textAlign: 'center',
-    paddingHorizontal: 32,
   },
-  captureWrap: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    alignItems: 'center',
+  captureButton: {
+    marginTop: 24,
+    borderRadius: 22,
+    backgroundColor: "#FFFFFF",
+    paddingVertical: 16,
+    alignItems: "center",
   },
-  captureBtn: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: '#FFFFFF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 4,
-    borderColor: 'rgba(255,255,255,0.35)',
+  captureButtonText: {
+    color: "#111215",
+    fontFamily: "ReadexPro-Medium",
+    fontSize: 16,
   },
-  captureInner: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 2,
-    borderColor: '#1D1D1D',
-  },
-  processingOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.65)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 14,
+  processingRow: {
+    marginTop: 18,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
   },
   processingText: {
-    fontFamily: 'ReadexPro-Regular',
-    fontSize: 16,
-    color: '#FFFFFF',
+    color: "rgba(255,255,255,0.72)",
+    fontFamily: "OpenSans-Regular",
+    fontSize: 14,
   },
 });
-

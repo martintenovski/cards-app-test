@@ -1,6 +1,6 @@
 # Cards App Test
 
-A wallet-style Expo app for managing bank cards, personal documents, and club cards with a polished card UI, local persistence, and a BlinkID-powered native scanning flow.
+A wallet-style Expo app for managing bank cards, personal documents, and club cards with a polished card UI, local persistence, and an ML Kit-powered scanning flow.
 
 ## Highlights
 
@@ -9,7 +9,7 @@ A wallet-style Expo app for managing bank cards, personal documents, and club ca
 - Add and edit cards with a live preview
 - Card detail screen for reviewing saved entries
 - Local persistence with Zustand so saved cards survive app restarts
-- Card scanner flow with BlinkID native capture + confirmation before saving
+- Card scanner flow with camera capture + on-device OCR extraction + confirmation before saving
 - Expo Router navigation with tab-based sections
 - NativeWind + gluestack UI foundation for styling and UI primitives
 
@@ -21,7 +21,7 @@ A wallet-style Expo app for managing bank cards, personal documents, and club ca
 - **Expo Router**
 - **Zustand** for app state and persistence
 - **NativeWind** + **gluestack-ui**
-- **@microblink/blinkid-react-native** for native document scanning
+- **@react-native-ml-kit/text-recognition** for on-device OCR
 - **react-native-reanimated** and **react-native-gesture-handler** for motion and gestures
 
 ## Project structure
@@ -63,13 +63,13 @@ The scanner flow:
 
 1. opens the camera
 2. captures a card image
-3. extracts document details with BlinkID's native scanner
+3. runs on-device text recognition with ML Kit
 4. shows the detected fields for review
 5. shows a confirmation screen so the user can edit the detected values before saving
 
 ## Important scanner limitation
 
-The scanner uses native BlinkID SDKs and **does not run in Expo Go**.
+The scanner uses the native camera module and native ML Kit text recognition.
 
 ### What works where
 
@@ -133,7 +133,7 @@ Because the scanner depends on native modules, use a native development build wh
 
 Relevant packages already included in this project:
 
-- `@microblink/blinkid-react-native`
+- `@react-native-ml-kit/text-recognition`
 - `expo-dev-client`
 
 ### Camera permissions
@@ -181,7 +181,7 @@ On mobile, there are usually **two different kinds of releases**:
 - **JavaScript / asset updates**: can be delivered quickly with Expo update infrastructure
 - **Native changes**: require a new app binary and usually App Store / Play Store submission
 
-In this app, changes involving packages like BlinkID or other native scanner SDKs should be treated as **native-impacting** changes and should go through a fresh build.
+In this app, changes involving packages like ML Kit OCR, camera modules, or other native scanner SDKs should be treated as **native-impacting** changes and should go through a fresh build.
 
 ### Practical mapping for this repo
 

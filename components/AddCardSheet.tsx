@@ -1,26 +1,41 @@
-import { Feather } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { Dimensions, Pressable, StyleSheet, Text, View, useColorScheme } from 'react-native';
+import { Feather } from "@expo/vector-icons";
+import { useEffect, useState } from "react";
+import {
+  Dimensions,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  useColorScheme,
+} from "react-native";
 import Animated, {
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
-} from 'react-native-reanimated';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+} from "react-native-reanimated";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 
-import { CardForm } from '@/components/CardForm';
-import { useCardStore } from '@/store/useCardStore';
-import type { CardFormValues, CardPalette } from '@/types/card';
-import { APP_THEME, resolveTheme } from '@/utils/theme';
+import { CardForm } from "@/components/CardForm";
+import { useCardStore } from "@/store/useCardStore";
+import type { CardFormValues, CardPalette } from "@/types/card";
+import { APP_THEME, resolveTheme } from "@/utils/theme";
 
-const { height } = Dimensions.get('window');
+const { height } = Dimensions.get("window");
 const SHEET_HEIGHT = height * 0.85;
 const CLOSE_THRESHOLD = 100;
 
-const SPRING_OPEN = { damping: 20, stiffness: 90, mass: 0.8, overshootClamping: true } as const;
-const SPRING_CLOSE = { damping: 20, stiffness: 90, overshootClamping: true } as const;
+const SPRING_OPEN = {
+  damping: 20,
+  stiffness: 90,
+  mass: 0.8,
+  overshootClamping: true,
+} as const;
+const SPRING_CLOSE = {
+  damping: 20,
+  stiffness: 90,
+  overshootClamping: true,
+} as const;
 
 type AddCardSheetProps = {
   isOpen: boolean;
@@ -28,7 +43,6 @@ type AddCardSheetProps = {
 };
 
 export function AddCardSheet({ isOpen, onClose }: AddCardSheetProps) {
-  const router = useRouter();
   const addCard = useCardStore((state) => state.addCard);
   const themePreference = useCardStore((state) => state.themePreference);
   const deviceScheme = useColorScheme();
@@ -53,7 +67,10 @@ export function AddCardSheet({ isOpen, onClose }: AddCardSheetProps) {
     .onUpdate((e) => {
       if (e.translationY > 0) {
         translateY.value = e.translationY;
-        backdropOpacity.value = Math.max(0, 0.55 - (e.translationY / SHEET_HEIGHT) * 0.55);
+        backdropOpacity.value = Math.max(
+          0,
+          0.55 - (e.translationY / SHEET_HEIGHT) * 0.55,
+        );
       }
     })
     .onEnd((e) => {
@@ -81,64 +98,40 @@ export function AddCardSheet({ isOpen, onClose }: AddCardSheetProps) {
     onClose();
   };
 
-  const handleScanPress = () => {
-    onClose();
-    setTimeout(() => {
-      router.push('/card-scanner');
-    }, 180);
-  };
-
   return (
     <View
       style={StyleSheet.absoluteFill}
-      pointerEvents={isOpen ? 'box-none' : 'none'}
+      pointerEvents={isOpen ? "box-none" : "none"}
     >
       {/* Backdrop */}
-      <Animated.View style={[StyleSheet.absoluteFill, styles.backdrop, backdropStyle]}>
+      <Animated.View
+        style={[StyleSheet.absoluteFill, styles.backdrop, backdropStyle]}
+      >
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
       </Animated.View>
 
       {/* Sheet panel */}
-      <Animated.View style={[styles.sheet, sheetStyle, { backgroundColor: colors.surface }]}>
+      <Animated.View
+        style={[styles.sheet, sheetStyle, { backgroundColor: colors.surface }]}
+      >
         {/* Drag handle */}
         <GestureDetector gesture={dragGesture}>
           <View style={styles.handleArea}>
-            <View style={[styles.handle, { backgroundColor: colors.textSoft }]} />
+            <View
+              style={[styles.handle, { backgroundColor: colors.textSoft }]}
+            />
           </View>
         </GestureDetector>
 
         {/* Header */}
         <View style={styles.header}>
-          <Text style={[styles.title, { color: colors.text }]}>Add New Card</Text>
+          <Text style={[styles.title, { color: colors.text }]}>
+            Add New Card
+          </Text>
           <Pressable onPress={onClose} hitSlop={12} style={styles.closeBtn}>
             <Feather name="x" size={22} color={colors.textMuted} />
           </Pressable>
         </View>
-
-        <Pressable
-          accessibilityRole="button"
-          onPress={handleScanPress}
-          style={[
-            styles.scanButton,
-            {
-              borderColor: colors.border,
-              backgroundColor: colors.surfaceMuted,
-            },
-          ]}
-        >
-          <View style={[styles.scanButtonIconWrap, { backgroundColor: colors.surfaceStrong }]}>
-            <Feather name="camera" size={18} color={colors.text} />
-          </View>
-          <View style={styles.scanButtonContent}>
-            <Text style={[styles.scanButtonText, { color: colors.text }]}>Scan Card Automatically</Text>
-            <Text style={[styles.scanButtonSubtitle, { color: colors.textMuted }]}>
-              Supports IDs, passports, licenses & bank cards
-            </Text>
-          </View>
-          <Feather name="chevron-right" size={18} color={colors.textMuted} />
-        </Pressable>
-
-        <View style={[styles.scanDivider, { backgroundColor: colors.border }]} />
 
         {/* Form */}
         <CardForm key={formKey} onSubmit={handleSubmit} />
@@ -149,88 +142,46 @@ export function AddCardSheet({ isOpen, onClose }: AddCardSheetProps) {
 
 const styles = StyleSheet.create({
   backdrop: {
-    backgroundColor: '#000',
+    backgroundColor: "#000",
   },
   sheet: {
-    position: 'absolute',
+    position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
     height: SHEET_HEIGHT,
-    backgroundColor: '#1D1D1D',
+    backgroundColor: "#1D1D1D",
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   handleArea: {
-    width: '100%',
-    alignItems: 'center',
+    width: "100%",
+    alignItems: "center",
     paddingVertical: 12,
   },
   handle: {
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: 'rgba(239,239,239,0.20)',
+    backgroundColor: "rgba(239,239,239,0.20)",
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     paddingHorizontal: 24,
     paddingBottom: 12,
   },
-  scanButton: {
-    marginHorizontal: 20,
-    marginBottom: 14,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: 'rgba(239,239,239,0.12)',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
-    backgroundColor: '#252525',
-    paddingHorizontal: 18,
-    paddingVertical: 16,
-  },
-  scanButtonIconWrap: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.06)',
-  },
-  scanButtonContent: {
-    flex: 1,
-  },
-  scanButtonText: {
-    fontFamily: 'ReadexPro-Medium',
-    fontSize: 16,
-    color: '#EFEFEF',
-  },
-  scanButtonSubtitle: {
-    marginTop: 4,
-    fontFamily: 'ReadexPro-Regular',
-    fontSize: 12,
-    lineHeight: 18,
-    color: 'rgba(239,239,239,0.52)',
-  },
-  scanDivider: {
-    height: 1,
-    marginHorizontal: 20,
-    marginBottom: 12,
-    backgroundColor: 'rgba(239,239,239,0.10)',
-  },
   title: {
-    fontFamily: 'ReadexPro-Bold',
+    fontFamily: "ReadexPro-Bold",
     fontSize: 22,
-    color: '#EFEFEF',
+    color: "#EFEFEF",
   },
   closeBtn: {
     width: 36,
     height: 36,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

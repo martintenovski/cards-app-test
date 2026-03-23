@@ -1,8 +1,12 @@
-import { Platform } from 'react-native';
-import { create } from 'zustand';
-import { createJSONStorage, persist, type StateStorage } from 'zustand/middleware';
+import { Platform } from "react-native";
+import { create } from "zustand";
+import {
+  createJSONStorage,
+  persist,
+  type StateStorage,
+} from "zustand/middleware";
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import {
   type CardPalette,
@@ -13,12 +17,23 @@ import {
   createCardFromForm,
   getContrastColor,
   initialSeedCards,
-} from '@/types/card';
-import { GRADIENTS } from '@/constants/gradients';
-import type { ResolvedTheme, ThemePreference } from '@/utils/theme';
+} from "@/types/card";
+import { GRADIENTS } from "@/constants/gradients";
+import type { ResolvedTheme, ThemePreference } from "@/utils/theme";
+import type {
+  FieldScanTarget,
+  ScannableFieldName,
+} from "@/utils/selectiveScanner";
+
+type FieldScanResult = {
+  requestId: string;
+  field: ScannableFieldName;
+  target: FieldScanTarget;
+  value: string;
+};
 
 const storage: StateStorage =
-  Platform.OS === 'web'
+  Platform.OS === "web"
     ? {
         getItem: (name) => Promise.resolve(localStorage.getItem(name)),
         setItem: (name, value) => {
@@ -41,14 +56,21 @@ interface CardStoreState {
   viewMode: WalletViewMode;
   homeFilter: HomeFilter;
   themePreference: ThemePreference;
+  lastFieldScanResult: FieldScanResult | null;
   setViewMode: (viewMode: WalletViewMode) => void;
   toggleViewMode: () => void;
   setHomeFilter: (filter: HomeFilter) => void;
   setThemePreference: (themePreference: ThemePreference) => void;
   toggleThemePreference: (resolvedTheme: ResolvedTheme) => void;
+  setLastFieldScanResult: (result: FieldScanResult) => void;
+  clearLastFieldScanResult: () => void;
   addCard: (values: CardFormValues, palette: CardPalette) => void;
   prependCard: (card: WalletCard) => void;
-  updateCard: (id: string, values: CardFormValues, palette: CardPalette) => void;
+  updateCard: (
+    id: string,
+    values: CardFormValues,
+    palette: CardPalette,
+  ) => void;
   deleteCard: (id: string) => void;
   /** Advance the stack: current top → end (swipe left) */
   cycleCardFwd: () => void;
@@ -61,27 +83,30 @@ export const useCardStore = create<CardStoreState>()(
   persist(
     (set) => ({
       cards: initialSeedCards,
-      viewMode: 'stack',
-      homeFilter: 'everything',
-      themePreference: 'system',
+      viewMode: "stack",
+      homeFilter: "everything",
+      themePreference: "system",
+      lastFieldScanResult: null,
       setViewMode: (viewMode) => set({ viewMode }),
       toggleViewMode: () =>
         set((state) => ({
-          viewMode: state.viewMode === 'stack' ? 'list' : 'stack',
+          viewMode: state.viewMode === "stack" ? "list" : "stack",
         })),
       setHomeFilter: (homeFilter) => set({ homeFilter }),
       setThemePreference: (themePreference) => set({ themePreference }),
       toggleThemePreference: (resolvedTheme) =>
         set((state) => ({
           themePreference:
-            state.themePreference === 'system'
-              ? resolvedTheme === 'dark'
-                ? 'light'
-                : 'dark'
-              : state.themePreference === 'dark'
-                ? 'light'
-                : 'dark',
+            state.themePreference === "system"
+              ? resolvedTheme === "dark"
+                ? "light"
+                : "dark"
+              : state.themePreference === "dark"
+                ? "light"
+                : "dark",
         })),
+      setLastFieldScanResult: (result) => set({ lastFieldScanResult: result }),
+      clearLastFieldScanResult: () => set({ lastFieldScanResult: null }),
       addCard: (values, palette) =>
         set((state) => {
           // Guarantee every new card has a gradient, even if caller omitted one
@@ -93,22 +118,22 @@ export const useCardStore = create<CardStoreState>()(
                 ] as [string, string];
                 const primaryText = getContrastColor(gradient[0]);
                 const mutedText =
-                  primaryText === '#1D1D1D'
-                    ? 'rgba(29,29,29,0.65)'
-                    : 'rgba(255,255,255,0.65)';
+                  primaryText === "#1D1D1D"
+                    ? "rgba(29,29,29,0.65)"
+                    : "rgba(255,255,255,0.65)";
                 return { ...palette, gradient, primaryText, mutedText };
               })();
           return {
             cards: [createCardFromForm(values, ensuredPalette), ...state.cards],
             homeFilter: values.category,
-            viewMode: 'list',
+            viewMode: "list",
           };
         }),
       prependCard: (card) =>
         set((state) => ({
           cards: [card, ...state.cards],
           homeFilter: card.category,
-          viewMode: 'list',
+          viewMode: "list",
         })),
       updateCard: (id, values, palette) =>
         set((state) => ({
@@ -135,13 +160,13 @@ export const useCardStore = create<CardStoreState>()(
       resetCards: () =>
         set({
           cards: initialSeedCards,
-          viewMode: 'stack',
-          homeFilter: 'everything',
-          themePreference: 'system',
+          viewMode: "stack",
+          homeFilter: "everything",
+          themePreference: "system",
         }),
     }),
     {
-      name: 'cards-app-wallet-store-v3',
+      name: "cards-app-wallet-store-v3",
       storage: createJSONStorage(() => storage),
       onRehydrateStorage: () => (state) => {
         if (!state) return;
@@ -154,10 +179,13 @@ export const useCardStore = create<CardStoreState>()(
           ] as [string, string];
           const primaryText = getContrastColor(gradient[0]);
           const mutedText =
-            primaryText === '#1D1D1D'
-              ? 'rgba(29,29,29,0.65)'
-              : 'rgba(255,255,255,0.65)';
-          return { ...c, palette: { ...c.palette, gradient, primaryText, mutedText } };
+            primaryText === "#1D1D1D"
+              ? "rgba(29,29,29,0.65)"
+              : "rgba(255,255,255,0.65)";
+          return {
+            ...c,
+            palette: { ...c.palette, gradient, primaryText, mutedText },
+          };
         });
         useCardStore.setState({ cards: patched });
       },
@@ -167,6 +195,6 @@ export const useCardStore = create<CardStoreState>()(
         homeFilter: state.homeFilter,
         themePreference: state.themePreference,
       }),
-    }
-  )
+    },
+  ),
 );

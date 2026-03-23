@@ -1,7 +1,7 @@
-import { Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 
-import { CardItem } from '@/components/CardItem';
-import type { WalletCard } from '@/types/card';
+import { CardItem } from "@/components/CardItem";
+import type { WalletCard } from "@/types/card";
 
 type CardListProps = {
   cards: WalletCard[];
@@ -9,7 +9,11 @@ type CardListProps = {
   bottomSpacing?: number;
 };
 
-export function CardList({ cards, onCardPress, bottomSpacing = 120 }: CardListProps) {
+export function CardList({
+  cards,
+  onCardPress,
+  bottomSpacing = 120,
+}: CardListProps) {
   return (
     <ScrollView
       style={styles.scroll}
@@ -22,7 +26,11 @@ export function CardList({ cards, onCardPress, bottomSpacing = 120 }: CardListPr
           style={styles.item}
           onPress={() => onCardPress?.(card.id)}
         >
-          <CardItem card={card} size="full" />
+          <CardItem
+            card={card}
+            size="full"
+            side={card.category === "club" ? "back" : "front"}
+          />
         </Pressable>
       ))}
     </ScrollView>
@@ -39,6 +47,6 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   item: {
-    width: '100%',
+    width: "100%",
   },
 });

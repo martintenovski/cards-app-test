@@ -21,9 +21,9 @@
  *   Press-to-focus: snaps to the closest wrap-path (shortest arc) to the target.
  */
 
-import React, { useCallback, useEffect, useState } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
-import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import React, { useCallback, useEffect, useState } from "react";
+import { Pressable, StyleSheet, View } from "react-native";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated, {
   Easing,
   runOnJS,
@@ -31,28 +31,28 @@ import Animated, {
   useSharedValue,
   withDecay,
   withTiming,
-} from 'react-native-reanimated';
-import type { SharedValue } from 'react-native-reanimated';
+} from "react-native-reanimated";
+import type { SharedValue } from "react-native-reanimated";
 
-import { CardItem } from '@/components/CardItem';
-import type { WalletCard } from '@/types/card';
+import { CardItem } from "@/components/CardItem";
+import type { WalletCard } from "@/types/card";
 
 // ─── Layout ──────────────────────────────────────────────────────────────────
 
-const CARD_H         = 252;
-const CARD_GAP       = 12;
-const ITEM_SIZE      = CARD_H + CARD_GAP;    // 264 — snap stride
+const CARD_H = 252;
+const CARD_GAP = 12;
+const ITEM_SIZE = CARD_H + CARD_GAP; // 264 — snap stride
 // Fixed container that shows 1 active card + ~90 px peek above & below.
 // Changing only this constant resizes the whole widget.
-const CONTAINER_H    = 440;
+const CONTAINER_H = 440;
 // Distance from container top to the top of the active card.
-const CENTER_OFFSET  = Math.round((CONTAINER_H - CARD_H) / 2); // 94
+const CENTER_OFFSET = Math.round((CONTAINER_H - CARD_H) / 2); // 94
 
 // ─── Visual — ported directly from card-picker.jsx ───────────────────────────
 
 const TRANSLATE_RATIO = 0.38;
-const SCALE_PER_UNIT  = 0.10;
-const MIN_SCALE       = 0.78;
+const SCALE_PER_UNIT = 0.1;
+const MIN_SCALE = 0.78;
 
 /** Final snap: quick ease-out so it never feels laggy */
 const SNAP_CFG = {
@@ -64,7 +64,7 @@ const DECAY_RATE = 0.993;
 
 /** Modulo that always returns a non-negative value (worklet-safe) */
 function posMod(v: number, n: number) {
-  'worklet';
+  "worklet";
   return ((v % n) + n) % n;
 }
 
@@ -101,19 +101,21 @@ function AnimatedCard({
   onSnapTo,
   onActivePress,
 }: AnimatedCardProps) {
-  const [side, setSide] = useState<'front' | 'back'>('front');
+  const defaultSide: "front" | "back" =
+    card.category === "club" ? "back" : "front";
+  const [side, setSide] = useState<"front" | "back">(defaultSide);
   const flipSV = useSharedValue(1);
 
-  // Reset to front whenever this card loses focus
+  // Reset to the home-default side whenever this card loses focus.
   useEffect(() => {
     if (!isActive) {
       flipSV.value = withTiming(1, { duration: 200 });
-      setSide('front');
+      setSide(defaultSide);
     }
-  }, [isActive]);
+  }, [defaultSide, isActive]);
 
   const handleFlip = useCallback(() => {
-    const next: 'front' | 'back' = side === 'front' ? 'back' : 'front';
+    const next: "front" | "back" = side === "front" ? "back" : "front";
     flipSV.value = withTiming(0, { duration: 150 }, (done) => {
       if (done) {
         runOnJS(setSide)(next);
@@ -125,23 +127,23 @@ function AnimatedCard({
   // All transforms derived from the CONTINUOUS, UNBOUNDED scroll offset.
   // Wrap math keeps each card at its nearest logical slot — infinite loop.
   const cardStyle = useAnimatedStyle(() => {
-    const N         = cardCountSV.value;
+    const N = cardCountSV.value;
     const totalSize = N * ITEM_SIZE;
     // Raw distance from this card's natural slot to the current scroll position
-    const rawDist     = index * ITEM_SIZE - scrollOffsetSV.value;
+    const rawDist = index * ITEM_SIZE - scrollOffsetSV.value;
     // Wrap to the nearest occurrence of this card in the infinite sequence
     const wrappedDist = rawDist - Math.round(rawDist / totalSize) * totalSize;
-    const offset      = wrappedDist / ITEM_SIZE;  // always in (−N/2, +N/2)
-    const absOffset   = Math.abs(offset);
+    const offset = wrappedDist / ITEM_SIZE; // always in (−N/2, +N/2)
+    const absOffset = Math.abs(offset);
 
     // Hide cards beyond ±2.5 slots (show max 5 at a time)
     if (absOffset > 2.5) {
       return { opacity: 0, zIndex: -1 };
     }
 
-    const scale      = Math.max(MIN_SCALE, 1 - absOffset * SCALE_PER_UNIT);
+    const scale = Math.max(MIN_SCALE, 1 - absOffset * SCALE_PER_UNIT);
     const translateY = CENTER_OFFSET + offset * ITEM_SIZE * TRANSLATE_RATIO;
-    const zIndex     = 999 - Math.round(absOffset * 10);
+    const zIndex = 999 - Math.round(absOffset * 10);
 
     return {
       transform: [{ translateY }, { scale }],
@@ -158,7 +160,9 @@ function AnimatedCard({
     <Animated.View style={[styles.card, cardStyle]}>
       {/* Active card: tap opens detail. Non-active: tap snaps to it. */}
       <Pressable
-        onPress={isActive ? () => onActivePress?.(card.id) : () => onSnapTo(index)}
+        onPress={
+          isActive ? () => onActivePress?.(card.id) : () => onSnapTo(index)
+        }
         style={styles.pressable}
       >
         <Animated.View style={[styles.flipWrapper, flipStyle]}>
@@ -178,9 +182,9 @@ function AnimatedCard({
 
 export function CardStack({ cards, onCardPress }: CardStackProps) {
   const scrollOffsetSV = useSharedValue(0);
-  const startOffsetSV  = useSharedValue(0);
+  const startOffsetSV = useSharedValue(0);
   // Stored as shared value so gesture worklets always read the latest length
-  const cardCountSV    = useSharedValue(cards.length);
+  const cardCountSV = useSharedValue(cards.length);
 
   const [activeIndex, setActiveIndex] = useState(0);
 
@@ -203,11 +207,11 @@ export function CardStack({ cards, onCardPress }: CardStackProps) {
     (idx: number) => {
       const N = cards.length;
       // Current snapped logical position (integer)
-      const currentN   = Math.round(scrollOffsetSV.value / ITEM_SIZE);
+      const currentN = Math.round(scrollOffsetSV.value / ITEM_SIZE);
       const currentIdx = posMod(currentN, N);
       // Shortest arc on the circle
       let diff = idx - currentIdx;
-      if (diff >  N / 2) diff -= N;
+      if (diff > N / 2) diff -= N;
       if (diff < -N / 2) diff += N;
       const target = (currentN + diff) * ITEM_SIZE;
       scrollOffsetSV.value = withTiming(target, SNAP_CFG);
@@ -231,7 +235,7 @@ export function CardStack({ cards, onCardPress }: CardStackProps) {
       // Slow drag  → snap immediately.
       if (Math.abs(e.velocityY) > 200) {
         scrollOffsetSV.value = withDecay(
-          { velocity: -e.velocityY, deceleration: DECAY_RATE },  // no clamp — infinite
+          { velocity: -e.velocityY, deceleration: DECAY_RATE }, // no clamp — infinite
           (finished) => {
             if (finished) {
               const nearest = Math.round(scrollOffsetSV.value / ITEM_SIZE);
@@ -273,23 +277,23 @@ const styles = StyleSheet.create({
   container: {
     // Fixed height — never exceeds this, never pushes content down.
     height: CONTAINER_H,
-    width: '100%',
-    overflow: 'hidden',
+    width: "100%",
+    overflow: "hidden",
   },
   card: {
     // top:0 + translateY (which includes CENTER_OFFSET) determines position.
     // No flex tricks — fully deterministic.
-    position: 'absolute',
+    position: "absolute",
     left: 0,
     right: 0,
     top: 0,
   },
   pressable: {
     // Stretch full width so CardItem (width:'100%') fills the container correctly.
-    width: '100%',
+    width: "100%",
     paddingHorizontal: 24,
   },
   flipWrapper: {
-    width: '100%',
+    width: "100%",
   },
 });
