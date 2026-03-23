@@ -458,7 +458,7 @@ export default function ProfileScreen() {
                 >
                   {cloudVaultStatus === "ready"
                     ? "Your cards are encrypted on this device before upload, so the database stores ciphertext instead of readable card details."
-                    : "Set a sync passphrase to encrypt cards before upload. Until then, cloud sync stays paused on this device to avoid sending readable card data."}
+                    : "Set or use a sync passphrase to encrypt cards before uploading or pulling your saved cards. Until then, cloud sync stays paused on this device to avoid sending readable card data."}
                 </Text>
               </View>
               <View style={styles.accountActions}>
