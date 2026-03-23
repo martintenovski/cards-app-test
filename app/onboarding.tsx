@@ -70,187 +70,199 @@ export default function OnboardingScreen() {
 
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: colors.background }]}>
-      <ScrollView
-        contentContainerStyle={[
-          styles.content,
-          {
-            paddingHorizontal: isCompact ? 20 : 24,
-            paddingTop: isCompact ? 16 : 24,
-            paddingBottom: isCompact ? 24 : 32,
-          },
-        ]}
-        showsVerticalScrollIndicator={false}
-      >
-        <View
-          style={[
-            styles.hero,
+      <View style={styles.screen}>
+        <ScrollView
+          contentContainerStyle={[
+            styles.content,
             {
-              borderRadius: isCompact ? 28 : 32,
-              minHeight: isVeryCompact ? 360 : isCompact ? 390 : 420,
+              paddingHorizontal: isCompact ? 20 : 24,
+              paddingTop: isCompact ? 16 : 24,
+              paddingBottom: isCompact ? 18 : 24,
             },
           ]}
+          showsVerticalScrollIndicator={false}
         >
-          <LinearGradient
-            colors={currentStep.gradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
+          <View
             style={[
-              styles.heroGradient,
+              styles.hero,
               {
-                paddingHorizontal: isCompact ? 20 : 24,
-                paddingTop: isCompact ? 18 : 22,
-                paddingBottom: isCompact ? 22 : 28,
+                borderRadius: isCompact ? 28 : 32,
+                minHeight: isVeryCompact ? 320 : isCompact ? 360 : 390,
               },
             ]}
           >
-            <View style={styles.heroTopRow}>
-              <View style={styles.heroBadge}>
-                <Text style={styles.heroBadgeText}>
-                  0{stepIndex + 1} / 0{ONBOARDING_STEPS.length}
-                </Text>
+            <LinearGradient
+              colors={currentStep.gradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[
+                styles.heroGradient,
+                {
+                  paddingHorizontal: isCompact ? 20 : 24,
+                  paddingTop: isCompact ? 18 : 22,
+                  paddingBottom: isCompact ? 22 : 28,
+                },
+              ]}
+            >
+              <View style={styles.heroTopRow}>
+                <View style={styles.heroBadge}>
+                  <Text style={styles.heroBadgeText}>
+                    0{stepIndex + 1} / 0{ONBOARDING_STEPS.length}
+                  </Text>
+                </View>
+                <View
+                  style={[
+                    styles.heroIconWrap,
+                    {
+                      width: isCompact ? 38 : 42,
+                      height: isCompact ? 38 : 42,
+                      borderRadius: isCompact ? 19 : 21,
+                    },
+                  ]}
+                >
+                  <Feather
+                    name={currentStep.icon}
+                    size={isCompact ? 18 : 20}
+                    color="#FFFFFF"
+                  />
+                </View>
               </View>
+
               <View
                 style={[
-                  styles.heroIconWrap,
+                  styles.heroArt,
                   {
-                    width: isCompact ? 38 : 42,
-                    height: isCompact ? 38 : 42,
-                    borderRadius: isCompact ? 19 : 21,
+                    height: isVeryCompact ? 98 : isCompact ? 118 : 136,
+                    marginTop: isCompact ? 14 : 18,
+                    marginBottom: isCompact ? 10 : 12,
                   },
                 ]}
               >
-                <Feather
-                  name={currentStep.icon}
-                  size={isCompact ? 18 : 20}
-                  color="#FFFFFF"
-                />
-              </View>
-            </View>
-
-            <View
-              style={[
-                styles.heroArt,
-                {
-                  height: isVeryCompact ? 120 : isCompact ? 140 : 164,
-                  marginTop: isCompact ? 18 : 24,
-                  marginBottom: isCompact ? 10 : 14,
-                },
-              ]}
-            >
-              <View style={styles.heroCardBack} />
-              <View style={styles.heroCardMid} />
-              <View style={styles.heroCardFront}>
-                <Text
-                  style={[
-                    styles.heroCardLabel,
-                    { fontSize: isCompact ? 11 : 12 },
-                  ]}
-                >
-                  Pocket ID
-                </Text>
-                <Text
-                  style={[
-                    styles.heroCardValue,
-                    {
-                      fontSize: isVeryCompact ? 19 : isCompact ? 21 : 24,
-                      marginTop: isCompact ? 6 : 8,
-                    },
-                  ]}
-                >
-                  {currentStep.eyebrow}
-                </Text>
-              </View>
-            </View>
-
-            <Text
-              style={[
-                styles.heroEyebrow,
-                {
-                  color: "rgba(255,255,255,0.72)",
-                  fontSize: isCompact ? 12 : 13,
-                },
-              ]}
-            >
-              {currentStep.eyebrow}
-            </Text>
-            <Text
-              style={[
-                styles.heroTitle,
-                {
-                  color: "#FFFFFF",
-                  fontSize: isVeryCompact ? 22 : isCompact ? 26 : 30,
-                  lineHeight: isVeryCompact ? 30 : isCompact ? 33 : 38,
-                  marginTop: isCompact ? 10 : 14,
-                },
-              ]}
-            >
-              {currentStep.title}
-            </Text>
-            <Text
-              style={[
-                styles.heroBody,
-                {
-                  color: "rgba(255,255,255,0.86)",
-                  fontSize: isVeryCompact ? 14 : isCompact ? 14.5 : 15,
-                  lineHeight: isVeryCompact ? 21 : isCompact ? 22 : 24,
-                  marginTop: isCompact ? 10 : 14,
-                },
-              ]}
-            >
-              {currentStep.body}
-            </Text>
-
-            <View
-              style={[
-                styles.highlightRow,
-                { gap: isCompact ? 8 : 10, marginTop: isCompact ? 14 : 18 },
-              ]}
-            >
-              {currentStep.highlights.map((item) => (
-                <View
-                  key={item}
-                  style={[
-                    styles.highlightChip,
-                    {
-                      paddingHorizontal: isCompact ? 10 : 12,
-                      paddingVertical: isCompact ? 7 : 8,
-                    },
-                  ]}
-                >
+                <View style={styles.heroCardBack} />
+                <View style={styles.heroCardMid} />
+                <View style={styles.heroCardFront}>
                   <Text
                     style={[
-                      styles.highlightChipText,
+                      styles.heroCardLabel,
                       { fontSize: isCompact ? 11 : 12 },
                     ]}
                   >
-                    {item}
+                    Pocket ID
+                  </Text>
+                  <Text
+                    style={[
+                      styles.heroCardValue,
+                      {
+                        fontSize: isVeryCompact ? 18 : isCompact ? 20 : 22,
+                        marginTop: isCompact ? 6 : 8,
+                      },
+                    ]}
+                  >
+                    {currentStep.eyebrow}
                   </Text>
                 </View>
-              ))}
-            </View>
-          </LinearGradient>
-        </View>
+              </View>
 
-        <View style={styles.paginationRow}>
-          {ONBOARDING_STEPS.map((step, index) => {
-            const active = index === stepIndex;
-
-            return (
-              <View
-                key={step.title}
+              <Text
                 style={[
-                  styles.paginationDot,
+                  styles.heroEyebrow,
                   {
-                    backgroundColor: active ? colors.accent : colors.border,
-                    width: active ? 28 : 10,
+                    color: "rgba(255,255,255,0.72)",
+                    fontSize: isCompact ? 12 : 13,
                   },
                 ]}
-              />
-            );
-          })}
-        </View>
+              >
+                {currentStep.eyebrow}
+              </Text>
+              <Text
+                style={[
+                  styles.heroTitle,
+                  {
+                    color: "#FFFFFF",
+                    fontSize: isVeryCompact ? 20 : isCompact ? 24 : 27,
+                    lineHeight: isVeryCompact ? 28 : isCompact ? 31 : 35,
+                    marginTop: isCompact ? 10 : 12,
+                  },
+                ]}
+              >
+                {currentStep.title}
+              </Text>
+              <Text
+                style={[
+                  styles.heroBody,
+                  {
+                    color: "rgba(255,255,255,0.86)",
+                    fontSize: isVeryCompact ? 13.5 : isCompact ? 14 : 14.5,
+                    lineHeight: isVeryCompact ? 20 : isCompact ? 21 : 22,
+                    marginTop: isCompact ? 10 : 12,
+                  },
+                ]}
+              >
+                {currentStep.body}
+              </Text>
 
-        <View style={[styles.actions, { marginTop: isCompact ? 18 : 24 }]}>
+              <View
+                style={[
+                  styles.highlightRow,
+                  { gap: isCompact ? 8 : 10, marginTop: isCompact ? 14 : 18 },
+                ]}
+              >
+                {currentStep.highlights.map((item) => (
+                  <View
+                    key={item}
+                    style={[
+                      styles.highlightChip,
+                      {
+                        paddingHorizontal: isCompact ? 10 : 12,
+                        paddingVertical: isCompact ? 7 : 8,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.highlightChipText,
+                        { fontSize: isCompact ? 11 : 12 },
+                      ]}
+                    >
+                      {item}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            </LinearGradient>
+          </View>
+
+          <View style={styles.paginationRow}>
+            {ONBOARDING_STEPS.map((step, index) => {
+              const active = index === stepIndex;
+
+              return (
+                <View
+                  key={step.title}
+                  style={[
+                    styles.paginationDot,
+                    {
+                      backgroundColor: active ? colors.accent : colors.border,
+                      width: active ? 28 : 10,
+                    },
+                  ]}
+                />
+              );
+            })}
+          </View>
+        </ScrollView>
+
+        <View
+          style={[
+            styles.actions,
+            {
+              paddingHorizontal: isCompact ? 20 : 24,
+              paddingTop: 8,
+              paddingBottom: isCompact ? 16 : 20,
+              backgroundColor: colors.background,
+            },
+          ]}
+        >
           <Pressable
             onPress={
               isLastStep
@@ -279,13 +291,16 @@ export default function OnboardingScreen() {
             </Text>
           </Pressable>
         </View>
-      </ScrollView>
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   root: {
+    flex: 1,
+  },
+  screen: {
     flex: 1,
   },
   content: {
@@ -423,7 +438,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   actions: {
-    marginTop: 24,
+    marginTop: 8,
   },
   primaryButton: {
     minHeight: 56,
