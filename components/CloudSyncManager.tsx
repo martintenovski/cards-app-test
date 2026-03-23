@@ -93,7 +93,15 @@ export function CloudSyncManager() {
     return () => {
       cancelled = true;
     };
-  }, [authReady, cards, hasHydrated, lastModifiedAt, replaceCards, user]);
+  }, [
+    authReady,
+    cards,
+    cloudVaultChangeToken,
+    hasHydrated,
+    lastModifiedAt,
+    replaceCards,
+    user,
+  ]);
 
   useEffect(() => {
     if (

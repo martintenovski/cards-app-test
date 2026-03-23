@@ -1,4 +1,4 @@
-# Cards App Test
+# Pocket ID
 
 A wallet-style Expo app for managing bank cards, personal documents, club cards, insurance cards, vehicle documents, and access badges with a polished card UI, local persistence, biometric app lock, expiry reminders, and an ML Kit-powered scanning flow.
 

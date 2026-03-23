@@ -1,12 +1,17 @@
 {
   "expo": {
     "name": "Pocket ID",
-    "slug": "cards-app",
+    "slug": "pocket-id",
     "scheme": ["pocketid", "cards-app"],
     "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "backgroundColor": "#ffffff",
+    "backgroundColor": "#3498eb",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#3498eb"
+    },
     "userInterfaceStyle": "automatic",
     "plugins": [
       "expo-router",
@@ -42,7 +47,7 @@
       "bundleIdentifier": "com.tenovski.cardsapp",
       "infoPlist": {
         "NSCameraUsageDescription": "Camera is required to scan identity documents and bank cards",
-        "NFCReaderUsageDescription": "Allow Cards App to use NFC to read compatible cards and tags when you choose to scan them.",
+        "NFCReaderUsageDescription": "Allow Pocket ID to use NFC to read compatible cards and tags when you choose to scan them.",
         "NSUserNotificationsUsageDescription": "Pocket ID uses notifications to remind you before cards and documents expire.",
         "ITSAppUsesNonExemptEncryption": false
       },
@@ -52,8 +57,8 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/android-icon-foreground.png",
-        "backgroundColor": "#239BFF"
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#3498eb"
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.tenovski.cardsapp",

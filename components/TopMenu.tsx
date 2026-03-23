@@ -17,7 +17,7 @@ import Animated, {
 
 import { useCardStore } from "@/store/useCardStore";
 import type { HomeFilter } from "@/types/card";
-import { FILTER_LABELS } from "@/types/card";
+import { FILTER_LABELS, getCardsByFilter } from "@/types/card";
 import { APP_THEME, resolveTheme } from "@/utils/theme";
 
 type TopMenuProps = {
@@ -44,6 +44,7 @@ export function TopMenu({
   onSelect,
 }: TopMenuProps) {
   const insets = useSafeAreaInsets();
+  const cards = useCardStore((state) => state.cards);
   const themePreference = useCardStore((state) => state.themePreference);
   const deviceScheme = useColorScheme();
   const resolvedTheme = resolveTheme(themePreference, deviceScheme);
@@ -109,9 +110,9 @@ export function TopMenu({
           style={styles.sheetHeader}
           onPress={onClose}
         >
-          <Text style={[styles.sheetTitle, { color: colors.text }]}>
-            Manage
-          </Text>
+          <View style={styles.sheetTitleWrap}>
+            <Text style={[styles.sheetTitle, { color: colors.text }]}>Manage</Text>
+          </View>
           <View style={styles.closeBtn}>
             <Feather name="chevron-up" size={22} color={colors.text} />
           </View>
@@ -121,6 +122,8 @@ export function TopMenu({
         <View style={styles.optionsList}>
           {MENU_ITEMS.map((item) => {
             const active = item === selectedFilter;
+            const itemCount = getCardsByFilter(cards, item).length;
+
             return (
               <Pressable
                 key={item}
@@ -131,19 +134,45 @@ export function TopMenu({
                   onClose();
                 }}
               >
-                <Text
-                  style={[
-                    styles.optionText,
-                    { color: active ? colors.text : colors.textMuted },
-                  ]}
-                >
-                  {FILTER_LABELS[item]}
-                </Text>
-                {active ? (
-                  <Feather name="check" size={18} color={colors.text} />
-                ) : (
-                  <View style={styles.checkIcon} />
-                )}
+                <View style={styles.optionLabelWrap}>
+                  <Text
+                    style={[
+                      styles.optionText,
+                      { color: active ? colors.text : colors.textMuted },
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {FILTER_LABELS[item]}
+                  </Text>
+                  <View
+                    style={[
+                      styles.countBadge,
+                      {
+                        backgroundColor: active
+                          ? colors.accent
+                          : colors.surfaceMuted,
+                      },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.countBadgeText,
+                        {
+                          color: active ? colors.accentText : colors.textMuted,
+                        },
+                      ]}
+                    >
+                      {itemCount}
+                    </Text>
+                  </View>
+                </View>
+                <View style={styles.optionTrailing}>
+                  {active ? (
+                    <Feather name="check" size={18} color={colors.text} />
+                  ) : (
+                    <View style={styles.checkIcon} />
+                  )}
+                </View>
               </Pressable>
             );
           })}
@@ -170,10 +199,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
+  sheetTitleWrap: {
+    flex: 1,
+    paddingRight: 12,
+  },
   sheetTitle: {
     fontFamily: "ReadexPro-Bold",
     fontSize: 36,
-    lineHeight: 36,
+    lineHeight: 42,
     color: "#FFFFFF",
   },
   closeBtn: {
@@ -195,9 +228,33 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     paddingVertical: 12,
   },
+  optionLabelWrap: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingRight: 12,
+  },
   optionText: {
     fontFamily: "ReadexPro-Medium",
     fontSize: 22,
+    flexShrink: 1,
+  },
+  optionTrailing: {
+    width: 25,
+    alignItems: "flex-end",
+  },
+  countBadge: {
+    minWidth: 28,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  countBadgeText: {
+    fontFamily: "ReadexPro-Bold",
+    fontSize: 12,
   },
   checkIcon: {
     width: 25,

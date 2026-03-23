@@ -55,6 +55,7 @@ interface CardStoreState {
   cards: WalletCard[];
   viewMode: WalletViewMode;
   homeFilter: HomeFilter;
+  hasSeenOnboarding: boolean;
   themePreference: ThemePreference;
   appLockEnabled: boolean;
   expiryNotificationsEnabled: boolean;
@@ -65,6 +66,7 @@ interface CardStoreState {
   setViewMode: (viewMode: WalletViewMode) => void;
   toggleViewMode: () => void;
   setHomeFilter: (filter: HomeFilter) => void;
+  setHasSeenOnboarding: (hasSeenOnboarding: boolean) => void;
   setThemePreference: (themePreference: ThemePreference) => void;
   toggleThemePreference: (resolvedTheme: ResolvedTheme) => void;
   setAppLockEnabled: (enabled: boolean) => void;
@@ -95,6 +97,7 @@ export const useCardStore = create<CardStoreState>()(
       cards: initialSeedCards,
       viewMode: "list",
       homeFilter: "everything",
+      hasSeenOnboarding: false,
       themePreference: "system",
       appLockEnabled: true,
       expiryNotificationsEnabled: true,
@@ -110,6 +113,7 @@ export const useCardStore = create<CardStoreState>()(
           viewMode: state.viewMode === "stack" ? "list" : "stack",
         })),
       setHomeFilter: (homeFilter) => set({ homeFilter }),
+      setHasSeenOnboarding: (hasSeenOnboarding) => set({ hasSeenOnboarding }),
       setThemePreference: (themePreference) => set({ themePreference }),
       setAppLockEnabled: (appLockEnabled) => set({ appLockEnabled }),
       setExpiryNotificationsEnabled: (expiryNotificationsEnabled) =>
@@ -188,15 +192,16 @@ export const useCardStore = create<CardStoreState>()(
           return { cards: [last, ...rest] };
         }),
       resetCards: () =>
-        set({
+        set((state) => ({
           cards: initialSeedCards,
           viewMode: "list",
           homeFilter: "everything",
+          hasSeenOnboarding: state.hasSeenOnboarding,
           themePreference: "system",
           appLockEnabled: true,
           expiryNotificationsEnabled: true,
           lastModifiedAt: new Date().toISOString(),
-        }),
+        })),
     }),
     {
       name: "cards-app-wallet-store-v3",
@@ -229,6 +234,7 @@ export const useCardStore = create<CardStoreState>()(
         cards: state.cards,
         viewMode: state.viewMode,
         homeFilter: state.homeFilter,
+        hasSeenOnboarding: state.hasSeenOnboarding,
         themePreference: state.themePreference,
         appLockEnabled: state.appLockEnabled,
         expiryNotificationsEnabled: state.expiryNotificationsEnabled,

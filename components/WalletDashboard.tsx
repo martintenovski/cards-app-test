@@ -104,14 +104,14 @@ export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
           },
         ]}
       >
-        <View>
+        <View style={styles.headingWrap}>
           <Text
             style={[
               styles.headingMain,
               {
                 color: colors.text,
                 fontSize: isCompact ? 31 : 36,
-                lineHeight: isCompact ? 31 : 36,
+                lineHeight: isCompact ? 37 : 42,
               },
             ]}
           >
@@ -124,7 +124,7 @@ export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
               {
                 color: colors.textMuted,
                 fontSize: isCompact ? 24 : 30,
-                lineHeight: isCompact ? 24 : 30,
+                lineHeight: isCompact ? 29 : 36,
               },
             ]}
           >
@@ -266,16 +266,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 25,
     paddingTop: 20,
   },
+  headingWrap: {
+    flex: 1,
+    paddingRight: 12,
+  },
   headingMain: {
     fontFamily: "ReadexPro-Bold",
     fontSize: 36,
-    lineHeight: 36,
+    lineHeight: 42,
     color: "#1D1D1D",
   },
   headingSub: {
     fontFamily: "ReadexPro-Bold",
     fontSize: 30,
-    lineHeight: 30,
+    lineHeight: 36,
     color: "#939393",
   },
   chevronBtn: {

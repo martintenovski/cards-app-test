@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
+import * as DocumentPicker from "expo-document-picker";
 import {
   ActivityIndicator,
   Alert,
@@ -124,8 +125,17 @@ export default function ImportCardScreen() {
   const handlePickSharedCardFile = async () => {
     try {
       setIsPickingFile(true);
-      const selectedFile = await File.pickFileAsync();
-      const file = Array.isArray(selectedFile) ? selectedFile[0] : selectedFile;
+      const result = await DocumentPicker.getDocumentAsync({
+        multiple: false,
+        copyToCacheDirectory: true,
+        type: ["application/json", "*/*"],
+      });
+
+      if (result.canceled) {
+        return;
+      }
+
+      const file = new File(result.assets[0].uri);
       const rawPayload = await file.text();
       const parsedPayload = parseSharedCardPayload(rawPayload);
 
@@ -139,16 +149,18 @@ export default function ImportCardScreen() {
 
       setPickedPayload(parsedPayload);
     } catch (error) {
-      if (
-        error instanceof Error &&
-        /cancel/i.test(error.message)
-      ) {
+      if (error instanceof Error && /cancel/i.test(error.message)) {
         return;
       }
 
+      const details =
+        error instanceof Error && error.message
+          ? `\n\nDetails: ${error.message}`
+          : "";
+
       Alert.alert(
         "Could not open shared card",
-        "Pocket ID could not read that file. Try downloading it again from Gmail, Drive, or your Files app.",
+        `Pocket ID could not read that file. Try downloading it again from Gmail, Drive, or your Files app.${details}`,
       );
     } finally {
       setIsPickingFile(false);

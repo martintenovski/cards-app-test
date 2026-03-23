@@ -21,7 +21,7 @@ import { GluestackUIProvider } from "@/components/ui/gluestack-ui-provider";
 import * as Notifications from "expo-notifications";
 import * as SplashScreen from "expo-splash-screen";
 import { useFonts } from "expo-font";
-import { Stack, useRouter } from "expo-router";
+import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { LogBox, useColorScheme } from "react-native";
@@ -42,7 +42,10 @@ LogBox.ignoreLogs([
 
 export default function RootLayout() {
   const router = useRouter();
+  const segments = useSegments();
   const deviceScheme = useColorScheme();
+  const hasHydrated = useCardStore((state) => state.hasHydrated);
+  const hasSeenOnboarding = useCardStore((state) => state.hasSeenOnboarding);
   const themePreference = useCardStore((state) => state.themePreference);
   const resolvedTheme = resolveTheme(themePreference, deviceScheme);
   const colors = APP_THEME[resolvedTheme];
@@ -57,10 +60,27 @@ export default function RootLayout() {
   });
 
   useEffect(() => {
-    if (fontsLoaded) {
+    if (fontsLoaded && hasHydrated) {
       SplashScreen.hideAsync();
     }
-  }, [fontsLoaded]);
+  }, [fontsLoaded, hasHydrated]);
+
+  useEffect(() => {
+    if (!fontsLoaded || !hasHydrated) {
+      return;
+    }
+
+    const isOnboardingRoute = segments[0] === "onboarding";
+
+    if (!hasSeenOnboarding && !isOnboardingRoute) {
+      router.replace("/onboarding");
+      return;
+    }
+
+    if (hasSeenOnboarding && isOnboardingRoute) {
+      router.replace("/");
+    }
+  }, [fontsLoaded, hasHydrated, hasSeenOnboarding, router, segments]);
 
   // Navigate to card-detail when a notification is tapped
   useEffect(() => {
@@ -84,7 +104,7 @@ export default function RootLayout() {
     return () => sub.remove();
   }, [router]);
 
-  if (!fontsLoaded) {
+  if (!fontsLoaded || !hasHydrated) {
     return null;
   }
 
@@ -106,6 +126,13 @@ export default function RootLayout() {
               }}
             >
               <Stack.Screen name="(tabs)" />
+              <Stack.Screen
+                name="onboarding"
+                options={{
+                  headerShown: false,
+                  animation: "fade_from_bottom",
+                }}
+              />
               <Stack.Screen
                 name="add-card"
                 options={{

@@ -171,6 +171,7 @@ const styles = StyleSheet.create({
   searchBox: {
     marginHorizontal: 25,
     marginTop: 22,
+    marginBottom: 8,
     borderRadius: 24,
     borderWidth: 1,
     flexDirection: "row",
@@ -187,7 +188,7 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 25,
-    paddingTop: 30,
+    paddingTop: 24,
     paddingBottom: 24,
     gap: 14,
   },

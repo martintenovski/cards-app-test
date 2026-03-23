@@ -478,7 +478,11 @@ export default function ProfileScreen() {
                     ]}
                   >
                     <Text
-                      style={[styles.authButtonText, { color: colors.text }]}
+                      style={[
+                        styles.authButtonText,
+                        styles.authButtonTextCentered,
+                        { color: colors.text },
+                      ]}
                     >
                       {authBusy === "forget-passphrase"
                         ? "Forgetting passphrase…"
@@ -751,6 +755,10 @@ const styles = StyleSheet.create({
   authButtonText: {
     fontFamily: "ReadexPro-Bold",
     fontSize: 15,
+  },
+  authButtonTextCentered: {
+    textAlign: "center",
+    width: "100%",
   },
   vaultStatusCard: {
     borderWidth: 1,
