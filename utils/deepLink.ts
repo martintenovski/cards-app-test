@@ -17,7 +17,6 @@ export function createAppUrl(
   return Linking.createURL(`/${path.replace(/^\/+/, "")}`, {
     scheme: PRIMARY_APP_SCHEME,
     queryParams: normalizedQueryParams,
-    isTripleSlashed: true,
   });
 }
 
