@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import * as DocumentPicker from "expo-document-picker";
@@ -66,7 +66,6 @@ export default function ImportCardScreen() {
   const colors = APP_THEME[resolvedTheme];
   const [pickedPayload, setPickedPayload] = useState(sharedPayload);
   const [isPickingFile, setIsPickingFile] = useState(false);
-  const didAutoOpenPicker = useRef(false);
   const translateY = useSharedValue(SHEET_HEIGHT);
   const backdropOpacity = useSharedValue(0);
 
@@ -167,13 +166,6 @@ export default function ImportCardScreen() {
     }
   };
 
-  useEffect(() => {
-    if (sharedPayload || pickedPayload || didAutoOpenPicker.current) return;
-
-    didAutoOpenPicker.current = true;
-    handlePickSharedCardFile();
-  }, [pickedPayload, sharedPayload]);
-
   return (
     <>
       <StatusBar style={resolvedTheme === "dark" ? "light" : "dark"} />
@@ -221,27 +213,25 @@ export default function ImportCardScreen() {
                           { backgroundColor: colors.surfaceMuted },
                         ]}
                       >
-                      {isPickingFile ? (
-                        <ActivityIndicator size="small" color={colors.text} />
-                      ) : (
-                        <Feather
-                          name="download-cloud"
-                          size={24}
-                          color={colors.text}
-                        />
-                      )}
+                        {isPickingFile ? (
+                          <ActivityIndicator size="small" color={colors.text} />
+                        ) : (
+                          <Feather
+                            name="download-cloud"
+                            size={24}
+                            color={colors.text}
+                          />
+                        )}
                       </View>
-                      <Text
-                        style={[styles.errorTitle, { color: colors.text }]}
-                      >
+                      <Text style={[styles.errorTitle, { color: colors.text }]}>
                         Import A Shared Card
                       </Text>
                       <Text
                         style={[styles.errorBody, { color: colors.textMuted }]}
                       >
-                        Choose a Pocket ID shared card file from Gmail,
-                        Google Drive, Downloads, or your Files app to prefill
-                        and save that one card here.
+                        Choose a Pocket ID shared card file from Gmail, Google
+                        Drive, Downloads, or your Files app to prefill and save
+                        that one card here.
                       </Text>
                       <Pressable
                         onPress={handlePickSharedCardFile}

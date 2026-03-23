@@ -77,10 +77,14 @@ export default function ProfileScreen() {
   const themePreference = useCardStore((state) => state.themePreference);
   const authUser = useAuthStore((state) => state.user);
   const authReady = useAuthStore((state) => state.isReady);
-  const cloudVaultChangeToken = useCloudVaultStore((state) => state.changeToken);
+  const cloudVaultChangeToken = useCloudVaultStore(
+    (state) => state.changeToken,
+  );
   const bumpCloudVaultChangeToken = useCloudVaultStore(
     (state) => state.bumpChangeToken,
   );
+  const requestSync = useCloudVaultStore((state) => state.requestSync);
+  const syncStatus = useCloudVaultStore((state) => state.syncStatus);
   const deviceScheme = useColorScheme();
   const { width } = useWindowDimensions();
   const resolvedTheme = resolveTheme(themePreference, deviceScheme);
@@ -135,7 +139,10 @@ export default function ProfileScreen() {
   const handleSignIn = async (provider: "google") => {
     try {
       setAuthBusy(provider);
-      await signInWithProvider(provider);
+      const session = await signInWithProvider(provider);
+      if (session) {
+        requestSync("Fetching your cards from Google sync…");
+      }
     } finally {
       setAuthBusy(null);
     }
@@ -145,10 +152,19 @@ export default function ProfileScreen() {
     try {
       setAuthBusy("switch-google");
       await signOut();
-      await signInWithProvider("google", { selectAccount: true });
+      const session = await signInWithProvider("google", {
+        selectAccount: true,
+      });
+      if (session) {
+        requestSync("Fetching your cards from Google sync…");
+      }
     } finally {
       setAuthBusy(null);
     }
+  };
+
+  const handleFetchLatestData = () => {
+    requestSync("Fetching the latest encrypted wallet data…");
   };
 
   const handleSignOut = async () => {
@@ -507,6 +523,30 @@ export default function ProfileScreen() {
                     {authBusy === "switch-google"
                       ? "Switching Google…"
                       : "Switch Google Account"}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={handleFetchLatestData}
+                  style={[
+                    styles.authButton,
+                    styles.authButtonSecondary,
+                    {
+                      backgroundColor: colors.surfaceMuted,
+                      borderColor: colors.border,
+                    },
+                    styles.authButtonOutline,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.authButtonText,
+                      styles.authButtonTextCentered,
+                      { color: colors.text },
+                    ]}
+                  >
+                    {syncStatus === "syncing"
+                      ? "Fetching Latest Data…"
+                      : "Fetch Latest Data"}
                   </Text>
                 </Pressable>
                 <Pressable
