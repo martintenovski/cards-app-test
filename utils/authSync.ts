@@ -1,4 +1,5 @@
 import * as WebBrowser from "expo-web-browser";
+import { Platform } from "react-native";
 import type { Session, User } from "@supabase/supabase-js";
 
 import {
@@ -13,6 +14,9 @@ import type { AuthProfile } from "@/store/useAuthStore";
 import type { WalletCard } from "@/types/card";
 
 WebBrowser.maybeCompleteAuthSession();
+
+const SUPABASE_CALLBACK_URL =
+  "https://rmtucmjvehyplrcdnmxh.supabase.co/auth/v1/callback";
 
 export function mapSupabaseUser(user: User | null): AuthProfile | null {
   if (!user) return null;
@@ -59,7 +63,11 @@ export async function signInWithProvider(provider: "google" | "apple") {
     throw new Error("Supabase is not configured.");
   }
 
-  const redirectTo = createAppUrl("auth/callback");
+  const redirectTo =
+    Platform.OS === "android"
+      ? SUPABASE_CALLBACK_URL
+      : createAppUrl("auth/callback");
+
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider,
     options: {
@@ -68,33 +76,22 @@ export async function signInWithProvider(provider: "google" | "apple") {
     },
   });
 
-  if (error) {
-    throw error;
-  }
-
-  if (!data?.url) {
-    throw new Error("Could not start sign-in.");
-  }
+  if (error) throw error;
+  if (!data?.url) throw new Error("Could not start sign-in.");
 
   const result = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);
 
-  if (result.type !== "success") {
-    return null;
-  }
+  if (result.type !== "success") return null;
 
   const callbackUrl = new URL(result.url);
   const code = callbackUrl.searchParams.get("code");
 
-  if (!code) {
-    throw new Error("No auth code returned from provider.");
-  }
+  if (!code) throw new Error("No auth code returned from provider.");
 
   const { data: exchangeData, error: exchangeError } =
     await supabase.auth.exchangeCodeForSession(code);
 
-  if (exchangeError) {
-    throw exchangeError;
-  }
+  if (exchangeError) throw exchangeError;
 
   return exchangeData.session;
 }
@@ -102,9 +99,7 @@ export async function signInWithProvider(provider: "google" | "apple") {
 export async function signOut() {
   if (!supabase) return;
   const { error } = await supabase.auth.signOut();
-  if (error) {
-    throw error;
-  }
+  if (error) throw error;
 }
 
 export async function reconcileWalletSnapshot(params: {
