@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "Pocket ID",
-    "slug": "pocket-id",
+    "slug": "cards-app",
     "scheme": "pocketid",
     "version": "1.0.1",
     "orientation": "portrait",
