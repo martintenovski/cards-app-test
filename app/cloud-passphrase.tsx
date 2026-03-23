@@ -62,6 +62,7 @@ export default function CloudPassphraseScreen() {
   const router = useRouter();
   const authUser = useAuthStore((state) => state.user);
   const themePreference = useCardStore((state) => state.themePreference);
+  const requestSync = useCloudVaultStore((state) => state.requestSync);
   const bumpCloudVaultChangeToken = useCloudVaultStore(
     (state) => state.bumpChangeToken,
   );
@@ -132,14 +133,13 @@ export default function CloudPassphraseScreen() {
     try {
       setIsSaving(true);
       await saveStoredSyncPassphrase(authUser.id, passphrase);
-      bumpCloudVaultChangeToken();
-      Alert.alert(
-        hasExistingPassphrase ? "Passphrase updated" : "Cloud vault secured",
+      requestSync(
         hasExistingPassphrase
-          ? "Your next sync will re-encrypt the cloud vault with the updated passphrase. Make sure your other devices use the same new passphrase."
-          : "Cloud sync will now upload encrypted card data. Keep this passphrase somewhere safe because a new device needs it to restore your wallet.",
-        [{ text: "Done", onPress: () => router.back() }],
+          ? "Refreshing your encrypted Pocket ID vault…"
+          : "Decrypting and importing your encrypted wallet…",
       );
+      bumpCloudVaultChangeToken();
+      router.back();
     } catch (error) {
       Alert.alert(
         "Could not save passphrase",

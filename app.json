@@ -8,7 +8,7 @@
     "icon": "./assets/icon.png",
     "backgroundColor": "#3498eb",
     "splash": {
-      "image": "./assets/splash.png",
+      "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#3498eb"
     },
@@ -57,7 +57,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
+        "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundColor": "#3498eb"
       },
       "predictiveBackGestureEnabled": false,

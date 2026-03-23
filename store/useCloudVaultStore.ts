@@ -3,12 +3,12 @@ import { create } from "zustand";
 type CloudVaultStoreState = {
   changeToken: number;
   syncRequestToken: number;
-  syncStatus: "idle" | "syncing" | "error";
+  syncStatus: "idle" | "syncing" | "success" | "error";
   syncMessage: string | null;
   bumpChangeToken: () => void;
   requestSync: (message?: string) => void;
   setSyncState: (
-    status: "idle" | "syncing" | "error",
+    status: "idle" | "syncing" | "success" | "error",
     message?: string | null,
   ) => void;
 };

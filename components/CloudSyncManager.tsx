@@ -6,6 +6,7 @@ import {
   View,
   useColorScheme,
 } from "react-native";
+import { Feather } from "@expo/vector-icons";
 
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { useAuthStore } from "@/store/useAuthStore";
@@ -44,6 +45,18 @@ export function CloudSyncManager() {
   const lastPushedAt = useRef<string | null>(null);
   const lastObservedModifiedAt = useRef<string | null>(null);
   const handledSyncRequestToken = useRef(0);
+
+  useEffect(() => {
+    if (syncStatus !== "success" && syncStatus !== "error") {
+      return undefined;
+    }
+
+    const timer = setTimeout(() => {
+      setSyncState("idle");
+    }, 2200);
+
+    return () => clearTimeout(timer);
+  }, [setSyncState, syncStatus]);
 
   useEffect(() => {
     hasReconciled.current = false;
@@ -104,6 +117,14 @@ export function CloudSyncManager() {
             });
             lastPushedAt.current = result.remote.updated_at;
           }
+
+          const importedCount = result.remote.cards.length;
+          setSyncState(
+            "success",
+            importedCount === 1
+              ? "Imported 1 card from your encrypted cloud vault."
+              : `Imported ${importedCount} cards from your encrypted cloud vault.`,
+          );
         } else {
           await pushWalletSnapshot({
             user: currentUser,
@@ -112,10 +133,15 @@ export function CloudSyncManager() {
           });
           lastPushedAt.current = lastModifiedAt;
           lastObservedModifiedAt.current = lastModifiedAt;
+
+          if (hasPendingSyncRequest) {
+            setSyncState("success", "Pocket ID is synced and up to date.");
+          } else {
+            setSyncState("idle");
+          }
         }
 
         handledSyncRequestToken.current = syncRequestToken;
-        setSyncState("idle");
         hasReconciled.current = true;
       } catch (error) {
         if (!isPassphraseMissingError(error)) {
@@ -201,9 +227,28 @@ export function CloudSyncManager() {
     user,
   ]);
 
-  return syncStatus === "syncing" ? (
+  if (syncStatus === "idle") {
+    return null;
+  }
+
+  const isSyncing = syncStatus === "syncing";
+  const isSuccess = syncStatus === "success";
+  const title = isSyncing
+    ? "Syncing Pocket ID"
+    : isSuccess
+      ? "Sync complete"
+      : "Sync issue";
+  const body =
+    syncMessage ??
+    (isSyncing
+      ? "Fetching your latest cards…"
+      : isSuccess
+        ? "Your encrypted cloud vault is ready on this device."
+        : "Could not fetch the latest cloud data.");
+
+  return (
     <View
-      pointerEvents="auto"
+      pointerEvents={isSyncing ? "auto" : "none"}
       style={[styles.overlay, { backgroundColor: colors.overlay }]}
     >
       <View
@@ -216,16 +261,33 @@ export function CloudSyncManager() {
           },
         ]}
       >
-        <ActivityIndicator size="small" color={colors.text} />
+        {isSyncing ? (
+          <ActivityIndicator size="small" color={colors.text} />
+        ) : (
+          <View
+            style={[
+              styles.statusIcon,
+              {
+                backgroundColor: isSuccess ? colors.accent : colors.dangerSoft,
+              },
+            ]}
+          >
+            <Feather
+              name={isSuccess ? "check" : "alert-triangle"}
+              size={18}
+              color={isSuccess ? colors.accentText : colors.danger}
+            />
+          </View>
+        )}
         <Text style={[styles.title, { color: colors.text }]}>
-          Syncing Pocket ID
+          {title}
         </Text>
         <Text style={[styles.body, { color: colors.textMuted }]}>
-          {syncMessage ?? "Fetching your latest cards…"}
+          {body}
         </Text>
       </View>
     </View>
-  ) : null;
+  );
 }
 
 const styles = StyleSheet.create({
@@ -249,6 +311,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.14,
     shadowRadius: 24,
     shadowOffset: { width: 0, height: 16 },
+  },
+  statusIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
   },
   title: {
     fontFamily: "ReadexPro-Bold",

@@ -9,6 +9,7 @@ import {
   useColorScheme,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useRouter } from "expo-router";
 
 import { useCardStore } from "@/store/useCardStore";
 import { getCardExpiryDate } from "@/utils/expiry";
@@ -61,6 +62,7 @@ function SettingToggle({
 }
 
 export default function SettingsScreen() {
+  const router = useRouter();
   const themePreference = useCardStore((state) => state.themePreference);
   const setThemePreference = useCardStore((state) => state.setThemePreference);
   const viewMode = useCardStore((state) => state.viewMode);
@@ -72,6 +74,9 @@ export default function SettingsScreen() {
   );
   const setExpiryNotificationsEnabled = useCardStore(
     (state) => state.setExpiryNotificationsEnabled,
+  );
+  const setHasSeenOnboarding = useCardStore(
+    (state) => state.setHasSeenOnboarding,
   );
   const cards = useCardStore((state) => state.cards);
   const deviceScheme = useColorScheme();
@@ -98,6 +103,11 @@ export default function SettingsScreen() {
         seconds: 5,
       },
     });
+  };
+
+  const replayOnboarding = () => {
+    setHasSeenOnboarding(false);
+    router.push("/onboarding");
   };
 
   return (
@@ -230,6 +240,23 @@ export default function SettingsScreen() {
           >
             <Text style={[styles.testBtnText, { color: colors.textMuted }]}>
               Send test notification (5 s)
+            </Text>
+          </Pressable>
+        </View>
+
+        <View style={[styles.section, { backgroundColor: colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}> 
+            Onboarding
+          </Text>
+          <Text style={[styles.sectionBody, { color: colors.textMuted }]}> 
+            Replay the Pocket ID introduction whenever you want to review the welcome flow again.
+          </Text>
+          <Pressable
+            onPress={replayOnboarding}
+            style={[styles.testBtn, { backgroundColor: colors.surfaceMuted }]}
+          >
+            <Text style={[styles.testBtnText, { color: colors.text }]}> 
+              View onboarding again
             </Text>
           </Pressable>
         </View>
