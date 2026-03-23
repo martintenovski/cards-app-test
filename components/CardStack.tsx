@@ -69,7 +69,7 @@ function posMod(v: number, n: number) {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-export type CardStackProps = {
+type CardStackProps = {
   cards: WalletCard[];
   /** kept for API compatibility with WalletDashboard */
   onCycleFwd: () => void;

@@ -25,7 +25,7 @@ import type { WalletSnapshotRow } from "@/lib/supabase";
 import type { AuthProfile } from "@/store/useAuthStore";
 import type { WalletCard } from "@/types/card";
 
-export type ResolvedWalletSnapshot = Omit<WalletSnapshotRow, "cards"> & {
+type ResolvedWalletSnapshot = Omit<WalletSnapshotRow, "cards"> & {
   cards: WalletCard[];
   storage: "encrypted" | "legacy-plain";
 };
@@ -34,7 +34,7 @@ WebBrowser.maybeCompleteAuthSession();
 
 const AUTH_CALLBACK_PATH = "auth/callback";
 
-export const redirectTo = makeRedirectUri({
+const redirectTo = makeRedirectUri({
   scheme: getRuntimeAppScheme(),
   path: AUTH_CALLBACK_PATH,
   native: `${getRuntimeAppScheme()}://${AUTH_CALLBACK_PATH}`,
@@ -207,7 +207,7 @@ export async function pushWalletSnapshot(params: {
   await upsertWalletSnapshot(snapshot);
 }
 
-export async function fetchResolvedWalletSnapshot(userId: string) {
+async function fetchResolvedWalletSnapshot(userId: string) {
   const remote = await fetchWalletSnapshot(userId);
 
   if (!remote) {

@@ -2,7 +2,7 @@ import type { CardPalette } from "@/types/card";
 import { getContrastColor } from "@/types/card";
 
 /** Convert a 6-digit hex color to [hue(0-360), saturation(0-1), lightness(0-1)]. */
-export function hexToHsl(hex: string): [number, number, number] {
+function hexToHsl(hex: string): [number, number, number] {
   const r = parseInt(hex.slice(1, 3), 16) / 255;
   const g = parseInt(hex.slice(3, 5), 16) / 255;
   const b = parseInt(hex.slice(5, 7), 16) / 255;
@@ -87,12 +87,4 @@ export function buildPaletteFromGradient(
     shadow: `rgba(${r},${g},${b},0.25)`,
     gradient,
   };
-}
-
-/**
- * Build a full CardPalette from a single hex color.
- * The gradient is derived algorithmically (dominant color + lighter end).
- */
-export function buildPaletteFromColor(hex: string): CardPalette {
-  return buildPaletteFromGradient(deriveGradient(hex));
 }

@@ -1,11 +1,10 @@
 import type { CardFormValues, CardPalette, WalletCard } from "@/types/card";
 import { cardToFormValues } from "@/types/card";
 
-export const SHARED_CARD_FILE_MIME_TYPE =
-  "application/vnd.pocketid.card+json";
+export const SHARED_CARD_FILE_MIME_TYPE = "application/vnd.pocketid.card+json";
 export const SHARED_CARD_FILE_EXTENSION = ".pocketid-card.json";
 
-export type SharedCardPayload = {
+type SharedCardPayload = {
   version: 1;
   values: CardFormValues;
   palette: CardPalette;
@@ -47,9 +46,7 @@ export function parseSharedCardPayload(rawPayload?: string | null) {
     }
 
     try {
-      return parseCandidate(
-        normalizedPayload.slice(firstBrace, lastBrace + 1),
-      );
+      return parseCandidate(normalizedPayload.slice(firstBrace, lastBrace + 1));
     } catch {
       return null;
     }
@@ -65,10 +62,6 @@ export function createSharedCardFileName(card: WalletCard) {
     .slice(0, 40);
 
   return `${sanitizedTitle || "shared-card"}${SHARED_CARD_FILE_EXTENSION}`;
-}
-
-export function encodeSharedCardPayload(payload: SharedCardPayload) {
-  return encodeURIComponent(JSON.stringify(payload));
 }
 
 export function decodeSharedCardPayload(encodedPayload?: string | string[]) {

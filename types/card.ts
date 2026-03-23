@@ -35,7 +35,6 @@ export interface CardPalette {
 }
 
 import { GRADIENTS } from "@/constants/gradients";
-export { GRADIENTS };
 
 interface BaseCard {
   id: string;
@@ -243,7 +242,7 @@ export const DEFAULT_FORM_VALUES: CardFormValues = {
   accessLevel: "",
 };
 
-export const pastelPalettes: CardPalette[] = [
+const pastelPalettes: CardPalette[] = [
   {
     id: "lavender",
     background: "#BBA8FF",
@@ -359,7 +358,7 @@ function randomizeSeedPalettes(cards: WalletCard[]) {
   });
 }
 
-export const seedCards: WalletCard[] = [
+const seedCards: WalletCard[] = [
   {
     id: "personal-2",
     category: "personal",
@@ -490,7 +489,7 @@ export function getCardDisplayName(card: WalletCard) {
   return card.companyName || card.title;
 }
 
-export function maskCardNumber(value: string) {
+function maskCardNumber(value: string) {
   const digits = value.replace(/\D/g, "");
   if (digits.length <= 8) {
     return value || "0000 **** **** 0000";
@@ -498,7 +497,7 @@ export function maskCardNumber(value: string) {
   return `${digits.slice(0, 4)} **** **** ${digits.slice(-4)}`;
 }
 
-export function maskSecondaryValue(value: string, fallback = "000000") {
+function maskSecondaryValue(value: string, fallback = "000000") {
   if (!value) {
     return fallback;
   }
@@ -511,10 +510,6 @@ export function getCardsByFilter(cards: WalletCard[], filter: HomeFilter) {
   }
 
   return cards.filter((card) => card.category === filter);
-}
-
-export function getFilterLabel(filter: HomeFilter) {
-  return FILTER_LABELS[filter];
 }
 
 function createId(prefix: string) {
@@ -865,12 +860,12 @@ export function createCardFromForm(
   };
 }
 
-export type CardIconName =
+type CardIconName =
   | "credit-card-outline"
   | "card-account-details-outline"
   | "card-account-details-star-outline";
 
-export interface CardSideContent {
+interface CardSideContent {
   topLabel: string;
   topValue: string;
   middleLabel: string;

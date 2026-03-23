@@ -58,7 +58,7 @@ const SIZES = {
   },
 };
 
-export type CardSize = "full" | "compact" | "small";
+type CardSize = "full" | "compact" | "small";
 
 type CardItemProps = {
   card: WalletCard;

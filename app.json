@@ -48,12 +48,8 @@
       "bundleIdentifier": "com.tenovski.cardsapp",
       "infoPlist": {
         "NSCameraUsageDescription": "Camera is required to scan identity documents and bank cards",
-        "NFCReaderUsageDescription": "Allow Pocket ID to use NFC to read compatible cards and tags when you choose to scan them.",
         "NSUserNotificationsUsageDescription": "Pocket ID uses notifications to remind you before cards and documents expire.",
         "ITSAppUsesNonExemptEncryption": false
-      },
-      "entitlements": {
-        "com.apple.developer.nfc.readersession.formats": ["TAG"]
       }
     },
     "android": {
@@ -65,7 +61,6 @@
       "package": "com.tenovski.cardsapp",
       "permissions": [
         "android.permission.CAMERA",
-        "android.permission.NFC",
         "android.permission.POST_NOTIFICATIONS"
       ]
     },
