@@ -3,10 +3,12 @@ import { Feather } from "@expo/vector-icons";
 import { useMemo, useState } from "react";
 import {
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   View,
   useColorScheme,
+  useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
@@ -53,10 +55,13 @@ export default function OnboardingScreen() {
   );
   const themePreference = useCardStore((state) => state.themePreference);
   const deviceScheme = useColorScheme();
+  const { width, height } = useWindowDimensions();
   const resolvedTheme = resolveTheme(themePreference, deviceScheme);
   const colors = APP_THEME[resolvedTheme];
   const currentStep = useMemo(() => ONBOARDING_STEPS[stepIndex], [stepIndex]);
   const isLastStep = stepIndex === ONBOARDING_STEPS.length - 1;
+  const isCompact = width < 390 || height < 820;
+  const isVeryCompact = width < 370 || height < 760;
 
   const finishOnboarding = () => {
     setHasSeenOnboarding(true);
@@ -65,13 +70,38 @@ export default function OnboardingScreen() {
 
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: colors.background }]}>
-      <View style={styles.content}>
-        <View style={styles.hero}>
+      <ScrollView
+        contentContainerStyle={[
+          styles.content,
+          {
+            paddingHorizontal: isCompact ? 20 : 24,
+            paddingTop: isCompact ? 16 : 24,
+            paddingBottom: isCompact ? 24 : 32,
+          },
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
+        <View
+          style={[
+            styles.hero,
+            {
+              borderRadius: isCompact ? 28 : 32,
+              minHeight: isVeryCompact ? 360 : isCompact ? 390 : 420,
+            },
+          ]}
+        >
           <LinearGradient
             colors={currentStep.gradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
-            style={styles.heroGradient}
+            style={[
+              styles.heroGradient,
+              {
+                paddingHorizontal: isCompact ? 20 : 24,
+                paddingTop: isCompact ? 18 : 22,
+                paddingBottom: isCompact ? 22 : 28,
+              },
+            ]}
           >
             <View style={styles.heroTopRow}>
               <View style={styles.heroBadge}>
@@ -79,38 +109,122 @@ export default function OnboardingScreen() {
                   0{stepIndex + 1} / 0{ONBOARDING_STEPS.length}
                 </Text>
               </View>
-              <View style={styles.heroIconWrap}>
-                <Feather name={currentStep.icon} size={20} color="#FFFFFF" />
+              <View
+                style={[
+                  styles.heroIconWrap,
+                  {
+                    width: isCompact ? 38 : 42,
+                    height: isCompact ? 38 : 42,
+                    borderRadius: isCompact ? 19 : 21,
+                  },
+                ]}
+              >
+                <Feather
+                  name={currentStep.icon}
+                  size={isCompact ? 18 : 20}
+                  color="#FFFFFF"
+                />
               </View>
             </View>
 
-            <View style={styles.heroArt}>
+            <View
+              style={[
+                styles.heroArt,
+                {
+                  height: isVeryCompact ? 120 : isCompact ? 140 : 164,
+                  marginTop: isCompact ? 18 : 24,
+                  marginBottom: isCompact ? 10 : 14,
+                },
+              ]}
+            >
               <View style={styles.heroCardBack} />
               <View style={styles.heroCardMid} />
               <View style={styles.heroCardFront}>
-                <Text style={styles.heroCardLabel}>Pocket ID</Text>
-                <Text style={styles.heroCardValue}>{currentStep.eyebrow}</Text>
+                <Text
+                  style={[
+                    styles.heroCardLabel,
+                    { fontSize: isCompact ? 11 : 12 },
+                  ]}
+                >
+                  Pocket ID
+                </Text>
+                <Text
+                  style={[
+                    styles.heroCardValue,
+                    {
+                      fontSize: isVeryCompact ? 19 : isCompact ? 21 : 24,
+                      marginTop: isCompact ? 6 : 8,
+                    },
+                  ]}
+                >
+                  {currentStep.eyebrow}
+                </Text>
               </View>
             </View>
 
             <Text
-              style={[styles.heroEyebrow, { color: "rgba(255,255,255,0.72)" }]}
+              style={[
+                styles.heroEyebrow,
+                {
+                  color: "rgba(255,255,255,0.72)",
+                  fontSize: isCompact ? 12 : 13,
+                },
+              ]}
             >
               {currentStep.eyebrow}
             </Text>
-            <Text style={[styles.heroTitle, { color: "#FFFFFF" }]}>
+            <Text
+              style={[
+                styles.heroTitle,
+                {
+                  color: "#FFFFFF",
+                  fontSize: isVeryCompact ? 22 : isCompact ? 26 : 30,
+                  lineHeight: isVeryCompact ? 30 : isCompact ? 33 : 38,
+                  marginTop: isCompact ? 10 : 14,
+                },
+              ]}
+            >
               {currentStep.title}
             </Text>
             <Text
-              style={[styles.heroBody, { color: "rgba(255,255,255,0.86)" }]}
+              style={[
+                styles.heroBody,
+                {
+                  color: "rgba(255,255,255,0.86)",
+                  fontSize: isVeryCompact ? 14 : isCompact ? 14.5 : 15,
+                  lineHeight: isVeryCompact ? 21 : isCompact ? 22 : 24,
+                  marginTop: isCompact ? 10 : 14,
+                },
+              ]}
             >
               {currentStep.body}
             </Text>
 
-            <View style={styles.highlightRow}>
+            <View
+              style={[
+                styles.highlightRow,
+                { gap: isCompact ? 8 : 10, marginTop: isCompact ? 14 : 18 },
+              ]}
+            >
               {currentStep.highlights.map((item) => (
-                <View key={item} style={styles.highlightChip}>
-                  <Text style={styles.highlightChipText}>{item}</Text>
+                <View
+                  key={item}
+                  style={[
+                    styles.highlightChip,
+                    {
+                      paddingHorizontal: isCompact ? 10 : 12,
+                      paddingVertical: isCompact ? 7 : 8,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.highlightChipText,
+                      { fontSize: isCompact ? 11 : 12 },
+                    ]}
+                  >
+                    {item}
+                  </Text>
                 </View>
               ))}
             </View>
@@ -136,44 +250,36 @@ export default function OnboardingScreen() {
           })}
         </View>
 
-        <View style={[styles.noteCard, { backgroundColor: colors.surface }]}>
-          <Text style={[styles.noteTitle, { color: colors.text }]}>
-            Designed for real-world use
-          </Text>
-          <Text style={[styles.noteBody, { color: colors.textMuted }]}>
-            Keep everyday cards close, lock the app when needed, and only pull
-            the latest cloud data when you actually want a refresh.
-          </Text>
-        </View>
-
-        <View style={styles.actions}>
-          <Pressable
-            onPress={finishOnboarding}
-            style={[
-              styles.secondaryButton,
-              { backgroundColor: colors.surfaceMuted },
-            ]}
-          >
-            <Text style={[styles.secondaryButtonText, { color: colors.text }]}>
-              Skip for now
-            </Text>
-          </Pressable>
+        <View style={[styles.actions, { marginTop: isCompact ? 18 : 24 }]}>
           <Pressable
             onPress={
               isLastStep
                 ? finishOnboarding
                 : () => setStepIndex((value) => value + 1)
             }
-            style={[styles.primaryButton, { backgroundColor: colors.accent }]}
+            style={[
+              styles.primaryButton,
+              {
+                backgroundColor: colors.accent,
+                minHeight: isCompact ? 52 : 56,
+                borderRadius: isCompact ? 20 : 22,
+              },
+            ]}
           >
             <Text
-              style={[styles.primaryButtonText, { color: colors.accentText }]}
+              style={[
+                styles.primaryButtonText,
+                {
+                  color: colors.accentText,
+                  fontSize: isCompact ? 15 : 16,
+                },
+              ]}
             >
               {isLastStep ? "Get started" : "Continue"}
             </Text>
           </Pressable>
         </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -183,11 +289,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   content: {
-    flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 32,
-    justifyContent: "space-between",
+    flexGrow: 1,
   },
   hero: {
     borderRadius: 32,
@@ -320,23 +422,7 @@ const styles = StyleSheet.create({
     height: 10,
     borderRadius: 999,
   },
-  noteCard: {
-    borderRadius: 26,
-    padding: 20,
-    marginTop: 22,
-  },
-  noteTitle: {
-    fontFamily: "ReadexPro-Bold",
-    fontSize: 18,
-  },
-  noteBody: {
-    fontFamily: "ReadexPro-Regular",
-    fontSize: 14,
-    lineHeight: 22,
-    marginTop: 8,
-  },
   actions: {
-    gap: 12,
     marginTop: 24,
   },
   primaryButton: {
@@ -349,16 +435,5 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     fontFamily: "ReadexPro-Bold",
     fontSize: 16,
-  },
-  secondaryButton: {
-    minHeight: 52,
-    borderRadius: 22,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 18,
-  },
-  secondaryButtonText: {
-    fontFamily: "ReadexPro-Bold",
-    fontSize: 15,
   },
 });
