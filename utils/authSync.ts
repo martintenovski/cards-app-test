@@ -1,5 +1,7 @@
 import * as WebBrowser from "expo-web-browser";
-import { Platform } from "react-native";
+import * as Linking from "expo-linking";
+import { makeRedirectUri } from "expo-auth-session";
+import * as QueryParams from "expo-auth-session/build/QueryParams";
 import type { Session, User } from "@supabase/supabase-js";
 
 import {
@@ -8,15 +10,28 @@ import {
   supabase,
   upsertWalletSnapshot,
 } from "@/lib/supabase";
-import { createAppUrl } from "@/utils/deepLink";
 import type { WalletSnapshotRow } from "@/lib/supabase";
 import type { AuthProfile } from "@/store/useAuthStore";
 import type { WalletCard } from "@/types/card";
 
 WebBrowser.maybeCompleteAuthSession();
 
-const SUPABASE_CALLBACK_URL =
-  "https://rmtucmjvehyplrcdnmxh.supabase.co/auth/v1/callback";
+const redirectTo = makeRedirectUri();
+
+const createSessionFromUrl = async (url: string) => {
+  const { params, errorCode } = QueryParams.getQueryParams(url);
+  if (errorCode) throw new Error(errorCode);
+
+  const { access_token, refresh_token } = params;
+  if (!access_token) return null;
+
+  const { data, error } = await supabase!.auth.setSession({
+    access_token,
+    refresh_token,
+  });
+  if (error) throw error;
+  return data.session;
+};
 
 export function mapSupabaseUser(user: User | null): AuthProfile | null {
   if (!user) return null;
@@ -63,11 +78,6 @@ export async function signInWithProvider(provider: "google" | "apple") {
     throw new Error("Supabase is not configured.");
   }
 
-  const redirectTo =
-    Platform.OS === "android"
-      ? SUPABASE_CALLBACK_URL
-      : createAppUrl("auth/callback");
-
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider,
     options: {
@@ -83,17 +93,7 @@ export async function signInWithProvider(provider: "google" | "apple") {
 
   if (result.type !== "success") return null;
 
-  const callbackUrl = new URL(result.url);
-  const code = callbackUrl.searchParams.get("code");
-
-  if (!code) throw new Error("No auth code returned from provider.");
-
-  const { data: exchangeData, error: exchangeError } =
-    await supabase.auth.exchangeCodeForSession(code);
-
-  if (exchangeError) throw exchangeError;
-
-  return exchangeData.session;
+  return await createSessionFromUrl(result.url);
 }
 
 export async function signOut() {
