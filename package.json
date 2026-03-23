@@ -25,6 +25,7 @@
     "@supabase/supabase-js": "^2.100.0",
     "babel-plugin-transform-import-meta": "^2.3.3",
     "expo": "^54.0.0",
+    "expo-auth-session": "~7.0.10",
     "expo-blur": "~15.0.8",
     "expo-build-properties": "~1.0.10",
     "expo-camera": "~17.0.10",
