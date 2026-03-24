@@ -1,10 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
-import {
-  GlassView,
-  isGlassEffectAPIAvailable,
-  isLiquidGlassAvailable,
-} from "expo-glass-effect";
+import type { ComponentType } from "react";
+import { requireOptionalNativeModule } from "expo-modules-core";
 import {
   Platform,
   Pressable,
@@ -18,6 +15,51 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useCardStore } from "@/store/useCardStore";
 import { APP_THEME, resolveTheme } from "@/utils/theme";
+
+type GlassEffectModule = {
+  GlassView: ComponentType<{
+    pointerEvents?: "auto" | "none" | "box-none" | "box-only";
+    style?: unknown;
+    glassEffectStyle?: {
+      style: "regular";
+      animate?: boolean;
+      animationDuration?: number;
+    };
+    colorScheme?: "light" | "dark";
+    tintColor?: string;
+  }>;
+  isGlassEffectAPIAvailable: () => boolean;
+  isLiquidGlassAvailable: () => boolean;
+};
+
+type NativeGlassEffectModule = {
+  isGlassEffectAPIAvailable?: boolean;
+  isLiquidGlassAvailable?: boolean;
+};
+
+let glassEffectModule: GlassEffectModule | null = null;
+
+function getGlassEffectModule() {
+  if (glassEffectModule !== null) {
+    return glassEffectModule;
+  }
+
+  try {
+    const nativeGlassEffect =
+      requireOptionalNativeModule<NativeGlassEffectModule>("ExpoGlassEffect");
+
+    if (!nativeGlassEffect) {
+      glassEffectModule = null;
+      return glassEffectModule;
+    }
+
+    glassEffectModule = require("expo-glass-effect") as GlassEffectModule;
+  } catch {
+    glassEffectModule = null;
+  }
+
+  return glassEffectModule;
+}
 
 type NavActionProps = {
   label: string;
@@ -70,6 +112,8 @@ function NavAction({
 }
 
 export function AppTabBar({ state, navigation }: BottomTabBarProps) {
+  const glassEffect = getGlassEffectModule();
+  const GlassView = glassEffect?.GlassView;
   const insets = useSafeAreaInsets();
   const deviceScheme = useColorScheme();
   const { width } = useWindowDimensions();
@@ -84,10 +128,7 @@ export function AppTabBar({ state, navigation }: BottomTabBarProps) {
   const isVeryCompact = width < 360;
   const showSideLabels = !isVeryCompact;
   const addButtonLabel = isVeryCompact ? "" : isCompact ? "Add" : "New Card";
-  const shouldUseLiquidGlass =
-    Platform.OS === "ios" &&
-    isLiquidGlassAvailable() &&
-    isGlassEffectAPIAvailable();
+  const shouldUseLiquidGlass = Platform.OS === "ios" && glassEffect !== null;
   const bottomClearance =
     Platform.OS === "android"
       ? Math.max(insets.bottom + 6, 18)
@@ -124,7 +165,7 @@ export function AppTabBar({ state, navigation }: BottomTabBarProps) {
           },
         ]}
       >
-        {shouldUseLiquidGlass ? (
+        {shouldUseLiquidGlass && GlassView ? (
           <GlassView
             pointerEvents="none"
             style={styles.liquidGlassFill}
