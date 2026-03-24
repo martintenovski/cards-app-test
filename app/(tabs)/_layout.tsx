@@ -3,10 +3,16 @@ import { Tabs } from "expo-router";
 import { AddCardSheet } from "@/components/AddCardSheet";
 import { AppTabBar } from "@/components/AppTabBar";
 import { useCardStore } from "@/store/useCardStore";
+import { APP_THEME, resolveTheme } from "@/utils/theme";
+import { useColorScheme } from "react-native";
 
 export default function TabsLayout() {
   const addCardSheetOpen = useCardStore((state) => state.addCardSheetOpen);
   const closeAddCardSheet = useCardStore((state) => state.closeAddCardSheet);
+  const themePreference = useCardStore((state) => state.themePreference);
+  const deviceScheme = useColorScheme();
+  const resolvedTheme = resolveTheme(themePreference, deviceScheme);
+  const colors = APP_THEME[resolvedTheme];
 
   return (
     <>
@@ -14,7 +20,7 @@ export default function TabsLayout() {
         screenOptions={{
           headerShown: false,
           sceneStyle: {
-            backgroundColor: "#EFEFEF",
+            backgroundColor: colors.background,
           },
         }}
         tabBar={(props) => <AppTabBar {...props} />}

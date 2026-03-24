@@ -4,6 +4,7 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   AppState,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -15,6 +16,8 @@ import { useCardStore } from "@/store/useCardStore";
 import { APP_THEME, resolveTheme } from "@/utils/theme";
 
 const RELOCK_AFTER_MS = 15_000;
+const DEFAULT_UNLOCK_MESSAGE =
+  "Use Face ID, Touch ID, or your device passcode to unlock this wallet.";
 
 type AppLockGateProps = {
   children: ReactNode;
@@ -42,7 +45,15 @@ function getAuthErrorMessage(code?: string) {
 
 export function AppLockGate({ children }: AppLockGateProps) {
   const themePreference = useCardStore((state) => state.themePreference);
+  const hasSeenOnboarding = useCardStore((state) => state.hasSeenOnboarding);
   const appLockEnabled = useCardStore((state) => state.appLockEnabled);
+  const setAppLockEnabled = useCardStore((state) => state.setAppLockEnabled);
+  const hasPromptedForAppLock = useCardStore(
+    (state) => state.hasPromptedForAppLock,
+  );
+  const setHasPromptedForAppLock = useCardStore(
+    (state) => state.setHasPromptedForAppLock,
+  );
   const deviceScheme = useColorScheme();
   const resolvedTheme = resolveTheme(themePreference, deviceScheme);
   const colors = APP_THEME[resolvedTheme];
@@ -51,13 +62,20 @@ export function AppLockGate({ children }: AppLockGateProps) {
   const [isReady, setIsReady] = useState(false);
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
-  const [message, setMessage] = useState(
-    "Use Face ID, Touch ID, or your device passcode to unlock this wallet.",
-  );
+  const [message, setMessage] = useState(DEFAULT_UNLOCK_MESSAGE);
 
   const appStateRef = useRef(AppState.currentState);
   const backgroundedAtRef = useRef<number | null>(null);
   const authInFlightRef = useRef(false);
+  const previousAppLockEnabledRef = useRef<boolean | null>(null);
+  const biometricLabel =
+    Platform.OS === "ios" ? "Face ID or Touch ID" : "biometrics";
+  const shouldShowSetupPrompt =
+    isReady &&
+    hasSeenOnboarding &&
+    isSupported &&
+    !appLockEnabled &&
+    !hasPromptedForAppLock;
 
   const authenticate = async () => {
     if (authInFlightRef.current) {
@@ -66,9 +84,7 @@ export function AppLockGate({ children }: AppLockGateProps) {
 
     authInFlightRef.current = true;
     setIsAuthenticating(true);
-    setMessage(
-      "Use Face ID, Touch ID, or your device passcode to unlock this wallet.",
-    );
+    setMessage(DEFAULT_UNLOCK_MESSAGE);
 
     try {
       const result = await LocalAuthentication.authenticateAsync({
@@ -80,9 +96,7 @@ export function AppLockGate({ children }: AppLockGateProps) {
 
       if (result.success) {
         setIsUnlocked(true);
-        setMessage(
-          "Use Face ID, Touch ID, or your device passcode to unlock this wallet.",
-        );
+        setMessage(DEFAULT_UNLOCK_MESSAGE);
       } else {
         setIsUnlocked(false);
         setMessage(getAuthErrorMessage(result.error));
@@ -100,14 +114,6 @@ export function AppLockGate({ children }: AppLockGateProps) {
     let mounted = true;
 
     async function prepare() {
-      if (!appLockEnabled) {
-        if (!mounted) return;
-        setIsSupported(false);
-        setIsUnlocked(true);
-        setIsReady(true);
-        return;
-      }
-
       const hasHardware = await LocalAuthentication.hasHardwareAsync();
       const isEnrolled = hasHardware
         ? await LocalAuthentication.isEnrolledAsync()
@@ -115,16 +121,26 @@ export function AppLockGate({ children }: AppLockGateProps) {
 
       if (!mounted) return;
 
-      if (!hasHardware || !isEnrolled) {
-        setIsSupported(false);
+      const biometricSupported = hasHardware && isEnrolled;
+      const wasEnabled = previousAppLockEnabledRef.current;
+      previousAppLockEnabledRef.current = appLockEnabled;
+
+      setIsSupported(biometricSupported);
+      setIsReady(true);
+
+      if (!appLockEnabled || !biometricSupported) {
         setIsUnlocked(true);
-        setIsReady(true);
         return;
       }
 
-      setIsSupported(true);
-      setIsReady(true);
-      await authenticate();
+      setMessage(DEFAULT_UNLOCK_MESSAGE);
+
+      if (wasEnabled === false) {
+        setIsUnlocked(true);
+        return;
+      }
+
+      setIsUnlocked(false);
     }
 
     void prepare();
@@ -147,12 +163,13 @@ export function AppLockGate({ children }: AppLockGateProps) {
       if (
         previousState.match(/inactive|background/) &&
         nextState === "active" &&
-        isSupported
+        isSupported &&
+        appLockEnabled
       ) {
         const backgroundedAt = backgroundedAtRef.current;
         if (backgroundedAt && Date.now() - backgroundedAt >= RELOCK_AFTER_MS) {
           setIsUnlocked(false);
-          void authenticate();
+          setMessage(DEFAULT_UNLOCK_MESSAGE);
         }
       }
     });
@@ -163,7 +180,89 @@ export function AppLockGate({ children }: AppLockGateProps) {
   }, [appLockEnabled, isSupported]);
 
   if (!appLockEnabled) {
-    return <>{children}</>;
+    return (
+      <>
+        {children}
+        {shouldShowSetupPrompt ? (
+          <View
+            pointerEvents="auto"
+            style={[styles.promptOverlay, { backgroundColor: colors.overlay }]}
+          >
+            <View
+              style={[
+                styles.promptCard,
+                {
+                  backgroundColor: colors.surface,
+                  borderColor: colors.border,
+                  shadowColor: colors.shadow,
+                },
+              ]}
+            >
+              <View
+                style={[
+                  styles.promptIcon,
+                  { backgroundColor: colors.surfaceMuted },
+                ]}
+              >
+                <Feather name="shield" size={26} color={colors.text} />
+              </View>
+              <Text style={[styles.title, { color: colors.text }]}>
+                Protect Pocket ID?
+              </Text>
+              <Text style={[styles.body, { color: colors.textMuted }]}>
+                Turn on {biometricLabel} so Pocket ID asks before opening after
+                the app is locked or sent to the background.
+              </Text>
+              <View style={styles.promptActions}>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => {
+                    setHasPromptedForAppLock(true);
+                  }}
+                  style={[
+                    styles.secondaryButton,
+                    {
+                      backgroundColor: colors.surfaceMuted,
+                      borderColor: colors.border,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[styles.secondaryButtonText, { color: colors.text }]}
+                  >
+                    Not now
+                  </Text>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => {
+                    setHasPromptedForAppLock(true);
+                    setAppLockEnabled(true);
+                    setIsUnlocked(true);
+                  }}
+                  style={[
+                    styles.button,
+                    styles.promptPrimaryButton,
+                    { backgroundColor: colors.accent },
+                  ]}
+                >
+                  <Feather
+                    name="lock"
+                    size={18}
+                    color={colors.accentText}
+                  />
+                  <Text
+                    style={[styles.buttonText, { color: colors.accentText }]}
+                  >
+                    Enable lock
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        ) : null}
+      </>
+    );
   }
 
   if (!isReady) {
@@ -271,6 +370,55 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   buttonText: {
+    fontFamily: "ReadexPro-Medium",
+    fontSize: 15,
+  },
+  promptOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 24,
+    zIndex: 1000,
+    elevation: 1000,
+  },
+  promptCard: {
+    width: "100%",
+    maxWidth: 420,
+    borderRadius: 30,
+    borderWidth: 1,
+    paddingHorizontal: 24,
+    paddingVertical: 26,
+    alignItems: "center",
+    shadowOpacity: 0.14,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 16 },
+  },
+  promptIcon: {
+    width: 64,
+    height: 64,
+    borderRadius: 22,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 18,
+  },
+  promptActions: {
+    width: "100%",
+    gap: 12,
+    marginTop: 22,
+  },
+  promptPrimaryButton: {
+    marginTop: 0,
+    width: "100%",
+  },
+  secondaryButton: {
+    minHeight: 52,
+    borderRadius: 18,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 18,
+  },
+  secondaryButtonText: {
     fontFamily: "ReadexPro-Medium",
     fontSize: 15,
   },

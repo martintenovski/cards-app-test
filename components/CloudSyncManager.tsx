@@ -119,12 +119,16 @@ export function CloudSyncManager() {
           }
 
           const importedCount = result.remote.cards.length;
-          setSyncState(
-            "success",
-            importedCount === 1
-              ? "Imported 1 card from your encrypted cloud vault."
-              : `Imported ${importedCount} cards from your encrypted cloud vault.`,
-          );
+          if (hasPendingSyncRequest) {
+            setSyncState(
+              "success",
+              importedCount === 1
+                ? "Imported 1 card from your encrypted cloud vault."
+                : `Imported ${importedCount} cards from your encrypted cloud vault.`,
+            );
+          } else {
+            setSyncState("idle");
+          }
         } else {
           await pushWalletSnapshot({
             user: currentUser,
@@ -148,7 +152,11 @@ export function CloudSyncManager() {
           console.warn("Cloud sync reconcile failed", error);
         }
         handledSyncRequestToken.current = syncRequestToken;
-        setSyncState("error", "Could not fetch the latest cloud data.");
+        if (hasPendingSyncRequest) {
+          setSyncState("error", "Could not fetch the latest cloud data.");
+        } else {
+          setSyncState("idle");
+        }
         hasReconciled.current = true;
       }
     }
@@ -248,8 +256,8 @@ export function CloudSyncManager() {
 
   return (
     <View
-      pointerEvents={isSyncing ? "auto" : "none"}
-      style={[styles.overlay, { backgroundColor: colors.overlay }]}
+      pointerEvents="none"
+      style={styles.overlay}
     >
       <View
         style={[
@@ -294,23 +302,25 @@ const styles = StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFillObject,
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "flex-end",
     zIndex: 999,
     elevation: 999,
     paddingHorizontal: 24,
+    paddingBottom: 112,
   },
   modal: {
+    width: "100%",
     minWidth: 260,
-    maxWidth: 340,
-    borderRadius: 28,
+    maxWidth: 420,
+    borderRadius: 24,
     borderWidth: 1,
-    paddingHorizontal: 22,
-    paddingVertical: 20,
+    paddingHorizontal: 18,
+    paddingVertical: 16,
     alignItems: "center",
-    gap: 12,
-    shadowOpacity: 0.14,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 16 },
+    gap: 10,
+    shadowOpacity: 0.12,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 10 },
   },
   statusIcon: {
     width: 36,

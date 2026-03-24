@@ -17,6 +17,7 @@ A wallet-style Expo app for managing bank cards, personal documents, club cards,
 - Single-card Pocket ID file export/import for moving one card between devices
 - Responsive layout polish for smaller and older Android/iOS devices
 - Expo Router navigation with tab-based sections
+- Optional biometric lock prompt after onboarding, with manual unlock instead of surprise auto-prompts
 - NativeWind + gluestack UI foundation for styling and UI primitives
 
 ## Tech stack
@@ -72,7 +73,7 @@ The add/edit sheet includes dynamic fields based on the selected category and sh
 
 ### Security and expiry tracking
 
-- The app locks on launch and after returning from the background, using **Face ID**, **Touch ID**, or the device credential fallback supported by `expo-local-authentication`
+- Users can opt into biometric lock after onboarding, and Pocket ID then locks on relaunch or after returning from the background using **Face ID**, **Touch ID**, or the device credential fallback supported by `expo-local-authentication`
 - Bank cards and personal documents show a **green / yellow / red** validity badge based on the saved expiry date
 - Cards and documents with expiry dates schedule local reminders for:
   - **1 month before expiry**
@@ -88,6 +89,8 @@ The add/edit sheet includes dynamic fields based on the selected category and sh
 
 Cloud sync is designed so the device can keep working locally even when the
 user has not enabled the encrypted cloud vault yet.
+
+Automatic cloud reconciliation now runs silently in the background; only user-requested sync actions surface a status banner.
 
 ### Encrypted cloud vault
 
@@ -230,10 +233,19 @@ silently fails.
 
 ### Environment variables
 
-Add the following to your local environment file and rebuild the native app:
+For local development, add the following to `.env.local`:
 
 - `EXPO_PUBLIC_SUPABASE_URL`
 - `EXPO_PUBLIC_SUPABASE_ANON_KEY`
+
+For EAS `preview`, `development`, or `production` builds, you must also add
+the same `EXPO_PUBLIC_*` values in your Expo/EAS environment configuration
+before starting the build. Remote builds do not receive your ignored local
+`.env.local` file automatically.
+
+If these values are missing or still set to the example placeholders, the app
+will treat Supabase as not configured and Google/Supabase cloud sync will stay
+disabled in that build.
 
 ### OAuth redirect scheme
 

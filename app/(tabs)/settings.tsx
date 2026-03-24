@@ -210,7 +210,7 @@ export default function SettingsScreen() {
           </Text>
           <SettingToggle
             label="Biometric Lock"
-            description="Use Face ID, Touch ID, or the device passcode fallback when the app opens."
+            description="Require Face ID, Touch ID, or the device passcode fallback when Pocket ID is locked."
             value={appLockEnabled}
             onChange={setAppLockEnabled}
             textColor={colors.text}

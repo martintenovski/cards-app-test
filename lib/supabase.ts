@@ -4,10 +4,51 @@ import { createClient } from "@supabase/supabase-js";
 import type { WalletCard } from "@/types/card";
 import type { EncryptedWalletCardsPayload } from "@/utils/cloudVault";
 
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY;
+function readEnvValue(value: string | undefined) {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
+}
 
-export const isSupabaseConfigured = Boolean(supabaseUrl && supabaseAnonKey);
+function isPlaceholderSupabaseUrl(value: string | null) {
+  return value === "https://your-project-ref.supabase.co";
+}
+
+function isPlaceholderSupabaseAnonKey(value: string | null) {
+  return value === "your-supabase-anon-key";
+}
+
+function isValidSupabaseUrl(value: string | null) {
+  if (!value || isPlaceholderSupabaseUrl(value)) {
+    return false;
+  }
+
+  try {
+    const parsedUrl = new URL(value);
+    return parsedUrl.protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+function isValidSupabaseAnonKey(value: string | null) {
+  if (!value || isPlaceholderSupabaseAnonKey(value)) {
+    return false;
+  }
+
+  return value.split(".").length === 3;
+}
+
+const supabaseUrl = readEnvValue(process.env.EXPO_PUBLIC_SUPABASE_URL);
+const supabaseAnonKey = readEnvValue(process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY);
+
+export const supabaseConfigStatus =
+  !supabaseUrl || !supabaseAnonKey
+    ? "missing"
+    : !isValidSupabaseUrl(supabaseUrl) || !isValidSupabaseAnonKey(supabaseAnonKey)
+      ? "invalid"
+      : "ready";
+
+export const isSupabaseConfigured = supabaseConfigStatus === "ready";
 
 export const supabase = isSupabaseConfigured
   ? createClient(supabaseUrl!, supabaseAnonKey!, {

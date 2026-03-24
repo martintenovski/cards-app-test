@@ -1,6 +1,11 @@
 import { Feather } from "@expo/vector-icons";
 import type { BottomTabBarProps } from "@react-navigation/bottom-tabs";
 import {
+  GlassView,
+  isGlassEffectAPIAvailable,
+  isLiquidGlassAvailable,
+} from "expo-glass-effect";
+import {
   Platform,
   Pressable,
   StyleSheet,
@@ -79,6 +84,10 @@ export function AppTabBar({ state, navigation }: BottomTabBarProps) {
   const isVeryCompact = width < 360;
   const showSideLabels = !isVeryCompact;
   const addButtonLabel = isVeryCompact ? "" : isCompact ? "Add" : "New Card";
+  const shouldUseLiquidGlass =
+    Platform.OS === "ios" &&
+    isLiquidGlassAvailable() &&
+    isGlassEffectAPIAvailable();
   const bottomClearance =
     Platform.OS === "android"
       ? Math.max(insets.bottom + 6, 18)
@@ -87,28 +96,51 @@ export function AppTabBar({ state, navigation }: BottomTabBarProps) {
   const shellStyle = [
     styles.shell,
     {
+      bottom: 0,
       paddingBottom: bottomClearance,
       paddingHorizontal: isCompact ? 10 : 14,
-      backgroundColor: colors.background,
+      paddingTop: 10,
+      backgroundColor: "transparent",
       marginBottom: 0,
     },
   ];
 
   return (
-    <View style={shellStyle}>
+    <View pointerEvents="box-none" style={shellStyle}>
       <View
         style={[
           styles.inner,
           {
-            backgroundColor:
-              resolvedTheme === "light" ? colors.surfaceStrong : colors.surface,
+            backgroundColor: shouldUseLiquidGlass
+              ? "transparent"
+              : resolvedTheme === "light"
+                ? colors.surfaceStrong
+                : colors.surface,
             borderColor: colors.border,
             minHeight: isCompact ? 66 : 70,
             paddingHorizontal: isCompact ? 8 : 10,
             gap: isCompact ? 2 : 5,
+            shadowColor: colors.shadow,
           },
         ]}
       >
+        {shouldUseLiquidGlass ? (
+          <GlassView
+            pointerEvents="none"
+            style={styles.liquidGlassFill}
+            glassEffectStyle={{
+              style: "regular",
+              animate: true,
+              animationDuration: 0.35,
+            }}
+            colorScheme={resolvedTheme === "dark" ? "dark" : "light"}
+            tintColor={
+              resolvedTheme === "dark"
+                ? "rgba(29,29,29,0.28)"
+                : "rgba(255,255,255,0.24)"
+            }
+          />
+        ) : null}
         <NavAction
           label="Home"
           icon="home"
@@ -193,9 +225,13 @@ export function AppTabBar({ state, navigation }: BottomTabBarProps) {
 
 const styles = StyleSheet.create({
   shell: {
+    position: "absolute",
+    left: 0,
+    right: 0,
     paddingHorizontal: 14,
     paddingTop: 0,
     marginBottom: 0,
+    backgroundColor: "transparent",
   },
   inner: {
     minHeight: 70,
@@ -206,6 +242,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     paddingHorizontal: 10,
     gap: 5,
+    overflow: "hidden",
+    shadowOpacity: 0.1,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 2,
+  },
+  liquidGlassFill: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 50,
   },
   sideAction: {
     flex: 1,

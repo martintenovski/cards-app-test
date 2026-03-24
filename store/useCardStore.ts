@@ -58,6 +58,7 @@ interface CardStoreState {
   hasSeenOnboarding: boolean;
   themePreference: ThemePreference;
   appLockEnabled: boolean;
+  hasPromptedForAppLock: boolean;
   expiryNotificationsEnabled: boolean;
   addCardSheetOpen: boolean;
   hasHydrated: boolean;
@@ -70,6 +71,7 @@ interface CardStoreState {
   setThemePreference: (themePreference: ThemePreference) => void;
   toggleThemePreference: (resolvedTheme: ResolvedTheme) => void;
   setAppLockEnabled: (enabled: boolean) => void;
+  setHasPromptedForAppLock: (hasPrompted: boolean) => void;
   setExpiryNotificationsEnabled: (enabled: boolean) => void;
   setLastFieldScanResult: (result: FieldScanResult) => void;
   clearLastFieldScanResult: () => void;
@@ -99,7 +101,8 @@ export const useCardStore = create<CardStoreState>()(
       homeFilter: "everything",
       hasSeenOnboarding: false,
       themePreference: "system",
-      appLockEnabled: true,
+      appLockEnabled: false,
+      hasPromptedForAppLock: false,
       expiryNotificationsEnabled: true,
       hasHydrated: false,
       lastModifiedAt: new Date().toISOString(),
@@ -116,6 +119,8 @@ export const useCardStore = create<CardStoreState>()(
       setHasSeenOnboarding: (hasSeenOnboarding) => set({ hasSeenOnboarding }),
       setThemePreference: (themePreference) => set({ themePreference }),
       setAppLockEnabled: (appLockEnabled) => set({ appLockEnabled }),
+      setHasPromptedForAppLock: (hasPromptedForAppLock) =>
+        set({ hasPromptedForAppLock }),
       setExpiryNotificationsEnabled: (expiryNotificationsEnabled) =>
         set({ expiryNotificationsEnabled }),
       toggleThemePreference: (resolvedTheme) =>
@@ -198,7 +203,8 @@ export const useCardStore = create<CardStoreState>()(
           homeFilter: "everything",
           hasSeenOnboarding: state.hasSeenOnboarding,
           themePreference: "system",
-          appLockEnabled: true,
+          appLockEnabled: state.appLockEnabled,
+          hasPromptedForAppLock: state.hasPromptedForAppLock,
           expiryNotificationsEnabled: true,
           lastModifiedAt: new Date().toISOString(),
         })),
@@ -237,6 +243,7 @@ export const useCardStore = create<CardStoreState>()(
         hasSeenOnboarding: state.hasSeenOnboarding,
         themePreference: state.themePreference,
         appLockEnabled: state.appLockEnabled,
+        hasPromptedForAppLock: state.hasPromptedForAppLock,
         expiryNotificationsEnabled: state.expiryNotificationsEnabled,
         lastModifiedAt: state.lastModifiedAt,
       }),

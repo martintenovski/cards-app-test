@@ -14,7 +14,11 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 
-import { deleteWalletSnapshot, isSupabaseConfigured } from "@/lib/supabase";
+import {
+  deleteWalletSnapshot,
+  isSupabaseConfigured,
+  supabaseConfigStatus,
+} from "@/lib/supabase";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useCardStore } from "@/store/useCardStore";
 import { useCloudVaultStore } from "@/store/useCloudVaultStore";
@@ -40,7 +44,8 @@ const SUPABASE_SETUP_STEPS = [
   "Create or open your Supabase project.",
   "Go to Project Settings > API.",
   "Copy the Project URL and the anon public key.",
-  "Add them to .env.local and rebuild the native app.",
+  "For local development, add them to .env.local.",
+  "For preview or production phone builds, also add the same EXPO_PUBLIC_* values to your Expo/EAS environment variables and rebuild.",
   "In Authentication > Providers, enable Google before testing sign-in.",
 ];
 
@@ -91,6 +96,10 @@ export default function ProfileScreen() {
   const colors = APP_THEME[resolvedTheme];
   const isCompact = width < 390;
   const isVeryCompact = width < 360;
+  const supabaseStatusMessage =
+    supabaseConfigStatus === "invalid"
+      ? "This build did not receive a valid Supabase URL and anon key. Placeholder values and malformed keys are treated as not configured."
+      : "Cloud sign-in does not use an app-store API. It needs your own Supabase project URL and anon key.";
   const [authBusy, setAuthBusy] = useState<
     | "google"
     | "switch-google"
@@ -370,11 +379,12 @@ export default function ProfileScreen() {
           {!isSupabaseConfigured ? (
             <>
               <Text style={[styles.accountLabel, { color: colors.text }]}>
-                Supabase setup is still missing
+                {supabaseConfigStatus === "invalid"
+                  ? "Supabase setup is invalid in this build"
+                  : "Supabase setup is still missing"}
               </Text>
               <Text style={[styles.accountBody, { color: colors.textMuted }]}>
-                Cloud sign-in does not use an app-store API. It needs your own
-                Supabase project URL and anon key.
+                {supabaseStatusMessage}
               </Text>
               <View style={styles.setupList}>
                 {SUPABASE_SETUP_STEPS.map((step, index) => (
@@ -413,6 +423,10 @@ export default function ProfileScreen() {
                 colors={colors}
               />
               <Text style={[styles.setupHint, { color: colors.textSoft }]}>
+                EAS builds do not read your local `.env.local` unless the same
+                values are configured in Expo/EAS before the build starts.
+              </Text>
+              <Text style={[styles.setupHint, { color: colors.textSoft }]}> 
                 Redirect scheme: {getPrimaryAppScheme()}://auth/callback
               </Text>
             </>
