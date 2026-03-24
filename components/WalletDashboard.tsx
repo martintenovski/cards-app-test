@@ -232,7 +232,7 @@ export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
         ) : (
           <CardList
             cards={filteredCards}
-            bottomSpacing={20}
+            bottomSpacing={132}
             onCardPress={(id) =>
               router.push({ pathname: "/card-detail", params: { id } })
             }

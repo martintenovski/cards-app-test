@@ -43,6 +43,60 @@ function getAuthErrorMessage(code?: string) {
   return "We could not verify your identity. Try again.";
 }
 
+function getBiometricPromptCopy(
+  types: LocalAuthentication.AuthenticationType[],
+) {
+  const hasFace = types.includes(
+    LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION,
+  );
+  const hasFingerprint = types.includes(
+    LocalAuthentication.AuthenticationType.FINGERPRINT,
+  );
+  const hasIris = types.includes(LocalAuthentication.AuthenticationType.IRIS);
+
+  if (Platform.OS === "ios") {
+    if (hasFace) {
+      return {
+        label: "Face ID",
+        buttonText: "Use Face ID",
+      };
+    }
+
+    if (hasFingerprint) {
+      return {
+        label: "Touch ID",
+        buttonText: "Use Touch ID",
+      };
+    }
+  }
+
+  if (hasFace) {
+    return {
+      label: "face unlock",
+      buttonText: "Use Face Unlock",
+    };
+  }
+
+  if (hasFingerprint) {
+    return {
+      label: "fingerprint",
+      buttonText: "Use Fingerprint",
+    };
+  }
+
+  if (hasIris) {
+    return {
+      label: "iris scan",
+      buttonText: "Use Iris Scan",
+    };
+  }
+
+  return {
+    label: "biometrics",
+    buttonText: "Use Biometrics",
+  };
+}
+
 export function AppLockGate({ children }: AppLockGateProps) {
   const themePreference = useCardStore((state) => state.themePreference);
   const hasSeenOnboarding = useCardStore((state) => state.hasSeenOnboarding);
@@ -62,19 +116,21 @@ export function AppLockGate({ children }: AppLockGateProps) {
   const [isReady, setIsReady] = useState(false);
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [shouldAutoAuthenticate, setShouldAutoAuthenticate] = useState(false);
   const [message, setMessage] = useState(DEFAULT_UNLOCK_MESSAGE);
+  const [supportedAuthTypes, setSupportedAuthTypes] = useState<
+    LocalAuthentication.AuthenticationType[]
+  >([]);
 
   const appStateRef = useRef(AppState.currentState);
   const backgroundedAtRef = useRef<number | null>(null);
   const authInFlightRef = useRef(false);
   const previousAppLockEnabledRef = useRef<boolean | null>(null);
-  const biometricLabel =
-    Platform.OS === "ios" ? "Face ID or Touch ID" : "biometrics";
+  const biometricPromptCopy = getBiometricPromptCopy(supportedAuthTypes);
   const shouldShowSetupPrompt =
     isReady &&
     hasSeenOnboarding &&
     isSupported &&
-    !appLockEnabled &&
     !hasPromptedForAppLock;
 
   const authenticate = async () => {
@@ -118,6 +174,9 @@ export function AppLockGate({ children }: AppLockGateProps) {
       const isEnrolled = hasHardware
         ? await LocalAuthentication.isEnrolledAsync()
         : false;
+      const authTypes = hasHardware
+        ? await LocalAuthentication.supportedAuthenticationTypesAsync()
+        : [];
 
       if (!mounted) return;
 
@@ -126,10 +185,12 @@ export function AppLockGate({ children }: AppLockGateProps) {
       previousAppLockEnabledRef.current = appLockEnabled;
 
       setIsSupported(biometricSupported);
+      setSupportedAuthTypes(authTypes);
       setIsReady(true);
 
       if (!appLockEnabled || !biometricSupported) {
         setIsUnlocked(true);
+        setShouldAutoAuthenticate(false);
         return;
       }
 
@@ -137,10 +198,12 @@ export function AppLockGate({ children }: AppLockGateProps) {
 
       if (wasEnabled === false) {
         setIsUnlocked(true);
+        setShouldAutoAuthenticate(false);
         return;
       }
 
       setIsUnlocked(false);
+      setShouldAutoAuthenticate(true);
     }
 
     void prepare();
@@ -170,6 +233,7 @@ export function AppLockGate({ children }: AppLockGateProps) {
         if (backgroundedAt && Date.now() - backgroundedAt >= RELOCK_AFTER_MS) {
           setIsUnlocked(false);
           setMessage(DEFAULT_UNLOCK_MESSAGE);
+          setShouldAutoAuthenticate(true);
         }
       }
     });
@@ -178,6 +242,31 @@ export function AppLockGate({ children }: AppLockGateProps) {
       subscription.remove();
     };
   }, [appLockEnabled, isSupported]);
+
+  useEffect(() => {
+    if (
+      !isReady ||
+      !appLockEnabled ||
+      !isSupported ||
+      isUnlocked ||
+      shouldShowSetupPrompt ||
+      !shouldAutoAuthenticate ||
+      isAuthenticating
+    ) {
+      return;
+    }
+
+    setShouldAutoAuthenticate(false);
+    void authenticate();
+  }, [
+    appLockEnabled,
+    isAuthenticating,
+    isReady,
+    isSupported,
+    isUnlocked,
+    shouldAutoAuthenticate,
+    shouldShowSetupPrompt,
+  ]);
 
   if (!appLockEnabled) {
     return (
@@ -207,11 +296,11 @@ export function AppLockGate({ children }: AppLockGateProps) {
                 <Feather name="shield" size={26} color={colors.text} />
               </View>
               <Text style={[styles.title, { color: colors.text }]}>
-                Protect Pocket ID?
+                Use {biometricPromptCopy.label}?
               </Text>
               <Text style={[styles.body, { color: colors.textMuted }]}>
-                Turn on {biometricLabel} so Pocket ID asks before opening after
-                the app is locked or sent to the background.
+                Pocket ID can ask for {biometricPromptCopy.label} before
+                opening after the app is locked or sent to the background.
               </Text>
               <View style={styles.promptActions}>
                 <Pressable
@@ -230,7 +319,7 @@ export function AppLockGate({ children }: AppLockGateProps) {
                   <Text
                     style={[styles.secondaryButtonText, { color: colors.text }]}
                   >
-                    Not now
+                    Setup later
                   </Text>
                 </Pressable>
                 <Pressable
@@ -239,6 +328,7 @@ export function AppLockGate({ children }: AppLockGateProps) {
                     setHasPromptedForAppLock(true);
                     setAppLockEnabled(true);
                     setIsUnlocked(true);
+                    setShouldAutoAuthenticate(false);
                   }}
                   style={[
                     styles.button,
@@ -254,13 +344,97 @@ export function AppLockGate({ children }: AppLockGateProps) {
                   <Text
                     style={[styles.buttonText, { color: colors.accentText }]}
                   >
-                    Enable lock
+                    {biometricPromptCopy.buttonText}
                   </Text>
                 </Pressable>
               </View>
             </View>
           </View>
         ) : null}
+      </>
+    );
+  }
+
+  if (shouldShowSetupPrompt) {
+    return (
+      <>
+        {children}
+        <View
+          pointerEvents="auto"
+          style={[styles.promptOverlay, { backgroundColor: colors.overlay }]}
+        >
+          <View
+            style={[
+              styles.promptCard,
+              {
+                backgroundColor: colors.surface,
+                borderColor: colors.border,
+                shadowColor: colors.shadow,
+              },
+            ]}
+          >
+            <View
+              style={[
+                styles.promptIcon,
+                { backgroundColor: colors.surfaceMuted },
+              ]}
+            >
+              <Feather name="shield" size={26} color={colors.text} />
+            </View>
+            <Text style={[styles.title, { color: colors.text }]}>
+              Use {biometricPromptCopy.label}?
+            </Text>
+            <Text style={[styles.body, { color: colors.textMuted }]}> 
+              Pocket ID can ask for {biometricPromptCopy.label} before opening
+              after the app is locked or sent to the background.
+            </Text>
+            <View style={styles.promptActions}>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => {
+                  setAppLockEnabled(false);
+                  setHasPromptedForAppLock(true);
+                  setIsUnlocked(true);
+                  setShouldAutoAuthenticate(false);
+                }}
+                style={[
+                  styles.secondaryButton,
+                  {
+                    backgroundColor: colors.surfaceMuted,
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
+                <Text
+                  style={[styles.secondaryButtonText, { color: colors.text }]}
+                >
+                  Setup later
+                </Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => {
+                  setHasPromptedForAppLock(true);
+                  setAppLockEnabled(true);
+                  setIsUnlocked(true);
+                  setShouldAutoAuthenticate(false);
+                }}
+                style={[
+                  styles.button,
+                  styles.promptPrimaryButton,
+                  { backgroundColor: colors.accent },
+                ]}
+              >
+                <Feather name="lock" size={18} color={colors.accentText} />
+                <Text
+                  style={[styles.buttonText, { color: colors.accentText }]}
+                >
+                  {biometricPromptCopy.buttonText}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
       </>
     );
   }

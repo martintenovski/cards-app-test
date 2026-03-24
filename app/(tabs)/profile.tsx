@@ -2,7 +2,6 @@ import { Feather } from "@expo/vector-icons";
 import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -12,21 +11,13 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
 
-import {
-  deleteWalletSnapshot,
-  isSupabaseConfigured,
-  supabaseConfigStatus,
-} from "@/lib/supabase";
+import { isSupabaseConfigured, supabaseConfigStatus } from "@/lib/supabase";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useCardStore } from "@/store/useCardStore";
 import { useCloudVaultStore } from "@/store/useCloudVaultStore";
 import { FILTER_LABELS, type CardCategory } from "@/types/card";
-import {
-  deleteStoredSyncPassphrase,
-  hasStoredSyncPassphrase,
-} from "@/utils/cloudVault";
+import { hasStoredSyncPassphrase } from "@/utils/cloudVault";
 import { getPrimaryAppScheme } from "@/utils/deepLink";
 import { signInWithProvider, signOut } from "@/utils/authSync";
 import { APP_THEME, resolveTheme } from "@/utils/theme";
@@ -39,6 +30,8 @@ const CATEGORY_ORDER: CardCategory[] = [
   "vehicle",
   "access",
 ];
+
+const FLOATING_TAB_SCROLL_BUFFER = 132;
 
 const SUPABASE_SETUP_STEPS = [
   "Create or open your Supabase project.",
@@ -76,20 +69,14 @@ function SetupValue({
 }
 
 export default function ProfileScreen() {
-  const router = useRouter();
   const cards = useCardStore((state) => state.cards);
-  const replaceCards = useCardStore((state) => state.replaceCards);
   const themePreference = useCardStore((state) => state.themePreference);
   const authUser = useAuthStore((state) => state.user);
   const authReady = useAuthStore((state) => state.isReady);
   const cloudVaultChangeToken = useCloudVaultStore(
     (state) => state.changeToken,
   );
-  const bumpCloudVaultChangeToken = useCloudVaultStore(
-    (state) => state.bumpChangeToken,
-  );
   const requestSync = useCloudVaultStore((state) => state.requestSync);
-  const syncStatus = useCloudVaultStore((state) => state.syncStatus);
   const deviceScheme = useColorScheme();
   const { width } = useWindowDimensions();
   const resolvedTheme = resolveTheme(themePreference, deviceScheme);
@@ -103,9 +90,7 @@ export default function ProfileScreen() {
   const [authBusy, setAuthBusy] = useState<
     | "google"
     | "switch-google"
-    | "delete-data"
     | "signout"
-    | "forget-passphrase"
     | null
   >(null);
   const [cloudVaultStatus, setCloudVaultStatus] = useState<
@@ -172,10 +157,6 @@ export default function ProfileScreen() {
     }
   };
 
-  const handleFetchLatestData = () => {
-    requestSync("Fetching the latest encrypted wallet data…");
-  };
-
   const handleSignOut = async () => {
     try {
       setAuthBusy("signout");
@@ -183,71 +164,6 @@ export default function ProfileScreen() {
     } finally {
       setAuthBusy(null);
     }
-  };
-
-  const handleOpenCloudPassphrase = () => {
-    router.push("/cloud-passphrase");
-  };
-
-  const handleForgetPassphrase = () => {
-    if (!authUser) return;
-
-    Alert.alert(
-      "Forget sync passphrase on this device?",
-      "Cloud sync will pause here until you enter the passphrase again. Your encrypted data stays in Supabase, but this device will no longer be able to decrypt it.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Forget Passphrase",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              setAuthBusy("forget-passphrase");
-              await deleteStoredSyncPassphrase(authUser.id);
-              bumpCloudVaultChangeToken();
-            } catch {
-              Alert.alert(
-                "Could not forget passphrase",
-                "Pocket ID couldn't remove the local sync passphrase right now. Please try again.",
-              );
-            } finally {
-              setAuthBusy(null);
-            }
-          },
-        },
-      ],
-    );
-  };
-
-  const handleDeleteData = () => {
-    if (!authUser) return;
-
-    Alert.alert(
-      "Delete your data?",
-      "This removes your synced wallet data and clears saved cards on this device. Your Google sign-in remains available, but this action cannot be undone.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete Data",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              setAuthBusy("delete-data");
-              await deleteWalletSnapshot(authUser.id);
-              replaceCards([]);
-              await signOut();
-            } catch {
-              Alert.alert(
-                "Could not delete data",
-                "Pocket ID couldn't remove your saved data right now. Please try again.",
-              );
-            } finally {
-              setAuthBusy(null);
-            }
-          },
-        },
-      ],
-    );
   };
 
   return (
@@ -258,6 +174,7 @@ export default function ProfileScreen() {
           {
             paddingHorizontal: isCompact ? 20 : 25,
             paddingTop: isCompact ? 20 : 25,
+            paddingBottom: FLOATING_TAB_SCROLL_BUFFER,
           },
         ]}
         showsVerticalScrollIndicator={false}
@@ -477,50 +394,6 @@ export default function ProfileScreen() {
               </View>
               <View style={styles.accountActions}>
                 <Pressable
-                  onPress={handleOpenCloudPassphrase}
-                  style={[
-                    styles.authButton,
-                    styles.authButtonSecondary,
-                    {
-                      backgroundColor: colors.surfaceMuted,
-                      borderColor: colors.border,
-                    },
-                    styles.authButtonOutline,
-                  ]}
-                >
-                  <Text style={[styles.authButtonText, { color: colors.text }]}>
-                    {cloudVaultStatus === "ready"
-                      ? "Update Sync Passphrase"
-                      : "Set Sync Passphrase"}
-                  </Text>
-                </Pressable>
-                {cloudVaultStatus === "ready" ? (
-                  <Pressable
-                    onPress={handleForgetPassphrase}
-                    style={[
-                      styles.authButton,
-                      styles.authButtonSecondary,
-                      {
-                        backgroundColor: colors.surfaceMuted,
-                        borderColor: colors.border,
-                      },
-                      styles.authButtonOutline,
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.authButtonText,
-                        styles.authButtonTextCentered,
-                        { color: colors.text },
-                      ]}
-                    >
-                      {authBusy === "forget-passphrase"
-                        ? "Forgetting passphrase…"
-                        : "Forget Passphrase on This Device"}
-                    </Text>
-                  </Pressable>
-                ) : null}
-                <Pressable
                   onPress={handleSwitchGoogleAccount}
                   style={[
                     styles.authButton,
@@ -537,50 +410,6 @@ export default function ProfileScreen() {
                     {authBusy === "switch-google"
                       ? "Switching Google…"
                       : "Switch Google Account"}
-                  </Text>
-                </Pressable>
-                <Pressable
-                  onPress={handleFetchLatestData}
-                  style={[
-                    styles.authButton,
-                    styles.authButtonSecondary,
-                    {
-                      backgroundColor: colors.surfaceMuted,
-                      borderColor: colors.border,
-                    },
-                    styles.authButtonOutline,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.authButtonText,
-                      styles.authButtonTextCentered,
-                      { color: colors.text },
-                    ]}
-                  >
-                    {syncStatus === "syncing"
-                      ? "Fetching Latest Data…"
-                      : "Fetch Latest Data"}
-                  </Text>
-                </Pressable>
-                <Pressable
-                  onPress={handleDeleteData}
-                  style={[
-                    styles.authButton,
-                    styles.authButtonSecondary,
-                    {
-                      backgroundColor: colors.dangerSoft,
-                      borderColor: colors.danger,
-                    },
-                    styles.authButtonDanger,
-                  ]}
-                >
-                  <Text
-                    style={[styles.authButtonText, { color: colors.danger }]}
-                  >
-                    {authBusy === "delete-data"
-                      ? "Deleting data…"
-                      : "Delete My Data"}
                   </Text>
                 </Pressable>
                 <Pressable

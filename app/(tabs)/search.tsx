@@ -18,6 +18,8 @@ import { getCategoryLabel } from "@/types/card";
 import { APP_THEME, resolveTheme } from "@/utils/theme";
 import { supportsValidityBadge } from "@/utils/expiry";
 
+const FLOATING_TAB_SCROLL_BUFFER = 132;
+
 export default function SearchScreen() {
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -76,7 +78,10 @@ export default function SearchScreen() {
       </View>
 
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: FLOATING_TAB_SCROLL_BUFFER },
+        ]}
         showsVerticalScrollIndicator={false}
       >
         {results.length === 0 ? (

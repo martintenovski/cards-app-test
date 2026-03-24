@@ -64,8 +64,11 @@
   },
   "devDependencies": {
     "@react-native-community/cli": "^20.1.2",
+    "@types/jest": "^30.0.0",
     "@types/react": "~19.1.10",
     "babel-plugin-module-resolver": "^5.0.0",
+    "expo-module-scripts": "^5.0.8",
+    "jest-require": "^0.0.0",
     "prettier-plugin-tailwindcss": "^0.5.11",
     "tailwindcss": "^3.4.17",
     "typescript": "~5.9.2"

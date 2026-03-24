@@ -242,22 +242,22 @@ export function CloudSyncManager() {
   const isSyncing = syncStatus === "syncing";
   const isSuccess = syncStatus === "success";
   const title = isSyncing
-    ? "Syncing Pocket ID"
+    ? "Fetching latest data"
     : isSuccess
       ? "Sync complete"
       : "Sync issue";
   const body =
     syncMessage ??
     (isSyncing
-      ? "Fetching your latest cards…"
+      ? "This can take a couple of seconds. Please wait before continuing to use Pocket ID."
       : isSuccess
         ? "Your encrypted cloud vault is ready on this device."
         : "Could not fetch the latest cloud data.");
 
   return (
     <View
-      pointerEvents="none"
-      style={styles.overlay}
+      pointerEvents={isSyncing ? "auto" : "none"}
+      style={[styles.overlay, isSyncing && { backgroundColor: colors.overlay }]}
     >
       <View
         style={[
@@ -302,11 +302,10 @@ const styles = StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFillObject,
     alignItems: "center",
-    justifyContent: "flex-end",
+    justifyContent: "center",
     zIndex: 999,
     elevation: 999,
     paddingHorizontal: 24,
-    paddingBottom: 112,
   },
   modal: {
     width: "100%",
