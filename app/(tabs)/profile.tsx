@@ -198,7 +198,7 @@ export default function ProfileScreen() {
               { color: colors.text, fontSize: isCompact ? 24 : 30 },
             ]}
           >
-            {authUser?.displayName ?? "Pocket ID Owner"}
+            {authUser?.displayName ?? "Personal Stats"}
           </Text>
           <Text
             style={[

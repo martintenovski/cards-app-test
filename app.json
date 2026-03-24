@@ -38,7 +38,7 @@
     "ios": {
       "icon": "./assets/ios-logo.png",
       "supportsTablet": true,
-      "buildNumber": "3",
+      "buildNumber": "4",
       "bundleIdentifier": "com.tenovski.cardsapp",
       "infoPlist": {
         "NSCameraUsageDescription": "Camera is required to scan identity documents and bank cards",
@@ -47,11 +47,13 @@
       }
     },
     "android": {
+      "icon": "./assets/droid-foreground.png",
       "adaptiveIcon": {
-        "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0168D6"
+        "foregroundImage": "./assets/droid-foreground.png",
+        "backgroundImage": "./assets/droid-icon-background.png",
+        "monochromeImage": "./assets/droid-monochrome.png"
       },
-      "versionCode": 3,
+      "versionCode": 4,
       "predictiveBackGestureEnabled": false,
       "package": "com.tenovski.cardsapp",
       "permissions": [
