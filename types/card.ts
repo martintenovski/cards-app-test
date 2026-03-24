@@ -225,7 +225,7 @@ export const DEFAULT_FORM_VALUES: CardFormValues = {
   holderName: "",
   clubName: "",
   memberId: "",
-  memberIdFormat: "text",
+  memberIdFormat: "barcode",
   tier: "",
   provider: "",
   policyNumber: "",
@@ -554,13 +554,13 @@ export function createPreviewCard(
       title: (values.type as ClubCardType) || "Club Card",
       issuer: values.clubName || "Club",
       name: values.nameOnCard || values.holderName || "Member name",
-      primaryValue: values.memberId || "Member ID",
-      secondaryValue: values.tier || "Tier",
+      primaryValue: values.memberId || "",
+      secondaryValue: values.tier || undefined,
       palette,
       clubName: values.clubName || "Club",
-      memberId: values.memberId || "Member ID",
+      memberId: values.memberId || "",
       memberIdFormat: values.memberIdFormat,
-      tier: values.tier || "Tier",
+      tier: values.tier || "",
       secondaryNumber: values.secondaryNumber || undefined,
       dateOfIssue: values.dateOfIssue || undefined,
       dateOfExpiry: values.dateOfExpiry || undefined,
@@ -636,15 +636,15 @@ export function createPreviewCard(
     title: (values.type as BankCardType) || "Debit Card",
     issuer: values.bankName || "Bank name",
     name: values.holderName || values.nameOnCard || "Holder name",
-    primaryValue: maskCardNumber(values.cardNumber || "6358241226238933"),
+    primaryValue: "",
     palette,
     bankName: values.bankName || "Bank name",
     holderName: values.holderName || values.nameOnCard || "Holder name",
-    cardNumber: values.cardNumber || "6358241226238933",
-    maskedCardNumber: maskCardNumber(values.cardNumber || "6358241226238933"),
+    cardNumber: values.cardNumber || "",
+    maskedCardNumber: "",
     expiry: values.expiry || "",
-    cvc: values.cvc || "CVC",
-    accountNumber: values.accountNumber || "Account number",
+    cvc: values.cvc || "",
+    accountNumber: values.accountNumber || "",
     brand: "visa",
   };
 }
@@ -852,7 +852,7 @@ export function createCardFromForm(
     memberIdFormat: values.memberIdFormat,
     primaryValue: values.memberId,
     tier: values.tier,
-    secondaryValue: values.tier,
+    secondaryValue: values.tier || undefined,
     secondaryNumber: values.secondaryNumber || undefined,
     dateOfIssue: values.dateOfIssue || undefined,
     dateOfExpiry: values.dateOfExpiry || undefined,
@@ -888,15 +888,18 @@ export function getCardSideContent(
   side: "front" | "back",
 ): CardSideContent {
   if (card.category === "bank") {
+    const isPreviewBank = card.id === "preview-bank";
+
     return side === "front"
       ? {
           topLabel: card.title,
           topValue: card.bankName || card.issuer || "Bank name",
           middleLabel: "CARDHOLDER",
           middleValue: card.holderName || card.name || "Cardholder",
-          bottomLeftLabel: "Card Number",
-          bottomLeftValue:
-            card.maskedCardNumber || maskCardNumber(card.cardNumber),
+          bottomLeftLabel: isPreviewBank ? "" : "Card Number",
+          bottomLeftValue: isPreviewBank
+            ? ""
+            : card.maskedCardNumber || maskCardNumber(card.cardNumber),
           bottomRightLabel: "Brand",
           bottomRightValue: card.brand === "mastercard" ? "Mastercard" : "Visa",
           iconName: "credit-card-outline",
@@ -927,8 +930,8 @@ export function getCardSideContent(
           bottomLeftValue: usesBarcode
             ? card.dateOfIssue || "Not added"
             : card.memberId || "Not added",
-          bottomRightLabel: usesBarcode ? "" : "Tier",
-          bottomRightValue: usesBarcode ? "" : card.tier || "Standard",
+          bottomRightLabel: usesBarcode || !card.tier ? "" : "Tier",
+          bottomRightValue: usesBarcode ? "" : card.tier || "",
           iconName: "card-account-details-star-outline",
         }
       : {
@@ -950,10 +953,16 @@ export function getCardSideContent(
               "Not added",
           bottomLeftLabel: usesBarcode ? "" : "Member Since",
           bottomLeftValue: usesBarcode ? "" : card.dateOfIssue || "Not added",
-          bottomRightLabel: usesBarcode ? "" : "Expires",
+          bottomRightLabel: usesBarcode
+            ? ""
+            : card.dateOfExpiry
+              ? "Expires"
+              : card.tier
+                ? "Tier"
+                : "",
           bottomRightValue: usesBarcode
             ? ""
-            : card.dateOfExpiry || card.tier || "Not added",
+            : card.dateOfExpiry || card.tier || "",
           iconName: "card-account-details-star-outline",
           footerVariant: usesBarcode ? "barcode" : "default",
           barcodeValue: usesBarcode ? card.memberId : undefined,

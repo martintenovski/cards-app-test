@@ -18,6 +18,7 @@ import { APP_THEME, resolveTheme } from "@/utils/theme";
 const RELOCK_AFTER_MS = 15_000;
 const DEFAULT_UNLOCK_MESSAGE =
   "Use Face ID, Touch ID, or your device passcode to unlock this wallet.";
+const RESUME_UNLOCK_MESSAGE = "Unlocking Pocket ID after returning to the app.";
 
 type AppLockGateProps = {
   children: ReactNode;
@@ -125,13 +126,14 @@ export function AppLockGate({ children }: AppLockGateProps) {
   const appStateRef = useRef(AppState.currentState);
   const backgroundedAtRef = useRef<number | null>(null);
   const authInFlightRef = useRef(false);
+  const authPromptActiveRef = useRef(false);
+  const autoAuthenticateTimeoutRef = useRef<ReturnType<
+    typeof setTimeout
+  > | null>(null);
   const previousAppLockEnabledRef = useRef<boolean | null>(null);
   const biometricPromptCopy = getBiometricPromptCopy(supportedAuthTypes);
   const shouldShowSetupPrompt =
-    isReady &&
-    hasSeenOnboarding &&
-    isSupported &&
-    !hasPromptedForAppLock;
+    isReady && hasSeenOnboarding && isSupported && !hasPromptedForAppLock;
 
   const authenticate = async () => {
     if (authInFlightRef.current) {
@@ -139,6 +141,7 @@ export function AppLockGate({ children }: AppLockGateProps) {
     }
 
     authInFlightRef.current = true;
+    authPromptActiveRef.current = true;
     setIsAuthenticating(true);
     setMessage(DEFAULT_UNLOCK_MESSAGE);
 
@@ -162,6 +165,7 @@ export function AppLockGate({ children }: AppLockGateProps) {
       setMessage("Authentication is temporarily unavailable. Try again.");
     } finally {
       authInFlightRef.current = false;
+      authPromptActiveRef.current = false;
       setIsAuthenticating(false);
     }
   };
@@ -219,7 +223,15 @@ export function AppLockGate({ children }: AppLockGateProps) {
       appStateRef.current = nextState;
 
       if (nextState === "background" || nextState === "inactive") {
+        if (authPromptActiveRef.current) {
+          return;
+        }
         backgroundedAtRef.current = Date.now();
+
+        if (appLockEnabled && isSupported) {
+          setIsUnlocked(false);
+          setMessage(RESUME_UNLOCK_MESSAGE);
+        }
         return;
       }
 
@@ -232,9 +244,15 @@ export function AppLockGate({ children }: AppLockGateProps) {
         const backgroundedAt = backgroundedAtRef.current;
         if (backgroundedAt && Date.now() - backgroundedAt >= RELOCK_AFTER_MS) {
           setIsUnlocked(false);
-          setMessage(DEFAULT_UNLOCK_MESSAGE);
+          setMessage(RESUME_UNLOCK_MESSAGE);
           setShouldAutoAuthenticate(true);
+        } else {
+          setIsUnlocked(true);
+          setShouldAutoAuthenticate(false);
+          setMessage(DEFAULT_UNLOCK_MESSAGE);
         }
+
+        backgroundedAtRef.current = null;
       }
     });
 
@@ -244,6 +262,11 @@ export function AppLockGate({ children }: AppLockGateProps) {
   }, [appLockEnabled, isSupported]);
 
   useEffect(() => {
+    if (autoAuthenticateTimeoutRef.current) {
+      clearTimeout(autoAuthenticateTimeoutRef.current);
+      autoAuthenticateTimeoutRef.current = null;
+    }
+
     if (
       !isReady ||
       !appLockEnabled ||
@@ -257,7 +280,18 @@ export function AppLockGate({ children }: AppLockGateProps) {
     }
 
     setShouldAutoAuthenticate(false);
-    void authenticate();
+
+    autoAuthenticateTimeoutRef.current = setTimeout(() => {
+      autoAuthenticateTimeoutRef.current = null;
+      void authenticate();
+    }, 250);
+
+    return () => {
+      if (autoAuthenticateTimeoutRef.current) {
+        clearTimeout(autoAuthenticateTimeoutRef.current);
+        autoAuthenticateTimeoutRef.current = null;
+      }
+    };
   }, [
     appLockEnabled,
     isAuthenticating,
@@ -299,8 +333,8 @@ export function AppLockGate({ children }: AppLockGateProps) {
                 Use {biometricPromptCopy.label}?
               </Text>
               <Text style={[styles.body, { color: colors.textMuted }]}>
-                Pocket ID can ask for {biometricPromptCopy.label} before
-                opening after the app is locked or sent to the background.
+                Pocket ID can ask for {biometricPromptCopy.label} before opening
+                after the app is locked or sent to the background.
               </Text>
               <View style={styles.promptActions}>
                 <Pressable
@@ -336,11 +370,7 @@ export function AppLockGate({ children }: AppLockGateProps) {
                     { backgroundColor: colors.accent },
                   ]}
                 >
-                  <Feather
-                    name="lock"
-                    size={18}
-                    color={colors.accentText}
-                  />
+                  <Feather name="lock" size={18} color={colors.accentText} />
                   <Text
                     style={[styles.buttonText, { color: colors.accentText }]}
                   >
@@ -384,7 +414,7 @@ export function AppLockGate({ children }: AppLockGateProps) {
             <Text style={[styles.title, { color: colors.text }]}>
               Use {biometricPromptCopy.label}?
             </Text>
-            <Text style={[styles.body, { color: colors.textMuted }]}> 
+            <Text style={[styles.body, { color: colors.textMuted }]}>
               Pocket ID can ask for {biometricPromptCopy.label} before opening
               after the app is locked or sent to the background.
             </Text>
@@ -426,9 +456,7 @@ export function AppLockGate({ children }: AppLockGateProps) {
                 ]}
               >
                 <Feather name="lock" size={18} color={colors.accentText} />
-                <Text
-                  style={[styles.buttonText, { color: colors.accentText }]}
-                >
+                <Text style={[styles.buttonText, { color: colors.accentText }]}>
                   {biometricPromptCopy.buttonText}
                 </Text>
               </Pressable>

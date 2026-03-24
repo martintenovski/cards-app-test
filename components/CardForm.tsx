@@ -177,8 +177,8 @@ function getFormSections(values: CardFormValues): {
         {
           key: "accountNumber",
           label: "Account number",
-          helperText:
-            "Optional linked account or internal bank reference number.",
+          keyboardType: "number-pad",
+          helperText: "Optional linked account number. Digits only.",
         },
       ],
     };
@@ -207,7 +207,7 @@ function getFormSections(values: CardFormValues): {
         {
           key: "tier",
           label: "Tier / status",
-          helperText: "Example: Gold, Elite, Premium or Standard.",
+          helperText: "Optional. Example: Gold, Elite or Premium.",
         },
       ],
       back: [
@@ -691,7 +691,7 @@ function getRequiredFields(values: CardFormValues): FieldName[] {
   return values.category === "bank"
     ? ["type", "bankName", "holderName", "cardNumber", "expiry", "cvc"]
     : values.category === "club"
-      ? ["type", "clubName", "nameOnCard", "memberId", "tier"]
+      ? ["type", "clubName", "nameOnCard", "memberId"]
       : values.category === "insurance"
         ? ["type", "provider", "nameOnCard", "policyNumber"]
         : values.category === "vehicle"
@@ -806,9 +806,7 @@ function validateField(
         ? undefined
         : "CVC should contain 3 or 4 digits.";
     case "accountNumber":
-      return /^[A-Z0-9\- ]{6,34}$/i.test(value)
-        ? undefined
-        : "Use 6–34 letters, digits, spaces or hyphens.";
+      return /^\d{6,20}$/.test(value) ? undefined : "Use 6–20 digits.";
     case "dateOfBirth":
     case "dateOfIssue":
     case "dateOfExpiry":
@@ -868,8 +866,9 @@ function formatFieldValue(
     case "employeeId":
     case "personalIdNumber":
     case "secondaryNumber":
-    case "accountNumber":
       return sanitizeDocumentCode(value);
+    case "accountNumber":
+      return value.replace(/\D/g, "").slice(0, 20);
     case "memberId":
       if (values.category === "club" && values.memberIdFormat === "barcode") {
         return value.replace(/\D/g, "").slice(0, 18);
@@ -930,14 +929,14 @@ function formatDisplayDate(date: Date) {
 function formatExpiryDate(date: Date) {
   const month = `${date.getMonth() + 1}`.padStart(2, "0");
   const year = `${date.getFullYear()}`.slice(-2);
-  return `${month}/${year}`;
+  return `${month}.${year}`;
 }
 
 function parseDisplayDate(value: string, kind: "date" | "expiry") {
   if (!value) return new Date();
 
   if (kind === "expiry") {
-    const match = value.match(/^(\d{2})\/(\d{2})$/);
+    const match = value.match(/^(\d{2})\.(\d{2})$/);
     if (!match) return new Date();
     return new Date(Number(`20${match[2]}`), Number(match[1]) - 1, 1);
   }
@@ -952,7 +951,7 @@ function isValidDisplayDate(value: string) {
 }
 
 function isValidExpiry(value: string) {
-  const match = value.match(/^(\d{2})\/(\d{2})$/);
+  const match = value.match(/^(\d{2})\.(\d{2})$/);
   if (!match) return false;
   const month = Number(match[1]);
   return month >= 1 && month <= 12;
@@ -968,7 +967,28 @@ function formatLooseDisplayDate(value: string) {
 function formatLooseExpiry(value: string) {
   const digits = value.replace(/\D/g, "").slice(0, 4);
   if (digits.length <= 2) return digits;
-  return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+  return `${digits.slice(0, 2)}.${digits.slice(2)}`;
+}
+
+function FieldLabel({
+  label,
+  required,
+  colors,
+}: {
+  label: string;
+  required?: boolean;
+  colors: ThemeColors;
+}) {
+  return (
+    <View style={fieldSt.rowLabelWrap}>
+      <Text style={[fieldSt.rowLabel, { color: colors.textSoft }]}>
+        {label.toUpperCase()}
+      </Text>
+      {required ? (
+        <Text style={[fieldSt.requiredMark, { color: colors.danger }]}>*</Text>
+      ) : null}
+    </View>
+  );
 }
 
 function FieldHelper({
@@ -1008,6 +1028,7 @@ function FormRow({
   error,
   helperText,
   valid,
+  required,
 }: {
   label: string;
   value: string;
@@ -1017,6 +1038,7 @@ function FormRow({
   error?: string;
   helperText: string;
   valid: boolean;
+  required?: boolean;
 }) {
   return (
     <View style={fieldSt.wrapper}>
@@ -1034,9 +1056,7 @@ function FormRow({
         ]}
       >
         <View style={fieldSt.pillInner}>
-          <Text style={[fieldSt.rowLabel, { color: colors.textSoft }]}>
-            {label.toUpperCase()}
-          </Text>
+          <FieldLabel label={label} required={required} colors={colors} />
           <TextInput
             style={[fieldSt.input, { color: colors.text }]}
             value={value}
@@ -1066,6 +1086,7 @@ function SelectRow({
   error,
   helperText,
   valid,
+  required,
 }: {
   label: string;
   value: string;
@@ -1075,6 +1096,7 @@ function SelectRow({
   error?: string;
   helperText: string;
   valid: boolean;
+  required?: boolean;
 }) {
   const [modalVisible, setModalVisible] = useState(false);
   const translateY = useSharedValue(400);
@@ -1114,9 +1136,7 @@ function SelectRow({
         accessibilityRole="button"
       >
         <View style={fieldSt.pillInner}>
-          <Text style={[fieldSt.rowLabel, { color: colors.textSoft }]}>
-            {label.toUpperCase()}
-          </Text>
+          <FieldLabel label={label} required={required} colors={colors} />
           <Text
             style={[
               fieldSt.selectValue,
@@ -1194,6 +1214,7 @@ function DateRow({
   error,
   helperText,
   valid,
+  required,
 }: {
   label: string;
   value: string;
@@ -1203,6 +1224,7 @@ function DateRow({
   error?: string;
   helperText: string;
   valid: boolean;
+  required?: boolean;
 }) {
   const [iosPickerVisible, setIosPickerVisible] = useState(false);
   const [iosDate, setIosDate] = useState<Date>(() =>
@@ -1265,15 +1287,13 @@ function DateRow({
         ]}
       >
         <View style={fieldSt.pillInner}>
-          <Text style={[fieldSt.rowLabel, { color: colors.textSoft }]}>
-            {label.toUpperCase()}
-          </Text>
+          <FieldLabel label={label} required={required} colors={colors} />
           <TextInput
             style={[fieldSt.input, { color: colors.text }]}
             value={value}
             onChangeText={onChange}
             keyboardType="number-pad"
-            placeholder={kind === "expiry" ? "MM/YY" : "DD.MM.YYYY"}
+            placeholder={kind === "expiry" ? "MM.YY" : "DD.MM.YYYY"}
             placeholderTextColor={colors.textSoft}
             maxLength={kind === "expiry" ? 5 : 10}
           />
@@ -1588,6 +1608,10 @@ export function CardForm({
   >(null);
 
   const sections = useMemo(() => getFormSections(values), [values]);
+  const requiredFields = useMemo(
+    () => new Set(getRequiredFields(values)),
+    [values],
+  );
   const previewCard = useMemo(
     () => createPreviewCard(values, previewPalette),
     [previewPalette, values],
@@ -1626,7 +1650,7 @@ export function CardForm({
       category: next,
       nameOnCard: current.nameOnCard,
       holderName: current.holderName,
-      memberIdFormat: "text",
+      memberIdFormat: "barcode",
     }));
     setTouched({});
     setErrors({});
@@ -1669,6 +1693,7 @@ export function CardForm({
     const value = String(values[field.key] ?? "");
     const error = touched[field.key] ? errors[field.key] : undefined;
     const valid = !!value.trim() && !validateField(field.key, values);
+    const required = requiredFields.has(field.key);
 
     if (field.kind === "select" && field.options) {
       return (
@@ -1694,6 +1719,7 @@ export function CardForm({
           error={error}
           helperText={field.helperText}
           valid={valid}
+          required={required}
         />
       );
     }
@@ -1715,6 +1741,7 @@ export function CardForm({
           error={error}
           helperText={field.helperText}
           valid={valid}
+          required={required}
         />
       );
     }
@@ -1738,6 +1765,7 @@ export function CardForm({
         error={error}
         helperText={field.helperText}
         valid={valid}
+        required={required}
       />
     );
   };
@@ -1901,6 +1929,17 @@ const fieldSt = StyleSheet.create({
     textTransform: "uppercase",
     letterSpacing: 0.8,
     marginBottom: 2,
+  },
+  rowLabelWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    marginBottom: 2,
+  },
+  requiredMark: {
+    fontFamily: "ReadexPro-Bold",
+    fontSize: 12,
+    lineHeight: 12,
   },
   input: {
     fontFamily: "ReadexPro-Regular",
