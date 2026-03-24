@@ -24,12 +24,6 @@
         }
       ],
       [
-        "expo-notifications",
-        {
-          "color": "#239BFF"
-        }
-      ],
-      [
         "expo-build-properties",
         {
           "ios": {
