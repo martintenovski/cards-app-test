@@ -36,9 +36,9 @@
       "expo-web-browser"
     ],
     "ios": {
-      "icon": "./assets/pocketid-icon-IOS.png",
+      "icon": "./assets/ios-logo.png",
       "supportsTablet": true,
-      "buildNumber": "2",
+      "buildNumber": "3",
       "bundleIdentifier": "com.tenovski.cardsapp",
       "infoPlist": {
         "NSCameraUsageDescription": "Camera is required to scan identity documents and bank cards",
@@ -49,8 +49,9 @@
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#239bff"
+        "backgroundColor": "#0168D6"
       },
+      "versionCode": 3,
       "predictiveBackGestureEnabled": false,
       "package": "com.tenovski.cardsapp",
       "permissions": [
