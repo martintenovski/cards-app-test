@@ -129,10 +129,11 @@ export function AppTabBar({ state, navigation }: BottomTabBarProps) {
   const showSideLabels = !isVeryCompact;
   const addButtonLabel = isVeryCompact ? "" : isCompact ? "Add" : "New Card";
   const shouldUseLiquidGlass = Platform.OS === "ios" && glassEffect !== null;
+  const iosBottomClearance = Math.max(insets.bottom - 6, 4);
   const bottomClearance =
     Platform.OS === "android"
       ? Math.max(insets.bottom + 6, 18)
-      : Math.max(insets.bottom, 10);
+      : iosBottomClearance;
 
   const shellStyle = [
     styles.shell,
