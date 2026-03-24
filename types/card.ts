@@ -521,6 +521,8 @@ export function createPreviewCard(
   paletteOverride?: CardPalette,
 ): WalletCard {
   const palette = paletteOverride ?? getRandomPastelPalette();
+  const previewMaskedCardNumber = "xxxx-xxxx-xxxx-xxxx";
+  const livePreviewCardNumber = values.cardNumber || previewMaskedCardNumber;
 
   if (values.category === "personal") {
     return {
@@ -636,12 +638,12 @@ export function createPreviewCard(
     title: (values.type as BankCardType) || "Debit Card",
     issuer: values.bankName || "Bank name",
     name: values.holderName || values.nameOnCard || "Holder name",
-    primaryValue: "",
+    primaryValue: livePreviewCardNumber,
     palette,
     bankName: values.bankName || "Bank name",
     holderName: values.holderName || values.nameOnCard || "Holder name",
     cardNumber: values.cardNumber || "",
-    maskedCardNumber: "",
+    maskedCardNumber: livePreviewCardNumber,
     expiry: values.expiry || "",
     cvc: values.cvc || "",
     accountNumber: values.accountNumber || "",
@@ -896,9 +898,9 @@ export function getCardSideContent(
           topValue: card.bankName || card.issuer || "Bank name",
           middleLabel: "CARDHOLDER",
           middleValue: card.holderName || card.name || "Cardholder",
-          bottomLeftLabel: isPreviewBank ? "" : "Card Number",
+          bottomLeftLabel: "Card Number",
           bottomLeftValue: isPreviewBank
-            ? ""
+            ? card.maskedCardNumber || "xxxx-xxxx-xxxx-xxxx"
             : card.maskedCardNumber || maskCardNumber(card.cardNumber),
           bottomRightLabel: "Brand",
           bottomRightValue: card.brand === "mastercard" ? "Mastercard" : "Visa",

@@ -1732,7 +1732,12 @@ export function CardForm({
           value={value}
           kind={field.kind}
           onChange={(nextValue) => {
-            const nextValues = { ...values, [field.key]: nextValue };
+            const formattedValue = formatFieldValue(
+              field.key,
+              nextValue,
+              values,
+            );
+            const nextValues = { ...values, [field.key]: formattedValue };
             setValues(nextValues);
             setSubmitErrorMessage("");
             markTouched(field.key, nextValues);

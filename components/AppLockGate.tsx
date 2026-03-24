@@ -19,6 +19,7 @@ const RELOCK_AFTER_MS = 15_000;
 const DEFAULT_UNLOCK_MESSAGE =
   "Use Face ID, Touch ID, or your device passcode to unlock this wallet.";
 const RESUME_UNLOCK_MESSAGE = "Unlocking Pocket ID after returning to the app.";
+const WAITING_FOR_PROMPT_MESSAGE = "Waiting for biometric prompt...";
 
 type AppLockGateProps = {
   children: ReactNode;
@@ -118,6 +119,7 @@ export function AppLockGate({ children }: AppLockGateProps) {
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [shouldAutoAuthenticate, setShouldAutoAuthenticate] = useState(false);
+  const [hasAuthFailed, setHasAuthFailed] = useState(false);
   const [message, setMessage] = useState(DEFAULT_UNLOCK_MESSAGE);
   const [supportedAuthTypes, setSupportedAuthTypes] = useState<
     LocalAuthentication.AuthenticationType[]
@@ -143,6 +145,7 @@ export function AppLockGate({ children }: AppLockGateProps) {
     authInFlightRef.current = true;
     authPromptActiveRef.current = true;
     setIsAuthenticating(true);
+    setHasAuthFailed(false);
     setMessage(DEFAULT_UNLOCK_MESSAGE);
 
     try {
@@ -155,13 +158,16 @@ export function AppLockGate({ children }: AppLockGateProps) {
 
       if (result.success) {
         setIsUnlocked(true);
+        setHasAuthFailed(false);
         setMessage(DEFAULT_UNLOCK_MESSAGE);
       } else {
         setIsUnlocked(false);
+        setHasAuthFailed(true);
         setMessage(getAuthErrorMessage(result.error));
       }
     } catch {
       setIsUnlocked(false);
+      setHasAuthFailed(true);
       setMessage("Authentication is temporarily unavailable. Try again.");
     } finally {
       authInFlightRef.current = false;
@@ -195,19 +201,22 @@ export function AppLockGate({ children }: AppLockGateProps) {
       if (!appLockEnabled || !biometricSupported) {
         setIsUnlocked(true);
         setShouldAutoAuthenticate(false);
+        setHasAuthFailed(false);
         return;
       }
 
       setMessage(DEFAULT_UNLOCK_MESSAGE);
 
       if (wasEnabled === false) {
-        setIsUnlocked(true);
-        setShouldAutoAuthenticate(false);
+        setIsUnlocked(false);
+        setShouldAutoAuthenticate(true);
+        setMessage(WAITING_FOR_PROMPT_MESSAGE);
         return;
       }
 
       setIsUnlocked(false);
       setShouldAutoAuthenticate(true);
+      setMessage(WAITING_FOR_PROMPT_MESSAGE);
     }
 
     void prepare();
@@ -231,6 +240,7 @@ export function AppLockGate({ children }: AppLockGateProps) {
         if (appLockEnabled && isSupported) {
           setIsUnlocked(false);
           setMessage(RESUME_UNLOCK_MESSAGE);
+          setHasAuthFailed(false);
         }
         return;
       }
@@ -246,9 +256,11 @@ export function AppLockGate({ children }: AppLockGateProps) {
           setIsUnlocked(false);
           setMessage(RESUME_UNLOCK_MESSAGE);
           setShouldAutoAuthenticate(true);
+          setHasAuthFailed(false);
         } else {
           setIsUnlocked(true);
           setShouldAutoAuthenticate(false);
+          setHasAuthFailed(false);
           setMessage(DEFAULT_UNLOCK_MESSAGE);
         }
 
@@ -262,11 +274,6 @@ export function AppLockGate({ children }: AppLockGateProps) {
   }, [appLockEnabled, isSupported]);
 
   useEffect(() => {
-    if (autoAuthenticateTimeoutRef.current) {
-      clearTimeout(autoAuthenticateTimeoutRef.current);
-      autoAuthenticateTimeoutRef.current = null;
-    }
-
     if (
       !isReady ||
       !appLockEnabled ||
@@ -279,19 +286,17 @@ export function AppLockGate({ children }: AppLockGateProps) {
       return;
     }
 
-    setShouldAutoAuthenticate(false);
+    setMessage(WAITING_FOR_PROMPT_MESSAGE);
+
+    if (autoAuthenticateTimeoutRef.current) {
+      return;
+    }
 
     autoAuthenticateTimeoutRef.current = setTimeout(() => {
       autoAuthenticateTimeoutRef.current = null;
+      setShouldAutoAuthenticate(false);
       void authenticate();
     }, 250);
-
-    return () => {
-      if (autoAuthenticateTimeoutRef.current) {
-        clearTimeout(autoAuthenticateTimeoutRef.current);
-        autoAuthenticateTimeoutRef.current = null;
-      }
-    };
   }, [
     appLockEnabled,
     isAuthenticating,
@@ -301,6 +306,15 @@ export function AppLockGate({ children }: AppLockGateProps) {
     shouldAutoAuthenticate,
     shouldShowSetupPrompt,
   ]);
+
+  useEffect(() => {
+    return () => {
+      if (autoAuthenticateTimeoutRef.current) {
+        clearTimeout(autoAuthenticateTimeoutRef.current);
+        autoAuthenticateTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
   if (!appLockEnabled) {
     return (
@@ -361,8 +375,10 @@ export function AppLockGate({ children }: AppLockGateProps) {
                   onPress={() => {
                     setHasPromptedForAppLock(true);
                     setAppLockEnabled(true);
-                    setIsUnlocked(true);
-                    setShouldAutoAuthenticate(false);
+                    setIsUnlocked(false);
+                    setHasAuthFailed(false);
+                    setMessage(WAITING_FOR_PROMPT_MESSAGE);
+                    setShouldAutoAuthenticate(true);
                   }}
                   style={[
                     styles.button,
@@ -425,6 +441,7 @@ export function AppLockGate({ children }: AppLockGateProps) {
                   setAppLockEnabled(false);
                   setHasPromptedForAppLock(true);
                   setIsUnlocked(true);
+                  setHasAuthFailed(false);
                   setShouldAutoAuthenticate(false);
                 }}
                 style={[
@@ -446,8 +463,10 @@ export function AppLockGate({ children }: AppLockGateProps) {
                 onPress={() => {
                   setHasPromptedForAppLock(true);
                   setAppLockEnabled(true);
-                  setIsUnlocked(true);
-                  setShouldAutoAuthenticate(false);
+                  setIsUnlocked(false);
+                  setHasAuthFailed(false);
+                  setMessage(WAITING_FOR_PROMPT_MESSAGE);
+                  setShouldAutoAuthenticate(true);
                 }}
                 style={[
                   styles.button,
@@ -491,34 +510,45 @@ export function AppLockGate({ children }: AppLockGateProps) {
           <Feather name="shield" size={30} color={colors.text} />
         </View>
         <Text style={[styles.title, { color: colors.text }]}>
-          Unlock Pocket ID
+          App preview unavailable for security reasons
         </Text>
         <Text style={[styles.body, { color: colors.textMuted }]}>
           {message}
         </Text>
-        <Pressable
-          accessibilityRole="button"
-          disabled={isAuthenticating}
-          onPress={() => {
-            void authenticate();
-          }}
-          style={[
-            styles.button,
-            {
-              backgroundColor: colors.accent,
-              opacity: isAuthenticating ? 0.75 : 1,
-            },
-          ]}
-        >
-          {isAuthenticating ? (
+        {isAuthenticating ? (
+          <View
+            style={[
+              styles.button,
+              {
+                backgroundColor: colors.accent,
+                opacity: 0.85,
+              },
+            ]}
+          >
             <ActivityIndicator size="small" color={colors.accentText} />
-          ) : (
-            <Feather name="lock" size={18} color={colors.accentText} />
-          )}
-          <Text style={[styles.buttonText, { color: colors.accentText }]}>
-            {isAuthenticating ? "Checking…" : "Unlock App"}
-          </Text>
-        </Pressable>
+            <Text style={[styles.buttonText, { color: colors.accentText }]}>
+              Checking…
+            </Text>
+          </View>
+        ) : hasAuthFailed ? (
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => {
+              setShouldAutoAuthenticate(true);
+            }}
+            style={[
+              styles.button,
+              {
+                backgroundColor: colors.accent,
+              },
+            ]}
+          >
+            <Feather name="refresh-cw" size={18} color={colors.accentText} />
+            <Text style={[styles.buttonText, { color: colors.accentText }]}>
+              Try Again
+            </Text>
+          </Pressable>
+        ) : null}
       </View>
     </View>
   );
