@@ -143,8 +143,8 @@ export default function CloudPassphraseScreen() {
       await saveStoredSyncPassphrase(authUser.id, passphrase);
       requestSync(
         hasExistingPassphrase
-          ? "Refreshing your encrypted Pocket ID vault…"
-          : "Decrypting and importing your encrypted wallet…",
+          ? "Refreshing your encrypted Pocket ID vault..."
+          : "Decrypting and importing your encrypted wallet...",
       );
       bumpCloudVaultChangeToken();
       router.back();
@@ -466,8 +466,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   primaryButtonText: {
-    fontFamily: "ReadexPro-Bold",
+    fontFamily: "ReadexPro-Medium",
     fontSize: 15,
+    textAlign: "center",
+    width: "100%",
   },
   loadingRow: {
     flexDirection: "row",

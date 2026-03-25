@@ -1,9 +1,10 @@
 import { Feather } from "@expo/vector-icons";
+import { useIsFocused } from "@react-navigation/native";
+import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
-  Animated,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -14,9 +15,10 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { GoogleWordmark } from "@/components/GoogleWordmark";
 import { isSupabaseConfigured, supabaseConfigStatus } from "@/lib/supabase";
 import {
-  getSupporterLabel,
+  getSupportBadges,
   getSupporterStatus,
   isSupporterActive,
   useCustomerInfo,
@@ -77,46 +79,14 @@ function SetupValue({
   );
 }
 
-function SupporterBadge({
-  status,
+function SupporterBadges({
+  badges,
   colors,
 }: {
-  status: ReturnType<typeof getSupporterStatus>;
+  badges: ReturnType<typeof getSupportBadges>;
   colors: (typeof APP_THEME)[keyof typeof APP_THEME];
 }) {
-  const scale = useRef(new Animated.Value(1)).current;
-  const isHighlighted = status !== null;
-
-  useEffect(() => {
-    if (!isHighlighted) {
-      scale.setValue(1);
-      return;
-    }
-
-    const animation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(scale, {
-          toValue: 1.04,
-          duration: 900,
-          useNativeDriver: true,
-        }),
-        Animated.timing(scale, {
-          toValue: 1,
-          duration: 900,
-          useNativeDriver: true,
-        }),
-      ]),
-    );
-
-    animation.start();
-
-    return () => {
-      animation.stop();
-      scale.setValue(1);
-    };
-  }, [isHighlighted, scale]);
-
-  if (!isHighlighted) {
+  if (badges.length === 0) {
     return (
       <View
         style={[
@@ -132,22 +102,42 @@ function SupporterBadge({
   }
 
   return (
-    <Animated.View style={{ transform: [{ scale }] }}>
-      <LinearGradient
-        colors={["#1A6BC8", "#4D93E6"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.supporterBadgeActive}
-      >
-        <Text style={styles.supporterBadgeText}>
-          {getSupporterLabel(status)}
-        </Text>
-      </LinearGradient>
-    </Animated.View>
+    <View style={styles.supporterBadgeList}>
+      {badges.map((badge) =>
+        badge.variant === "highlight" ? (
+          <LinearGradient
+            key={badge.key}
+            colors={["#1A6BC8", "#4D93E6"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.supporterBadgeActive}
+          >
+            <Text style={styles.supporterBadgeText}>{badge.label}</Text>
+          </LinearGradient>
+        ) : (
+          <View
+            key={badge.key}
+            style={[
+              styles.supporterBadgeMuted,
+              {
+                backgroundColor: colors.surfaceMuted,
+                borderColor: colors.border,
+              },
+            ]}
+          >
+            <Text style={[styles.supporterBadgeText, { color: colors.text }]}>
+              {badge.label}
+            </Text>
+          </View>
+        ),
+      )}
+    </View>
   );
 }
 
 export default function ProfileScreen() {
+  const router = useRouter();
+  const isFocused = useIsFocused();
   const cards = useCardStore((state) => state.cards);
   const themePreference = useCardStore((state) => state.themePreference);
   const authUser = useAuthStore((state) => state.user);
@@ -155,13 +145,19 @@ export default function ProfileScreen() {
   const cloudVaultChangeToken = useCloudVaultStore(
     (state) => state.changeToken,
   );
+  const openSettingsSection = useCloudVaultStore(
+    (state) => state.openSettingsSection,
+  );
   const requestSync = useCloudVaultStore((state) => state.requestSync);
   const openSupportModal = useSupportModalStore((state) => state.open);
-  const { customerInfo } = useCustomerInfo();
+  const { customerInfo } = useCustomerInfo({ autoInitialize: isFocused });
   const deviceScheme = useColorScheme();
   const { width } = useWindowDimensions();
   const resolvedTheme = resolveTheme(themePreference, deviceScheme);
   const colors = APP_THEME[resolvedTheme];
+  const warningColor = resolvedTheme === "dark" ? "#FFB454" : "#C26B00";
+  const warningBackground =
+    resolvedTheme === "dark" ? "rgba(255,180,84,0.12)" : "rgba(194,107,0,0.10)";
   const isCompact = width < 390;
   const isVeryCompact = width < 360;
   const supabaseStatusMessage =
@@ -175,7 +171,21 @@ export default function ProfileScreen() {
     "loading" | "missing" | "ready"
   >("loading");
   const supporterStatus = getSupporterStatus(customerInfo);
+  const supportBadges = getSupportBadges(customerInfo);
   const hasActiveSupport = isSupporterActive(customerInfo);
+  const supportCardTitle = hasActiveSupport
+    ? "Support Pocket ID again? 💛"
+    : "Show me some love? 💛";
+  const supportCardBody = hasActiveSupport
+    ? supporterStatus === "lifetime"
+      ? "Your lifetime support is active. You can still leave a tip anytime if you want to help even more."
+      : supporterStatus === "monthly"
+        ? "Your monthly support is active. You can still add one-time tips whenever you want."
+        : "Thanks for supporting the app. You can always add another tip whenever you want."
+    : "Support my work and keep this app alive.";
+  const supportButtonLabel = hasActiveSupport
+    ? "View more support options →"
+    : "Support the app →";
 
   const categoryStats = useMemo(
     () =>
@@ -215,7 +225,7 @@ export default function ProfileScreen() {
       setAuthBusy(provider);
       const session = await signInWithProvider(provider);
       if (session) {
-        requestSync("Fetching your cards from Google sync…");
+        requestSync("Syncing your device and encrypted cloud vault...");
       }
     } finally {
       setAuthBusy(null);
@@ -230,7 +240,7 @@ export default function ProfileScreen() {
         selectAccount: true,
       });
       if (session) {
-        requestSync("Fetching your cards from Google sync…");
+        requestSync("Syncing your device and encrypted cloud vault...");
       }
     } finally {
       setAuthBusy(null);
@@ -244,6 +254,11 @@ export default function ProfileScreen() {
     } finally {
       setAuthBusy(null);
     }
+  };
+
+  const handleOpenCloudSyncSettings = () => {
+    openSettingsSection("cloud-sync");
+    router.push("/(tabs)/settings");
   };
 
   return (
@@ -269,33 +284,17 @@ export default function ProfileScreen() {
             },
           ]}
         >
-          <View style={[styles.avatar, { backgroundColor: colors.accent }]}>
-            <Feather name="user" size={32} color={colors.accentText} />
-          </View>
           <Text
             style={[
               styles.heroTitle,
               { color: colors.text, fontSize: isCompact ? 24 : 30 },
             ]}
           >
-            {authUser?.displayName ?? "Personal Stats"}
+            Personal Stats
           </Text>
           <View style={styles.supporterBadgeWrap}>
-            <SupporterBadge status={supporterStatus} colors={colors} />
+            <SupporterBadges badges={supportBadges} colors={colors} />
           </View>
-          <Text
-            style={[
-              styles.heroBody,
-              {
-                color: colors.textMuted,
-                fontSize: isCompact ? 14 : 15,
-                lineHeight: isCompact ? 20 : 22,
-              },
-            ]}
-          >
-            {authUser?.email ??
-              "A quick view of what is currently stored in your wallet."}
-          </Text>
 
           <View style={[styles.statRow, { gap: isCompact ? 10 : 12 }]}>
             <View
@@ -363,36 +362,6 @@ export default function ProfileScreen() {
           </View>
         </View>
 
-        {!hasActiveSupport ? (
-          <View
-            style={[
-              styles.section,
-              {
-                backgroundColor: colors.surface,
-                borderRadius: isCompact ? 26 : 32,
-                padding: isCompact ? 20 : 24,
-              },
-            ]}
-          >
-            <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              Show me some love? 💛
-            </Text>
-            <Text style={[styles.accountBody, { color: colors.textMuted }]}>
-              Support my work and keep this app alive.
-            </Text>
-            <Pressable
-              onPress={() => openSupportModal("profile")}
-              style={[styles.authButton, { backgroundColor: colors.accent }]}
-            >
-              <Text
-                style={[styles.authButtonText, { color: colors.accentText }]}
-              >
-                Support the app →
-              </Text>
-            </Pressable>
-          </View>
-        ) : null}
-
         <View
           style={[
             styles.section,
@@ -404,8 +373,37 @@ export default function ProfileScreen() {
           ]}
         >
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Account
+            {supportCardTitle}
           </Text>
+          <Text style={[styles.accountBody, { color: colors.textMuted }]}>
+            {supportCardBody}
+          </Text>
+          <Pressable
+            onPress={() => openSupportModal("profile")}
+            style={[styles.authButton, { backgroundColor: colors.accent }]}
+          >
+            <Text style={[styles.authButtonText, { color: colors.accentText }]}>
+              {supportButtonLabel}
+            </Text>
+          </Pressable>
+        </View>
+
+        <View
+          style={[
+            styles.section,
+            {
+              backgroundColor: colors.surface,
+              borderRadius: isCompact ? 26 : 32,
+              padding: isCompact ? 20 : 24,
+            },
+          ]}
+        >
+          <View style={styles.sectionHeaderRow}>
+            <GoogleWordmark size={15} />
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              Account
+            </Text>
+          </View>
           {!isSupabaseConfigured ? (
             <>
               <Text style={[styles.accountLabel, { color: colors.text }]}>
@@ -475,36 +473,29 @@ export default function ProfileScreen() {
               <Text style={[styles.accountValue, { color: colors.textMuted }]}>
                 {authUser.displayName ?? authUser.email ?? "Pocket ID user"}
               </Text>
-              <Text style={[styles.accountBody, { color: colors.textMuted }]}>
-                Cloud sync is active for your saved cards on this account.
-              </Text>
-              <View
-                style={[
-                  styles.vaultStatusCard,
-                  {
-                    backgroundColor: colors.surfaceMuted,
-                    borderColor:
-                      cloudVaultStatus === "ready"
-                        ? colors.accent
-                        : colors.border,
-                  },
-                ]}
-              >
-                <Text style={[styles.vaultStatusTitle, { color: colors.text }]}>
-                  {cloudVaultStatus === "ready"
-                    ? "Encrypted cloud vault is enabled"
-                    : cloudVaultStatus === "loading"
-                      ? "Checking encrypted cloud vault…"
-                      : "Encrypted cloud vault is not set up yet"}
-                </Text>
-                <Text
-                  style={[styles.vaultStatusBody, { color: colors.textMuted }]}
+              {cloudVaultStatus === "missing" ? (
+                <View
+                  style={[
+                    styles.vaultStatusCard,
+                    {
+                      backgroundColor: warningBackground,
+                      borderColor: warningColor,
+                    },
+                  ]}
                 >
-                  {cloudVaultStatus === "ready"
-                    ? "Your cards are encrypted on this device before upload, so the database stores ciphertext instead of readable card details."
-                    : "Set or use a sync passphrase to encrypt cards before uploading or pulling your saved cards. Until then, cloud sync stays paused on this device to avoid sending readable card data."}
-                </Text>
-              </View>
+                  <Pressable onPress={handleOpenCloudSyncSettings}>
+                    <Text
+                      style={[
+                        styles.vaultStatusTitle,
+                        styles.vaultStatusWarning,
+                        { color: warningColor },
+                      ]}
+                    >
+                      Encrypted cloud vault is not set up yet
+                    </Text>
+                  </Pressable>
+                </View>
+              ) : null}
               <View style={styles.accountActions}>
                 <Pressable
                   onPress={handleSwitchGoogleAccount}
@@ -629,6 +620,11 @@ const styles = StyleSheet.create({
   supporterBadgeWrap: {
     marginTop: 12,
   },
+  supporterBadgeList: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+  },
   supporterBadgeMuted: {
     borderWidth: 1,
     borderRadius: 999,
@@ -719,10 +715,15 @@ const styles = StyleSheet.create({
     borderRadius: 32,
     padding: 24,
   },
+  sectionHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 10,
+  },
   sectionTitle: {
     fontFamily: "ReadexPro-Bold",
     fontSize: 22,
-    marginBottom: 10,
   },
   accountLabel: {
     fontFamily: "ReadexPro-Medium",
@@ -768,8 +769,10 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   authButtonText: {
-    fontFamily: "ReadexPro-Bold",
+    fontFamily: "ReadexPro-Medium",
     fontSize: 15,
+    textAlign: "center",
+    width: "100%",
   },
   authButtonTextCentered: {
     textAlign: "center",
@@ -784,6 +787,9 @@ const styles = StyleSheet.create({
   vaultStatusTitle: {
     fontFamily: "ReadexPro-Bold",
     fontSize: 15,
+  },
+  vaultStatusWarning: {
+    textAlign: "center",
   },
   vaultStatusBody: {
     fontFamily: "ReadexPro-Regular",

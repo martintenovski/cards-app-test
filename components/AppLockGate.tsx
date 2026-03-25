@@ -45,6 +45,16 @@ function getAuthErrorMessage(code?: string) {
   return "We could not verify your identity. Try again.";
 }
 
+function shouldAttemptDeviceFallback(code?: string) {
+  return !(
+    code === "user_cancel" ||
+    code === "system_cancel" ||
+    code === "app_cancel" ||
+    code === "not_enrolled" ||
+    code === "passcode_not_set"
+  );
+}
+
 function getBiometricPromptCopy(
   types: LocalAuthentication.AuthenticationType[],
 ) {
@@ -104,6 +114,12 @@ export function AppLockGate({ children }: AppLockGateProps) {
   const hasSeenOnboarding = useCardStore((state) => state.hasSeenOnboarding);
   const appLockEnabled = useCardStore((state) => state.appLockEnabled);
   const setAppLockEnabled = useCardStore((state) => state.setAppLockEnabled);
+  const hasCompletedAppLockSetup = useCardStore(
+    (state) => state.hasCompletedAppLockSetup,
+  );
+  const setHasCompletedAppLockSetup = useCardStore(
+    (state) => state.setHasCompletedAppLockSetup,
+  );
   const hasPromptedForAppLock = useCardStore(
     (state) => state.hasPromptedForAppLock,
   );
@@ -140,7 +156,21 @@ export function AppLockGate({ children }: AppLockGateProps) {
   const previousAppLockEnabledRef = useRef<boolean | null>(null);
   const biometricPromptCopy = getBiometricPromptCopy(supportedAuthTypes);
   const shouldShowSetupPrompt =
-    isReady && hasSeenOnboarding && isSupported && !hasPromptedForAppLock;
+    isReady &&
+    hasSeenOnboarding &&
+    isSupported &&
+    !appLockEnabled &&
+    !hasPromptedForAppLock;
+  const isInAppLockSetupFlow = appLockEnabled && !hasCompletedAppLockSetup;
+
+  const cancelAppLockSetup = () => {
+    setAppLockEnabled(false);
+    setHasCompletedAppLockSetup(false);
+    setIsUnlocked(true);
+    setHasAuthFailed(false);
+    setShouldAutoAuthenticate(false);
+    setMessage(DEFAULT_UNLOCK_MESSAGE);
+  };
 
   const authenticate = async () => {
     if (authInFlightRef.current) {
@@ -154,22 +184,47 @@ export function AppLockGate({ children }: AppLockGateProps) {
     setMessage(DEFAULT_UNLOCK_MESSAGE);
 
     try {
-      const result = await LocalAuthentication.authenticateAsync({
+      const biometricResult = await LocalAuthentication.authenticateAsync({
         promptMessage: "Unlock Pocket ID",
         cancelLabel: "Cancel",
-        fallbackLabel: "Use Passcode",
-        disableDeviceFallback: false,
+        disableDeviceFallback: true,
       });
 
-      if (result.success) {
+      if (biometricResult.success) {
         setIsUnlocked(true);
         setHasAuthFailed(false);
+        setHasCompletedAppLockSetup(true);
         setMessage(DEFAULT_UNLOCK_MESSAGE);
-      } else {
+        return;
+      }
+
+      if (shouldAttemptDeviceFallback(biometricResult.error)) {
+        setMessage("Biometric check failed. Trying your device passcode...");
+
+        const fallbackResult = await LocalAuthentication.authenticateAsync({
+          promptMessage: "Unlock Pocket ID",
+          cancelLabel: "Cancel",
+          fallbackLabel: "Use Passcode",
+          disableDeviceFallback: false,
+        });
+
+        if (fallbackResult.success) {
+          setIsUnlocked(true);
+          setHasAuthFailed(false);
+          setHasCompletedAppLockSetup(true);
+          setMessage(DEFAULT_UNLOCK_MESSAGE);
+          return;
+        }
+
         setIsUnlocked(false);
         setHasAuthFailed(true);
-        setMessage(getAuthErrorMessage(result.error));
+        setMessage(getAuthErrorMessage(fallbackResult.error));
+        return;
       }
+
+      setIsUnlocked(false);
+      setHasAuthFailed(true);
+      setMessage(getAuthErrorMessage(biometricResult.error));
     } catch {
       setIsUnlocked(false);
       setHasAuthFailed(true);
@@ -207,6 +262,9 @@ export function AppLockGate({ children }: AppLockGateProps) {
         setIsUnlocked(true);
         setShouldAutoAuthenticate(false);
         setHasAuthFailed(false);
+        if (!biometricSupported) {
+          setHasCompletedAppLockSetup(false);
+        }
         return;
       }
 
@@ -386,6 +444,7 @@ export function AppLockGate({ children }: AppLockGateProps) {
                   accessibilityRole="button"
                   onPress={() => {
                     setHasPromptedForAppLock(true);
+                    setHasCompletedAppLockSetup(false);
                   }}
                   style={[
                     styles.secondaryButton,
@@ -406,6 +465,7 @@ export function AppLockGate({ children }: AppLockGateProps) {
                   onPress={() => {
                     setHasPromptedForAppLock(true);
                     setAppLockEnabled(true);
+                    setHasCompletedAppLockSetup(false);
                     setIsUnlocked(false);
                     setHasAuthFailed(false);
                     setMessage(WAITING_FOR_PROMPT_MESSAGE);
@@ -428,92 +488,6 @@ export function AppLockGate({ children }: AppLockGateProps) {
             </View>
           </View>
         ) : null}
-        {previewShield}
-      </>
-    );
-  }
-
-  if (shouldShowSetupPrompt) {
-    return (
-      <>
-        {children}
-        <View
-          pointerEvents="auto"
-          style={[styles.promptOverlay, { backgroundColor: colors.overlay }]}
-        >
-          <View
-            style={[
-              styles.promptCard,
-              {
-                backgroundColor: colors.surface,
-                borderColor: colors.border,
-                shadowColor: colors.shadow,
-              },
-            ]}
-          >
-            <View
-              style={[
-                styles.promptIcon,
-                { backgroundColor: colors.surfaceMuted },
-              ]}
-            >
-              <Feather name="shield" size={26} color={colors.text} />
-            </View>
-            <Text style={[styles.title, { color: colors.text }]}>
-              Use {biometricPromptCopy.label}?
-            </Text>
-            <Text style={[styles.body, { color: colors.textMuted }]}>
-              Pocket ID can ask for {biometricPromptCopy.label} before opening
-              after the app is locked or sent to the background.
-            </Text>
-            <View style={styles.promptActions}>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => {
-                  setAppLockEnabled(false);
-                  setHasPromptedForAppLock(true);
-                  setIsUnlocked(true);
-                  setHasAuthFailed(false);
-                  setShouldAutoAuthenticate(false);
-                }}
-                style={[
-                  styles.secondaryButton,
-                  {
-                    backgroundColor: colors.surfaceMuted,
-                    borderColor: colors.border,
-                  },
-                ]}
-              >
-                <Text
-                  style={[styles.secondaryButtonText, { color: colors.text }]}
-                >
-                  Setup later
-                </Text>
-              </Pressable>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => {
-                  setHasPromptedForAppLock(true);
-                  setAppLockEnabled(true);
-                  setIsUnlocked(false);
-                  setHasAuthFailed(false);
-                  setMessage(WAITING_FOR_PROMPT_MESSAGE);
-                  setShouldAutoAuthenticate(true);
-                }}
-                style={[
-                  styles.button,
-                  styles.promptPrimaryButton,
-                  { backgroundColor: colors.accent },
-                ]}
-              >
-                <Feather name="lock" size={18} color={colors.accentText} />
-                <Text style={[styles.buttonText, { color: colors.accentText }]}>
-                  {biometricPromptCopy.buttonText}
-                </Text>
-              </Pressable>
-            </View>
-          </View>
-        </View>
         {previewShield}
       </>
     );
@@ -569,21 +543,60 @@ export function AppLockGate({ children }: AppLockGateProps) {
             </Text>
           </View>
         ) : hasAuthFailed ? (
+          <>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => {
+                setShouldAutoAuthenticate(true);
+              }}
+              style={[
+                styles.button,
+                {
+                  backgroundColor: colors.accent,
+                },
+              ]}
+            >
+              <Feather name="refresh-cw" size={18} color={colors.accentText} />
+              <Text style={[styles.buttonText, { color: colors.accentText }]}>
+                Try Again
+              </Text>
+            </Pressable>
+            {isInAppLockSetupFlow ? (
+              <Pressable
+                accessibilityRole="button"
+                onPress={cancelAppLockSetup}
+                style={[
+                  styles.secondaryButton,
+                  styles.secondaryAction,
+                  {
+                    backgroundColor: colors.surfaceMuted,
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
+                <Text
+                  style={[styles.secondaryButtonText, { color: colors.text }]}
+                >
+                  Setup later
+                </Text>
+              </Pressable>
+            ) : null}
+          </>
+        ) : isInAppLockSetupFlow ? (
           <Pressable
             accessibilityRole="button"
-            onPress={() => {
-              setShouldAutoAuthenticate(true);
-            }}
+            onPress={cancelAppLockSetup}
             style={[
-              styles.button,
+              styles.secondaryButton,
+              styles.secondaryAction,
               {
-                backgroundColor: colors.accent,
+                backgroundColor: colors.surfaceMuted,
+                borderColor: colors.border,
               },
             ]}
           >
-            <Feather name="refresh-cw" size={18} color={colors.accentText} />
-            <Text style={[styles.buttonText, { color: colors.accentText }]}>
-              Try Again
+            <Text style={[styles.secondaryButtonText, { color: colors.text }]}>
+              Setup later
             </Text>
           </Pressable>
         ) : null}
@@ -631,9 +644,9 @@ const styles = StyleSheet.create({
   button: {
     marginTop: 22,
     minWidth: 180,
-    borderRadius: 18,
-    paddingHorizontal: 18,
-    paddingVertical: 15,
+    minHeight: 52,
+    borderRadius: 20,
+    paddingHorizontal: 16,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
@@ -642,6 +655,7 @@ const styles = StyleSheet.create({
   buttonText: {
     fontFamily: "ReadexPro-Medium",
     fontSize: 15,
+    textAlign: "center",
   },
   promptOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -690,14 +704,20 @@ const styles = StyleSheet.create({
   },
   secondaryButton: {
     minHeight: 52,
-    borderRadius: 18,
+    borderRadius: 20,
     borderWidth: 1,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 18,
+    paddingHorizontal: 16,
   },
   secondaryButtonText: {
     fontFamily: "ReadexPro-Medium",
     fontSize: 15,
+    textAlign: "center",
+    width: "100%",
+  },
+  secondaryAction: {
+    marginTop: 12,
+    width: "100%",
   },
 });

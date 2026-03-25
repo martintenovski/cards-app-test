@@ -135,7 +135,7 @@ export default function CardDetailScreen() {
   function handleDelete() {
     Alert.alert(
       "Delete Card",
-      "This card will be permanently removed. Continue?",
+      "This card will be removed from this device immediately. If cloud sync is unlocked on this device, Pocket ID will also sync that deletion to your encrypted cloud vault. Continue?",
       [
         { text: "Cancel", style: "cancel" },
         {

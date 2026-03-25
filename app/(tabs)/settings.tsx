@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useIsFocused } from "@react-navigation/native";
+import { useEffect, useRef, useState } from "react";
 import * as Notifications from "expo-notifications";
 import {
   Alert,
@@ -8,15 +9,19 @@ import {
   Switch,
   Text,
   View,
+  type LayoutChangeEvent,
   useColorScheme,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 
 import { deleteWalletSnapshot, isSupabaseConfigured } from "@/lib/supabase";
+import { GoogleWordmark } from "@/components/GoogleWordmark";
 import {
+  canManageMonthlySubscription,
   getSupporterSummary,
   initializePurchases,
+  openMonthlySubscriptionManagement,
   restoreSupportPurchases,
   useCustomerInfo,
 } from "@/src/services/purchases";
@@ -97,6 +102,7 @@ function formatSupportDate(value: string | null) {
 }
 
 export default function SettingsScreen() {
+  const isFocused = useIsFocused();
   const router = useRouter();
   const themePreference = useCardStore((state) => state.themePreference);
   const setThemePreference = useCardStore((state) => state.setThemePreference);
@@ -121,15 +127,25 @@ export default function SettingsScreen() {
   const bumpCloudVaultChangeToken = useCloudVaultStore(
     (state) => state.bumpChangeToken,
   );
+  const pendingSettingsSection = useCloudVaultStore(
+    (state) => state.pendingSettingsSection,
+  );
+  const clearPendingSettingsSection = useCloudVaultStore(
+    (state) => state.clearPendingSettingsSection,
+  );
   const requestSync = useCloudVaultStore((state) => state.requestSync);
   const syncStatus = useCloudVaultStore((state) => state.syncStatus);
   const cards = useCardStore((state) => state.cards);
   const openSupportModal = useSupportModalStore((state) => state.open);
-  const { customerInfo, refreshCustomerInfo } = useCustomerInfo();
+  const { customerInfo, refreshCustomerInfo } = useCustomerInfo({
+    autoInitialize: isFocused,
+  });
   const deviceScheme = useColorScheme();
   const resolvedTheme = resolveTheme(themePreference, deviceScheme);
   const colors = APP_THEME[resolvedTheme];
   const isDark = resolvedTheme === "dark";
+  const scrollViewRef = useRef<ScrollView | null>(null);
+  const [cloudSyncSectionY, setCloudSyncSectionY] = useState(0);
   const [authBusy, setAuthBusy] = useState<
     "delete-data" | "forget-passphrase" | null
   >(null);
@@ -139,8 +155,12 @@ export default function SettingsScreen() {
   const supportSummary = getSupporterSummary(customerInfo);
 
   useEffect(() => {
+    if (!isFocused) {
+      return;
+    }
+
     initializePurchases();
-  }, []);
+  }, [isFocused]);
 
   useEffect(() => {
     if (!authUser) {
@@ -166,9 +186,42 @@ export default function SettingsScreen() {
     };
   }, [authUser, cloudVaultChangeToken]);
 
+  useEffect(() => {
+    if (
+      !isFocused ||
+      pendingSettingsSection !== "cloud-sync" ||
+      cloudSyncSectionY <= 0
+    ) {
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      scrollViewRef.current?.scrollTo({
+        y: Math.max(cloudSyncSectionY - 20, 0),
+        animated: true,
+      });
+      clearPendingSettingsSection();
+    }, 60);
+
+    return () => clearTimeout(timer);
+  }, [
+    clearPendingSettingsSection,
+    cloudSyncSectionY,
+    isFocused,
+    pendingSettingsSection,
+  ]);
+
+  const handleCloudSyncSectionLayout = (event: LayoutChangeEvent) => {
+    setCloudSyncSectionY(event.nativeEvent.layout.y);
+  };
+
   const sendTestNotification = async () => {
-    const { granted } = await Notifications.requestPermissionsAsync();
-    if (!granted) return;
+    const permissions = await Notifications.requestPermissionsAsync();
+    const notificationsAllowed =
+      permissions.status === Notifications.PermissionStatus.GRANTED ||
+      permissions.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL;
+
+    if (!notificationsAllowed) return;
     // Pick the first card that has an expiry date, fall back to any card
     const target = cards.find((c) => getCardExpiryDate(c) !== null) ?? cards[0];
     const cardId = target?.id ?? "";
@@ -210,6 +263,19 @@ export default function SettingsScreen() {
     }
   };
 
+  const handleManageSubscription = async () => {
+    try {
+      await openMonthlySubscriptionManagement(customerInfo);
+    } catch (error) {
+      Alert.alert(
+        "Could not open subscription settings",
+        error instanceof Error
+          ? error.message
+          : "Pocket ID could not open the App Store subscription page right now.",
+      );
+    }
+  };
+
   const handleOpenCloudPassphrase = () => {
     router.push("/cloud-passphrase");
   };
@@ -245,7 +311,15 @@ export default function SettingsScreen() {
   };
 
   const handleFetchLatestData = () => {
-    requestSync("Fetching the latest encrypted wallet data…");
+    if (cloudVaultStatus !== "ready") {
+      Alert.alert(
+        "Sync passphrase required",
+        "You must set your sync passphrase first in Settings > Cloud Sync before syncing cloud data.",
+      );
+      return;
+    }
+
+    requestSync("Syncing your device and encrypted cloud vault...");
   };
 
   const handleDeleteData = () => {
@@ -282,6 +356,7 @@ export default function SettingsScreen() {
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: colors.background }]}>
       <ScrollView
+        ref={scrollViewRef}
         contentContainerStyle={[
           styles.content,
           { paddingBottom: FLOATING_TAB_SCROLL_BUFFER },
@@ -295,7 +370,10 @@ export default function SettingsScreen() {
           </Text>
         </View>
 
-        <View style={[styles.section, { backgroundColor: colors.surface }]}>
+        <View
+          onLayout={handleCloudSyncSectionLayout}
+          style={[styles.section, { backgroundColor: colors.surface }]}
+        >
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
             Appearance
           </Text>
@@ -408,21 +486,30 @@ export default function SettingsScreen() {
           />
           <Pressable
             onPress={sendTestNotification}
-            style={[styles.testBtn, { backgroundColor: colors.surfaceMuted }]}
+            style={[
+              styles.testBtn,
+              {
+                backgroundColor: colors.surfaceMuted,
+                borderColor: colors.border,
+              },
+            ]}
           >
-            <Text style={[styles.testBtnText, { color: colors.textMuted }]}>
+            <Text style={[styles.testBtnText, { color: colors.text }]}>
               Send test notification (5 s)
             </Text>
           </Pressable>
         </View>
 
         <View style={[styles.section, { backgroundColor: colors.surface }]}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Cloud Sync
-          </Text>
+          <View style={styles.sectionHeaderRow}>
+            <GoogleWordmark size={15} />
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              Cloud Sync
+            </Text>
+          </View>
           <Text style={[styles.sectionBody, { color: colors.textMuted }]}>
-            Manage your encrypted cloud vault, fetch the latest data, and clean
-            up this device when needed.
+            Manage your encrypted cloud vault, sync cloud data on demand, and
+            clean up this device when needed.
           </Text>
           {!isSupabaseConfigured || !authUser ? (
             <Text style={[styles.sectionBody, { color: colors.textMuted }]}>
@@ -461,7 +548,10 @@ export default function SettingsScreen() {
                 onPress={handleOpenCloudPassphrase}
                 style={[
                   styles.testBtn,
-                  { backgroundColor: colors.surfaceMuted },
+                  {
+                    backgroundColor: colors.surfaceMuted,
+                    borderColor: colors.border,
+                  },
                 ]}
               >
                 <Text style={[styles.testBtnText, { color: colors.text }]}>
@@ -475,7 +565,10 @@ export default function SettingsScreen() {
                   onPress={handleForgetPassphrase}
                   style={[
                     styles.testBtn,
-                    { backgroundColor: colors.surfaceMuted },
+                    {
+                      backgroundColor: colors.surfaceMuted,
+                      borderColor: colors.border,
+                    },
                   ]}
                 >
                   <Text style={[styles.testBtnText, { color: colors.text }]}>
@@ -489,13 +582,16 @@ export default function SettingsScreen() {
                 onPress={handleFetchLatestData}
                 style={[
                   styles.testBtn,
-                  { backgroundColor: colors.surfaceMuted },
+                  {
+                    backgroundColor: colors.surfaceMuted,
+                    borderColor: colors.border,
+                  },
                 ]}
               >
                 <Text style={[styles.testBtnText, { color: colors.text }]}>
                   {syncStatus === "syncing"
-                    ? "Fetching Latest Data…"
-                    : "Fetch Latest Data"}
+                    ? "Syncing Cloud Data…"
+                    : "Sync Cloud Data"}
                 </Text>
               </Pressable>
               <Pressable
@@ -583,6 +679,30 @@ export default function SettingsScreen() {
             </Text>
           </View>
           <Pressable
+            onPress={() => openSupportModal("settings")}
+            style={[
+              styles.testBtn,
+              {
+                backgroundColor: colors.surfaceMuted,
+                borderColor: colors.border,
+              },
+            ]}
+          >
+            <Text style={[styles.testBtnText, { color: colors.text }]}>
+              View Support Options
+            </Text>
+          </Pressable>
+          {canManageMonthlySubscription(customerInfo) ? (
+            <Pressable
+              onPress={() => void handleManageSubscription()}
+              style={[styles.testBtn, { backgroundColor: colors.surfaceMuted }]}
+            >
+              <Text style={[styles.testBtnText, { color: colors.text }]}>
+                Cancel Monthly Subscription
+              </Text>
+            </Pressable>
+          ) : null}
+          <Pressable
             onPress={handleRestorePurchases}
             style={[styles.testBtn, { backgroundColor: colors.surfaceMuted }]}
           >
@@ -659,6 +779,12 @@ const styles = StyleSheet.create({
     borderRadius: 32,
     padding: 24,
   },
+  sectionHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 8,
+  },
   sectionTitle: {
     fontFamily: "ReadexPro-Bold",
     fontSize: 22,
@@ -688,17 +814,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   testBtn: {
-    marginTop: 18,
-    borderRadius: 18,
-    paddingVertical: 14,
+    marginTop: 14,
+    borderRadius: 20,
+    minHeight: 52,
     alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 16,
+    borderWidth: 1,
   },
   dangerButton: {
     borderWidth: 1,
   },
   testBtnText: {
     fontFamily: "ReadexPro-Medium",
-    fontSize: 14,
+    fontSize: 15,
+    textAlign: "center",
+    width: "100%",
   },
   supportRow: {
     flexDirection: "row",

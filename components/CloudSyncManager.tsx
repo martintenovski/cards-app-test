@@ -18,6 +18,34 @@ import { APP_THEME, resolveTheme } from "@/utils/theme";
 
 const MAX_BLOCKING_SYNC_MS = 25_000;
 
+function getMergeSuccessMessage(
+  localOnlyCount: number,
+  remoteOnlyCount: number,
+) {
+  const localLabel =
+    localOnlyCount === 1
+      ? "1 card from this device"
+      : `${localOnlyCount} cards from this device`;
+  const remoteLabel =
+    remoteOnlyCount === 1
+      ? "1 card from your encrypted cloud vault"
+      : `${remoteOnlyCount} cards from your encrypted cloud vault`;
+
+  if (localOnlyCount > 0 && remoteOnlyCount > 0) {
+    return `Merged ${localLabel} with ${remoteLabel}.`;
+  }
+
+  if (localOnlyCount > 0) {
+    return `Synced ${localLabel} to your encrypted cloud vault.`;
+  }
+
+  if (remoteOnlyCount > 0) {
+    return `Imported ${remoteLabel}.`;
+  }
+
+  return "Pocket ID is already synced and up to date.";
+}
+
 function isPassphraseMissingError(error: unknown) {
   return (
     error instanceof Error &&
@@ -43,11 +71,10 @@ export function CloudSyncManager() {
   const setSyncState = useCloudVaultStore((state) => state.setSyncState);
   const deviceScheme = useColorScheme();
   const colors = APP_THEME[resolveTheme("system", deviceScheme)];
-  const hasReconciled = useRef(false);
   const reconcileInFlight = useRef(false);
+  const handledSyncRequestToken = useRef(0);
   const lastPushedAt = useRef<string | null>(null);
   const lastObservedModifiedAt = useRef<string | null>(null);
-  const handledSyncRequestToken = useRef(0);
   const [isLocalPushSyncing, setIsLocalPushSyncing] = useState(false);
 
   useEffect(() => {
@@ -63,10 +90,9 @@ export function CloudSyncManager() {
   }, [setSyncState, syncStatus]);
 
   useEffect(() => {
-    hasReconciled.current = false;
+    handledSyncRequestToken.current = 0;
     lastPushedAt.current = null;
     lastObservedModifiedAt.current = lastModifiedAt;
-    handledSyncRequestToken.current = 0;
   }, [cloudVaultChangeToken, user?.id]);
 
   useEffect(() => {
@@ -90,17 +116,12 @@ export function CloudSyncManager() {
     let cancelled = false;
     const hasPendingSyncRequest =
       syncRequestToken > handledSyncRequestToken.current;
-    const shouldAutoReconcile = !hasReconciled.current && cards.length === 0;
 
     if (reconcileInFlight.current) {
       return undefined;
     }
 
-    if (!hasPendingSyncRequest && !shouldAutoReconcile) {
-      if (!hasReconciled.current) {
-        hasReconciled.current = true;
-        lastObservedModifiedAt.current = lastModifiedAt;
-      }
+    if (!hasPendingSyncRequest) {
       return undefined;
     }
 
@@ -108,11 +129,15 @@ export function CloudSyncManager() {
       reconcileInFlight.current = true;
 
       try {
+        setSyncState(
+          "syncing",
+          "Syncing your device and encrypted cloud vault. Please wait a moment...",
+        );
+
         const hasPassphrase = await hasStoredSyncPassphrase(currentUser.id);
 
         if (!hasPassphrase) {
           setSyncState("idle");
-          hasReconciled.current = true;
           handledSyncRequestToken.current = syncRequestToken;
           return;
         }
@@ -127,60 +152,64 @@ export function CloudSyncManager() {
           return;
         }
 
-        if (result.action === "pull" && result.remote) {
-          replaceCards(result.remote.cards, result.remote.updated_at);
-          lastPushedAt.current = result.remote.updated_at;
-          lastObservedModifiedAt.current = result.remote.updated_at;
+        if (result.action === "noop") {
+          lastObservedModifiedAt.current = result.lastModifiedAt;
+          setSyncState(
+            "success",
+            "Pocket ID is already synced and up to date.",
+          );
+        } else if (result.action === "pull" && result.remote) {
+          replaceCards(result.cards, result.lastModifiedAt);
+          lastObservedModifiedAt.current = result.lastModifiedAt;
 
           if (result.remote.storage === "legacy-plain") {
             await pushWalletSnapshot({
               user: currentUser,
-              cards: result.remote.cards,
-              lastModifiedAt: result.remote.updated_at,
+              cards: result.cards,
+              lastModifiedAt: result.lastModifiedAt,
             });
-            lastPushedAt.current = result.remote.updated_at;
+            lastPushedAt.current = result.lastModifiedAt;
           }
 
-          const importedCount = result.remote.cards.length;
-          if (hasPendingSyncRequest) {
-            setSyncState(
-              "success",
-              importedCount === 1
-                ? "Imported 1 card from your encrypted cloud vault."
-                : `Imported ${importedCount} cards from your encrypted cloud vault.`,
-            );
-          } else {
-            setSyncState("idle");
-          }
+          const importedCount = result.cards.length;
+          setSyncState("success", getMergeSuccessMessage(0, importedCount));
+        } else if (result.action === "merge") {
+          replaceCards(result.cards, result.lastModifiedAt);
+          lastObservedModifiedAt.current = result.lastModifiedAt;
+
+          await pushWalletSnapshot({
+            user: currentUser,
+            cards: result.cards,
+            lastModifiedAt: result.lastModifiedAt,
+          });
+
+          lastPushedAt.current = result.lastModifiedAt;
+
+          setSyncState(
+            "success",
+            getMergeSuccessMessage(
+              result.localOnlyCount,
+              result.remoteOnlyCount,
+            ),
+          );
         } else {
           await pushWalletSnapshot({
             user: currentUser,
-            cards,
-            lastModifiedAt,
+            cards: result.cards,
+            lastModifiedAt: result.lastModifiedAt,
           });
-          lastPushedAt.current = lastModifiedAt;
-          lastObservedModifiedAt.current = lastModifiedAt;
-
-          if (hasPendingSyncRequest) {
-            setSyncState("success", "Pocket ID is synced and up to date.");
-          } else {
-            setSyncState("idle");
-          }
+          lastPushedAt.current = result.lastModifiedAt;
+          lastObservedModifiedAt.current = result.lastModifiedAt;
+          setSyncState("success", "Pocket ID is synced and up to date.");
         }
 
         handledSyncRequestToken.current = syncRequestToken;
-        hasReconciled.current = true;
       } catch (error) {
         if (!isPassphraseMissingError(error)) {
           console.warn("Cloud sync reconcile failed", error);
         }
         handledSyncRequestToken.current = syncRequestToken;
-        if (hasPendingSyncRequest) {
-          setSyncState("error", "Could not fetch the latest cloud data.");
-        } else {
-          setSyncState("idle");
-        }
-        hasReconciled.current = true;
+        setSyncState("error", "Could not sync your cloud data.");
       } finally {
         reconcileInFlight.current = false;
       }
@@ -214,7 +243,7 @@ export function CloudSyncManager() {
       !authReady ||
       !hasHydrated ||
       !user ||
-      !hasReconciled.current ||
+      syncStatus === "syncing" ||
       lastObservedModifiedAt.current === lastModifiedAt ||
       lastPushedAt.current === lastModifiedAt
     ) {
@@ -224,48 +253,46 @@ export function CloudSyncManager() {
     const currentUser = user;
     lastObservedModifiedAt.current = lastModifiedAt;
 
-    const timer = setTimeout(() => {
-      setIsLocalPushSyncing(true);
-      setSyncState(
-        "syncing",
-        "Syncing your latest card securely to the cloud vault...",
-      );
-
-      void hasStoredSyncPassphrase(currentUser.id)
-        .then((hasPassphrase) => {
-          if (!hasPassphrase) {
-            return;
-          }
-
-          return pushWalletSnapshot({
-            user: currentUser,
-            cards,
-            lastModifiedAt,
-          }).then(() => {
-            lastPushedAt.current = lastModifiedAt;
-            setSyncState("success", "Your latest card is now synced.");
-          });
-        })
-        .then(() => undefined)
-        .catch((error) => {
-          if (!isPassphraseMissingError(error)) {
-            console.warn("Cloud sync push failed", error);
-          }
-          setSyncState("error", "Could not sync your latest card.");
+    void hasStoredSyncPassphrase(currentUser.id)
+      .then((hasPassphrase) => {
+        if (!hasPassphrase) {
           return undefined;
-        })
-        .finally(() => {
-          setIsLocalPushSyncing(false);
-        });
-    }, 800);
+        }
 
-    return () => clearTimeout(timer);
+        setIsLocalPushSyncing(true);
+        setSyncState(
+          "syncing",
+          "Syncing your latest card securely to the cloud vault...",
+        );
+
+        return pushWalletSnapshot({
+          user: currentUser,
+          cards,
+          lastModifiedAt,
+        }).then(() => {
+          lastPushedAt.current = lastModifiedAt;
+          setSyncState("success", "Your latest card is now synced.");
+        });
+      })
+      .catch((error) => {
+        if (!isPassphraseMissingError(error)) {
+          console.warn("Cloud sync push failed", error);
+          setSyncState("error", "Could not sync your latest card.");
+        }
+        return undefined;
+      })
+      .finally(() => {
+        setIsLocalPushSyncing(false);
+      });
+
+    return undefined;
   }, [
     authReady,
     cards,
-    cloudVaultChangeToken,
     hasHydrated,
     lastModifiedAt,
+    setSyncState,
+    syncStatus,
     user,
   ]);
 
@@ -275,32 +302,39 @@ export function CloudSyncManager() {
 
   const isSyncing = syncStatus === "syncing";
   const isSuccess = syncStatus === "success";
-  const shouldShowLocalSyncModal = isSyncing && isLocalPushSyncing;
+  const isSyncingLatestCard = isSyncing && isLocalPushSyncing;
+  const shouldShowBlockingSyncOverlay = isSyncing;
+  const shouldShowCenteredOverlay = isSyncing;
   const title = isSyncing
-    ? "Fetching latest data"
+    ? isSyncingLatestCard
+      ? "Syncing latest card"
+      : "Syncing your wallet"
     : isSuccess
       ? "Sync complete"
       : "Sync issue";
   const body =
     syncMessage ??
     (isSyncing
-      ? "This can take a couple of seconds. Please wait before continuing to use Pocket ID."
+      ? isSyncingLatestCard
+        ? "Pocket ID is securely updating your encrypted cloud vault with your latest card changes. Please wait before continuing."
+        : "This can take a couple of seconds. Please wait before continuing to use Pocket ID."
       : isSuccess
         ? "Your encrypted cloud vault is ready on this device."
         : "Could not fetch the latest cloud data.");
 
   return (
     <View
-      pointerEvents="none"
+      pointerEvents={shouldShowBlockingSyncOverlay ? "auto" : "none"}
       style={[
         styles.overlay,
-        shouldShowLocalSyncModal ? styles.centeredOverlay : null,
+        shouldShowCenteredOverlay ? styles.centeredOverlay : null,
+        shouldShowBlockingSyncOverlay ? styles.blockingOverlay : null,
       ]}
     >
       <View
         style={[
           styles.modal,
-          shouldShowLocalSyncModal ? styles.centeredModal : null,
+          shouldShowCenteredOverlay ? styles.centeredModal : null,
           {
             backgroundColor: colors.surface,
             borderColor: colors.border,
@@ -346,6 +380,9 @@ const styles = StyleSheet.create({
   centeredOverlay: {
     justifyContent: "center",
     paddingTop: 24,
+  },
+  blockingOverlay: {
+    backgroundColor: "rgba(0, 0, 0, 0.32)",
   },
   modal: {
     width: "100%",

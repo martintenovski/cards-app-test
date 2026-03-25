@@ -58,7 +58,7 @@ function subtractOneMonth(date: Date) {
 async function ensurePermissions() {
   const settings = await Notifications.getPermissionsAsync();
   if (
-    settings.granted ||
+    settings.status === Notifications.PermissionStatus.GRANTED ||
     settings.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL
   ) {
     return true;
@@ -66,7 +66,7 @@ async function ensurePermissions() {
 
   const requested = await Notifications.requestPermissionsAsync();
   return (
-    requested.granted ||
+    requested.status === Notifications.PermissionStatus.GRANTED ||
     requested.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL
   );
 }

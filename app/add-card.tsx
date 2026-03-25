@@ -32,14 +32,15 @@ const { height } = Dimensions.get("window");
 const SHEET_HEIGHT = height * 0.85;
 const CLOSE_THRESHOLD = 100;
 const SPRING_OPEN = {
-  damping: 20,
-  stiffness: 90,
-  mass: 0.8,
+  damping: 22,
+  stiffness: 150,
+  mass: 0.65,
   overshootClamping: true,
 } as const;
 const SPRING_CLOSE = {
-  damping: 20,
-  stiffness: 90,
+  damping: 24,
+  stiffness: 170,
+  mass: 0.6,
   overshootClamping: true,
 } as const;
 
@@ -80,9 +81,7 @@ export default function AddCardScreen() {
     })
     .onEnd((e) => {
       if (e.translationY > CLOSE_THRESHOLD || e.velocityY > 800) {
-        translateY.value = withSpring(SHEET_HEIGHT, SPRING_CLOSE);
-        backdropOpacity.value = withSpring(0, SPRING_CLOSE);
-        runOnJS(dismiss)();
+        runOnJS(dismissWithAnimation)();
       } else {
         translateY.value = withSpring(0, SPRING_OPEN);
         backdropOpacity.value = withSpring(0.55, SPRING_OPEN);
@@ -99,7 +98,7 @@ export default function AddCardScreen() {
 
   const handleSubmit = (values: CardFormValues, palette: CardPalette) => {
     addCard(values, palette);
-    router.back();
+    dismissWithAnimation();
   };
 
   const handleImportSharedCard = () => {

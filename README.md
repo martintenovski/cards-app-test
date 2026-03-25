@@ -199,8 +199,16 @@ Because the scanner depends on native modules, use a native development build wh
 
 Relevant packages already included in this project:
 
+- `expo-camera`
 - `@react-native-ml-kit/text-recognition`
 - `expo-dev-client`
+
+Dependency audit notes:
+
+- `expo-camera` and `@react-native-ml-kit/text-recognition` are still required by the live scanner flow in `app/card-scanner.tsx` and `utils/selectiveScanner.ts`
+- `expo-dev-client` is intentionally kept because the scanner cannot run inside Expo Go and needs a native development build for day-to-day testing
+- `react-native-purchases-ui` and several unused dev-only packages were removed from the manifest during cleanup
+- `expo-build-properties` and `babel-plugin-transform-import-meta` are config-time dependencies used by `app.json` and `babel.config.js`, so static dependency scanners may incorrectly report them as unused
 
 ### Camera permissions
 

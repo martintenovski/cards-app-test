@@ -3,6 +3,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Dimensions,
   Modal,
   Pressable,
   ScrollView,
@@ -11,18 +12,49 @@ import {
   View,
   useColorScheme,
 } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Animated, {
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+} from "react-native-reanimated";
+import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import type { CustomerInfo, PurchasesPackage } from "react-native-purchases";
 
+import {
+  FormSheetScaffold,
+  formSheetScaffoldStyles,
+} from "@/components/FormSheetScaffold";
 import { useCardStore } from "@/store/useCardStore";
 import { APP_THEME, resolveTheme } from "@/utils/theme";
 import { recordSupportModalDismissed } from "@/src/hooks/useAutoSupportModal";
 import {
+  canPurchaseSupportProduct,
+  canManageMonthlySubscription,
   getSupportPackages,
+  getSupportProductPurchaseCount,
+  openMonthlySubscriptionManagement,
   purchaseSupportPackage,
 } from "@/src/services/purchases";
 
+const { height } = Dimensions.get("window");
+const SHEET_HEIGHT = height * 0.84;
+const CLOSE_THRESHOLD = 100;
+const SPRING_OPEN = {
+  damping: 22,
+  stiffness: 150,
+  mass: 0.65,
+  overshootClamping: true,
+} as const;
+const SPRING_CLOSE = {
+  damping: 24,
+  stiffness: 170,
+  mass: 0.6,
+  overshootClamping: true,
+} as const;
+
 type SupportModalProps = {
+  customerInfo: CustomerInfo | null;
   visible: boolean;
   onClose: () => void;
   onPurchaseSuccess?: (customerInfo: CustomerInfo) => void;
@@ -53,16 +85,17 @@ function fallbackDescription(productIdentifier: string) {
 }
 
 export function SupportModal({
+  customerInfo,
   visible,
   onClose,
   onPurchaseSuccess,
 }: SupportModalProps) {
-  const insets = useSafeAreaInsets();
   const themePreference = useCardStore((state) => state.themePreference);
   const deviceScheme = useColorScheme();
   const resolvedTheme = resolveTheme(themePreference, deviceScheme);
   const colors = APP_THEME[resolvedTheme];
   const [packages, setPackages] = useState<PurchasesPackage[]>([]);
+  const [isMounted, setIsMounted] = useState(visible);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [thankYouMessage, setThankYouMessage] = useState<string | null>(null);
@@ -70,6 +103,24 @@ export function SupportModal({
     string | null
   >(null);
   const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const translateY = useSharedValue(SHEET_HEIGHT);
+  const backdropOpacity = useSharedValue(0);
+
+  useEffect(() => {
+    if (visible) {
+      setIsMounted(true);
+      translateY.value = withSpring(0, SPRING_OPEN);
+      backdropOpacity.value = withSpring(0.55, SPRING_OPEN);
+      return;
+    }
+
+    translateY.value = withSpring(SHEET_HEIGHT, SPRING_CLOSE);
+    backdropOpacity.value = withSpring(0, SPRING_CLOSE, (done) => {
+      if (done) {
+        runOnJS(setIsMounted)(false);
+      }
+    });
+  }, [backdropOpacity, translateY, visible]);
 
   useEffect(() => {
     if (!visible) {
@@ -134,9 +185,41 @@ export function SupportModal({
     onClose();
   };
 
-  const handlePurchase = async (aPackage: PurchasesPackage) => {
+  const dismissWithAnimation = () => {
+    translateY.value = withSpring(SHEET_HEIGHT, SPRING_CLOSE);
+    backdropOpacity.value = withSpring(0, SPRING_CLOSE, (done) => {
+      if (done) {
+        runOnJS(handleDismiss)();
+      }
+    });
+  };
+
+  const handleManageSubscription = async () => {
     try {
-      setPurchasingIdentifier(aPackage.product.identifier);
+      await openMonthlySubscriptionManagement(customerInfo);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Pocket ID could not open the App Store subscription page right now.",
+      );
+    }
+  };
+
+  const handlePurchase = async (aPackage: PurchasesPackage) => {
+    const productId = aPackage.product.identifier;
+
+    if (!canPurchaseSupportProduct(customerInfo, productId)) {
+      setErrorMessage(
+        productId === "supporter_lifetime"
+          ? "This lifetime support unlock is already owned on this App Store account."
+          : "This support option is already active on this App Store account.",
+      );
+      return;
+    }
+
+    try {
+      setPurchasingIdentifier(productId);
       setErrorMessage(null);
       const customerInfo = await purchaseSupportPackage(aPackage);
       onPurchaseSuccess?.(customerInfo);
@@ -221,6 +304,26 @@ export function SupportModal({
           const packageDescription =
             product.description || fallbackDescription(product.identifier);
           const isPurchasing = purchasingIdentifier === product.identifier;
+          const purchaseCount = getSupportProductPurchaseCount(
+            customerInfo,
+            product.identifier,
+          );
+          const shouldShowPurchaseCountBadge =
+            purchaseCount > 0 &&
+            product.identifier !== "supporter_lifetime" &&
+            product.identifier !== "supporter_monthly";
+          const canPurchase = canPurchaseSupportProduct(
+            customerInfo,
+            product.identifier,
+          );
+          const buttonDisabled = Boolean(purchasingIdentifier) || !canPurchase;
+          const buttonLabel = !canPurchase
+            ? product.identifier === "supporter_lifetime"
+              ? "Owned"
+              : "Active"
+            : isPurchasing
+              ? "Buying…"
+              : "Buy";
 
           return (
             <View
@@ -234,9 +337,31 @@ export function SupportModal({
               ]}
             >
               <View style={styles.packageTextWrap}>
-                <Text style={[styles.packageTitle, { color: colors.text }]}>
-                  {product.title}
-                </Text>
+                <View style={styles.packageTitleRow}>
+                  <Text style={[styles.packageTitle, { color: colors.text }]}>
+                    {product.title}
+                  </Text>
+                  {shouldShowPurchaseCountBadge ? (
+                    <View
+                      style={[
+                        styles.purchaseCountBadge,
+                        {
+                          backgroundColor: colors.surface,
+                          borderColor: colors.border,
+                        },
+                      ]}
+                    >
+                      <Text
+                        style={[
+                          styles.purchaseCountBadgeText,
+                          { color: colors.textMuted },
+                        ]}
+                      >
+                        x{purchaseCount}
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
                 <Text style={[styles.packageBody, { color: colors.textMuted }]}>
                   {packageDescription}
                 </Text>
@@ -246,22 +371,58 @@ export function SupportModal({
               </View>
               <Pressable
                 accessibilityRole="button"
-                disabled={Boolean(purchasingIdentifier)}
+                disabled={buttonDisabled}
                 onPress={() => void handlePurchase(aPackage)}
                 style={[
                   styles.buyButton,
                   {
-                    backgroundColor: colors.accent,
+                    backgroundColor: canPurchase
+                      ? colors.accent
+                      : colors.surface,
+                    borderColor: canPurchase ? colors.accent : colors.border,
+                    borderWidth: 1,
                     opacity: purchasingIdentifier && !isPurchasing ? 0.55 : 1,
                   },
                 ]}
               >
                 <Text
-                  style={[styles.buyButtonText, { color: colors.accentText }]}
+                  style={[
+                    styles.buyButtonText,
+                    {
+                      color: canPurchase ? colors.accentText : colors.textMuted,
+                    },
+                  ]}
                 >
-                  {isPurchasing ? "Buying…" : "Buy"}
+                  {buttonLabel}
                 </Text>
               </Pressable>
+              {!canPurchase &&
+              product.identifier === "supporter_monthly" &&
+              canManageMonthlySubscription(customerInfo) ? (
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => void handleManageSubscription()}
+                  style={[
+                    styles.buyButton,
+                    styles.secondaryAction,
+                    {
+                      backgroundColor: colors.surface,
+                      borderColor: colors.border,
+                      borderWidth: 1,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.buyButtonText,
+                      styles.secondaryActionText,
+                      { color: colors.text },
+                    ]}
+                  >
+                    Cancel Monthly Subscription
+                  </Text>
+                </Pressable>
+              ) : null}
             </View>
           );
         })}
@@ -274,113 +435,107 @@ export function SupportModal({
     packages,
     purchasingIdentifier,
     thankYouMessage,
+    customerInfo,
   ]);
+
+  const dragGesture = Gesture.Pan()
+    .activeOffsetY([12, 9999])
+    .failOffsetX([-12, 12])
+    .onUpdate((event) => {
+      if (event.translationY > 0) {
+        translateY.value = event.translationY;
+        backdropOpacity.value = Math.max(
+          0,
+          0.55 - (event.translationY / SHEET_HEIGHT) * 0.55,
+        );
+      }
+    })
+    .onEnd((event) => {
+      if (event.translationY > CLOSE_THRESHOLD || event.velocityY > 800) {
+        runOnJS(dismissWithAnimation)();
+      } else {
+        translateY.value = withSpring(0, SPRING_OPEN);
+        backdropOpacity.value = withSpring(0.55, SPRING_OPEN);
+      }
+    });
+
+  const sheetStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+  }));
+
+  const backdropStyle = useAnimatedStyle(() => ({
+    opacity: backdropOpacity.value,
+  }));
+
+  if (!isMounted) {
+    return null;
+  }
 
   return (
     <Modal
-      visible={visible}
       transparent
-      animationType="slide"
-      onRequestClose={() => void handleDismiss()}
+      visible={isMounted}
+      animationType="none"
+      statusBarTranslucent
+      onRequestClose={dismissWithAnimation}
     >
-      <View style={styles.modalRoot}>
-        <Pressable
-          style={styles.backdrop}
-          onPress={() => void handleDismiss()}
-        />
-        <View
+      <View
+        style={StyleSheet.absoluteFill}
+        pointerEvents={visible ? "box-none" : "none"}
+      >
+        <Animated.View
+          style={[StyleSheet.absoluteFill, styles.backdrop, backdropStyle]}
+        >
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={dismissWithAnimation}
+          />
+        </Animated.View>
+
+        <Animated.View
           style={[
+            formSheetScaffoldStyles.positionedSheet,
             styles.sheet,
-            {
-              backgroundColor: colors.surface,
-              paddingBottom: Math.max(insets.bottom, 16),
-              shadowColor: colors.shadow,
-            },
+            { shadowColor: colors.shadow },
+            sheetStyle,
           ]}
         >
-          <View style={styles.handleWrap}>
-            <View
-              style={[styles.handle, { backgroundColor: colors.textSoft }]}
-            />
-          </View>
-          <View style={styles.headerRow}>
-            <View style={styles.headerTextWrap}>
-              <Text style={[styles.title, { color: colors.text }]}>
-                Enjoying the app? 💛
-              </Text>
-              <Text style={[styles.subtitle, { color: colors.textMuted }]}>
-                It takes time and love to build. If you find it useful, consider
-                supporting!
-              </Text>
+          <GestureDetector gesture={dragGesture}>
+            <View style={styles.sheetContent}>
+              <FormSheetScaffold
+                title="Enjoying the app? 💛"
+                backgroundColor={colors.surface}
+                titleColor={colors.text}
+                closeColor={colors.textMuted}
+                handleColor={colors.textSoft}
+                onClose={dismissWithAnimation}
+              >
+                <Text style={[styles.subheading, { color: colors.textMuted }]}> 
+                  Optional support for the developer, entirely by free will.
+                </Text>
+
+                {content}
+              </FormSheetScaffold>
             </View>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Close support modal"
-              hitSlop={10}
-              onPress={() => void handleDismiss()}
-              style={[
-                styles.closeButton,
-                { backgroundColor: colors.surfaceMuted },
-              ]}
-            >
-              <Feather name="x" size={18} color={colors.text} />
-            </Pressable>
-          </View>
-
-          <LinearGradient
-            colors={["#1A6BC8", "#4D93E6"]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.callout}
-          >
-            <Text style={styles.calloutTitle}>Support Pocket ID</Text>
-            <Text style={styles.calloutBody}>
-              One-time tips, lifetime support, or a small monthly subscription.
-            </Text>
-          </LinearGradient>
-
-          {content}
-        </View>
+          </GestureDetector>
+        </Animated.View>
       </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  modalRoot: {
-    flex: 1,
-    justifyContent: "flex-end",
-  },
   backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.42)",
+    backgroundColor: "#000",
   },
   sheet: {
-    borderTopLeftRadius: 30,
-    borderTopRightRadius: 30,
-    paddingHorizontal: 20,
-    paddingTop: 10,
-    maxHeight: "84%",
+    height: SHEET_HEIGHT,
     shadowOffset: { width: 0, height: -10 },
     shadowOpacity: 0.18,
     shadowRadius: 24,
     elevation: 18,
   },
-  handleWrap: {
-    alignItems: "center",
-    marginBottom: 14,
-  },
-  handle: {
-    width: 42,
-    height: 4,
-    borderRadius: 999,
-  },
-  headerRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    gap: 12,
-  },
-  headerTextWrap: {
+  sheetContent: {
     flex: 1,
   },
   title: {
@@ -401,24 +556,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  callout: {
-    borderRadius: 22,
-    paddingHorizontal: 18,
-    paddingVertical: 16,
-    marginTop: 18,
-    marginBottom: 16,
-  },
-  calloutTitle: {
-    fontFamily: "ReadexPro-Bold",
-    fontSize: 18,
-    color: "#FFFFFF",
-  },
-  calloutBody: {
+  subheading: {
     fontFamily: "ReadexPro-Regular",
-    fontSize: 13,
-    lineHeight: 20,
-    color: "rgba(255,255,255,0.86)",
-    marginTop: 6,
+    fontSize: 14,
+    lineHeight: 21,
+    textAlign: "left",
+    marginHorizontal: 20,
+    marginTop: 4,
+    marginBottom: 16,
   },
   centerState: {
     alignItems: "center",
@@ -436,7 +581,8 @@ const styles = StyleSheet.create({
   },
   packageList: {
     gap: 12,
-    paddingBottom: 8,
+    paddingHorizontal: 20,
+    paddingBottom: 16,
   },
   packageCard: {
     borderWidth: 1,
@@ -447,10 +593,30 @@ const styles = StyleSheet.create({
   packageTextWrap: {
     gap: 8,
   },
+  packageTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 12,
+  },
   packageTitle: {
     fontFamily: "ReadexPro-Bold",
     fontSize: 16,
     lineHeight: 22,
+    flex: 1,
+  },
+  purchaseCountBadge: {
+    minWidth: 34,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 999,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  purchaseCountBadgeText: {
+    fontFamily: "ReadexPro-Bold",
+    fontSize: 11,
   },
   packageBody: {
     fontFamily: "ReadexPro-Regular",
@@ -462,14 +628,24 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   buyButton: {
-    borderRadius: 16,
-    minHeight: 46,
+    borderRadius: 20,
+    minHeight: 52,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 18,
+    paddingHorizontal: 16,
+    marginTop: 12,
   },
   buyButtonText: {
-    fontFamily: "ReadexPro-Bold",
-    fontSize: 14,
+    fontFamily: "ReadexPro-Medium",
+    fontSize: 15,
+    textAlign: "center",
+    width: "100%",
+  },
+  secondaryAction: {
+    marginTop: 8,
+  },
+  secondaryActionText: {
+    textAlign: "center",
+    width: "100%",
   },
 });

@@ -30,6 +30,15 @@ type ResolvedWalletSnapshot = Omit<WalletSnapshotRow, "cards"> & {
   storage: "encrypted" | "legacy-plain";
 };
 
+type ReconcileWalletSnapshotResult = {
+  action: "noop" | "push" | "pull" | "merge";
+  remote: ResolvedWalletSnapshot | null;
+  cards: WalletCard[];
+  lastModifiedAt: string;
+  localOnlyCount: number;
+  remoteOnlyCount: number;
+};
+
 WebBrowser.maybeCompleteAuthSession();
 
 const AUTH_CALLBACK_PATH = "auth/callback";
@@ -105,10 +114,12 @@ export async function signInWithProvider(
     throw new Error("Supabase is not configured.");
   }
 
-  const queryParams =
-    provider === "google" && options?.selectAccount
-      ? { prompt: "select_account" }
-      : undefined;
+  const shouldPromptForGoogleAccount =
+    provider === "google" && options?.selectAccount !== false;
+
+  const queryParams = shouldPromptForGoogleAccount
+    ? { prompt: "select_account" }
+    : undefined;
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider,
@@ -150,23 +161,116 @@ export async function reconcileWalletSnapshot(params: {
   user: AuthProfile;
   cards: WalletCard[];
   lastModifiedAt: string;
-}) {
+}): Promise<ReconcileWalletSnapshotResult> {
   const remote = await fetchResolvedWalletSnapshot(params.user.id);
 
   if (!remote) {
     return {
       action: "push" as const,
       remote: null,
+      cards: params.cards,
+      lastModifiedAt: params.lastModifiedAt,
+      localOnlyCount: params.cards.length,
+      remoteOnlyCount: 0,
     };
   }
 
   const remoteUpdatedAt = Date.parse(remote.updated_at || "0");
   const localUpdatedAt = Date.parse(params.lastModifiedAt || "0");
+  const localCardIds = new Set(params.cards.map((card) => card.id));
+  const remoteCardIds = new Set(remote.cards.map((card) => card.id));
+  const localOnlyCards = params.cards.filter(
+    (card) => !remoteCardIds.has(card.id),
+  );
+  const remoteOnlyCards = remote.cards.filter(
+    (card) => !localCardIds.has(card.id),
+  );
+  const hasLocalOnlyCards = localOnlyCards.length > 0;
+  const hasRemoteOnlyCards = remoteOnlyCards.length > 0;
 
   if (params.cards.length === 0 && remote.cards.length > 0) {
     return {
       action: "pull" as const,
       remote,
+      cards: remote.cards,
+      lastModifiedAt: remote.updated_at,
+      localOnlyCount: 0,
+      remoteOnlyCount: remote.cards.length,
+    };
+  }
+
+  if (remote.cards.length === 0 && params.cards.length > 0) {
+    return {
+      action: "push" as const,
+      remote,
+      cards: params.cards,
+      lastModifiedAt: params.lastModifiedAt,
+      localOnlyCount: params.cards.length,
+      remoteOnlyCount: 0,
+    };
+  }
+
+  if (hasLocalOnlyCards && hasRemoteOnlyCards) {
+    const preferRemote = remoteUpdatedAt > localUpdatedAt;
+    const mergedCards = mergeWalletCards({
+      localCards: params.cards,
+      remoteCards: remote.cards,
+      preferRemote,
+    });
+
+    return {
+      action: "merge",
+      remote,
+      cards: mergedCards,
+      lastModifiedAt: new Date().toISOString(),
+      localOnlyCount: localOnlyCards.length,
+      remoteOnlyCount: remoteOnlyCards.length,
+    };
+  }
+
+  if (hasRemoteOnlyCards) {
+    return {
+      action: "pull" as const,
+      remote,
+      cards: remote.cards,
+      lastModifiedAt: remote.updated_at,
+      localOnlyCount: 0,
+      remoteOnlyCount: remoteOnlyCards.length,
+    };
+  }
+
+  if (hasLocalOnlyCards) {
+    return {
+      action: "push" as const,
+      remote,
+      cards: params.cards,
+      lastModifiedAt: params.lastModifiedAt,
+      localOnlyCount: localOnlyCards.length,
+      remoteOnlyCount: 0,
+    };
+  }
+
+  const localCardsById = new Map(
+    params.cards.map((card) => [card.id, stableSerialize(card)]),
+  );
+  const remoteCardsById = new Map(
+    remote.cards.map((card) => [card.id, stableSerialize(card)]),
+  );
+  const hasConflictingSharedCards = params.cards.some(
+    (card) => localCardsById.get(card.id) !== remoteCardsById.get(card.id),
+  );
+
+  if (!hasConflictingSharedCards) {
+    return {
+      action: "noop",
+      remote,
+      cards: params.cards,
+      lastModifiedAt:
+        remoteUpdatedAt > localUpdatedAt
+          ? remote.updated_at
+          : params.lastModifiedAt,
+      localOnlyCount: 0,
+      remoteOnlyCount: 0,
     };
   }
 
@@ -174,13 +278,68 @@ export async function reconcileWalletSnapshot(params: {
     return {
       action: "pull" as const,
       remote,
+      cards: remote.cards,
+      lastModifiedAt: remote.updated_at,
+      localOnlyCount: 0,
+      remoteOnlyCount: 0,
     };
   }
 
   return {
     action: "push" as const,
     remote,
+    cards: params.cards,
+    lastModifiedAt: params.lastModifiedAt,
+    localOnlyCount: 0,
+    remoteOnlyCount: 0,
   };
+}
+
+function mergeWalletCards(params: {
+  localCards: WalletCard[];
+  remoteCards: WalletCard[];
+  preferRemote: boolean;
+}) {
+  const preferredCards = params.preferRemote
+    ? params.remoteCards
+    : params.localCards;
+  const secondaryCards = params.preferRemote
+    ? params.localCards
+    : params.remoteCards;
+  const mergedCards = [...preferredCards];
+  const seenCardIds = new Set(preferredCards.map((card) => card.id));
+
+  for (const card of secondaryCards) {
+    if (seenCardIds.has(card.id)) {
+      continue;
+    }
+
+    seenCardIds.add(card.id);
+    mergedCards.push(card);
+  }
+
+  return mergedCards;
+}
+
+function stableSerialize(value: unknown): string {
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => stableSerialize(item)).join(",")}]`;
+  }
+
+  if (value && typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>).sort(
+      ([leftKey], [rightKey]) => leftKey.localeCompare(rightKey),
+    );
+
+    return `{${entries
+      .map(
+        ([key, nestedValue]) =>
+          `${JSON.stringify(key)}:${stableSerialize(nestedValue)}`,
+      )
+      .join(",")}}`;
+  }
+
+  return JSON.stringify(value);
 }
 
 export async function pushWalletSnapshot(params: {

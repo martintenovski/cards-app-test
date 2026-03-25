@@ -58,6 +58,7 @@ interface CardStoreState {
   hasSeenOnboarding: boolean;
   themePreference: ThemePreference;
   appLockEnabled: boolean;
+  hasCompletedAppLockSetup: boolean;
   hasPromptedForAppLock: boolean;
   expiryNotificationsEnabled: boolean;
   addCardSheetOpen: boolean;
@@ -71,6 +72,7 @@ interface CardStoreState {
   setThemePreference: (themePreference: ThemePreference) => void;
   toggleThemePreference: (resolvedTheme: ResolvedTheme) => void;
   setAppLockEnabled: (enabled: boolean) => void;
+  setHasCompletedAppLockSetup: (hasCompleted: boolean) => void;
   setHasPromptedForAppLock: (hasPrompted: boolean) => void;
   setExpiryNotificationsEnabled: (enabled: boolean) => void;
   setLastFieldScanResult: (result: FieldScanResult) => void;
@@ -102,6 +104,7 @@ export const useCardStore = create<CardStoreState>()(
       hasSeenOnboarding: false,
       themePreference: "system",
       appLockEnabled: false,
+      hasCompletedAppLockSetup: false,
       hasPromptedForAppLock: false,
       expiryNotificationsEnabled: true,
       hasHydrated: false,
@@ -118,7 +121,15 @@ export const useCardStore = create<CardStoreState>()(
       setHomeFilter: (homeFilter) => set({ homeFilter }),
       setHasSeenOnboarding: (hasSeenOnboarding) => set({ hasSeenOnboarding }),
       setThemePreference: (themePreference) => set({ themePreference }),
-      setAppLockEnabled: (appLockEnabled) => set({ appLockEnabled }),
+      setAppLockEnabled: (appLockEnabled) =>
+        set((state) => ({
+          appLockEnabled,
+          hasCompletedAppLockSetup: appLockEnabled
+            ? state.hasCompletedAppLockSetup
+            : false,
+        })),
+      setHasCompletedAppLockSetup: (hasCompletedAppLockSetup) =>
+        set({ hasCompletedAppLockSetup }),
       setHasPromptedForAppLock: (hasPromptedForAppLock) =>
         set({ hasPromptedForAppLock }),
       setExpiryNotificationsEnabled: (expiryNotificationsEnabled) =>
@@ -204,6 +215,7 @@ export const useCardStore = create<CardStoreState>()(
           hasSeenOnboarding: state.hasSeenOnboarding,
           themePreference: "system",
           appLockEnabled: state.appLockEnabled,
+          hasCompletedAppLockSetup: state.hasCompletedAppLockSetup,
           hasPromptedForAppLock: state.hasPromptedForAppLock,
           expiryNotificationsEnabled: true,
           lastModifiedAt: new Date().toISOString(),
@@ -243,6 +255,7 @@ export const useCardStore = create<CardStoreState>()(
         hasSeenOnboarding: state.hasSeenOnboarding,
         themePreference: state.themePreference,
         appLockEnabled: state.appLockEnabled,
+        hasCompletedAppLockSetup: state.hasCompletedAppLockSetup,
         hasPromptedForAppLock: state.hasPromptedForAppLock,
         expiryNotificationsEnabled: state.expiryNotificationsEnabled,
         lastModifiedAt: state.lastModifiedAt,

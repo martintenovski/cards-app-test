@@ -2319,14 +2319,17 @@ const formSt = StyleSheet.create({
     fontSize: 13,
   },
   submitBtn: {
-    height: 55,
-    borderRadius: 30,
+    minHeight: 52,
+    borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
+    paddingHorizontal: 16,
   },
   submitText: {
-    fontFamily: "ReadexPro-Regular",
-    fontSize: 20,
+    fontFamily: "ReadexPro-Medium",
+    fontSize: 15,
+    textAlign: "center",
+    width: "100%",
   },
 });
 

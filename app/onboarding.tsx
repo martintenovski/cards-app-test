@@ -317,14 +317,14 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   footerAction: {
-    minWidth: 84,
-    minHeight: 44,
+    minWidth: 100,
+    minHeight: 52,
     justifyContent: "center",
   },
   primaryAction: {
     backgroundColor: COLORS.actionBlue,
-    paddingHorizontal: 18,
-    borderRadius: 16,
+    paddingHorizontal: 16,
+    borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
   },
@@ -336,7 +336,7 @@ const styles = StyleSheet.create({
   },
   nextText: {
     fontFamily: "ReadexPro-Medium",
-    fontSize: 16,
+    fontSize: 15,
     lineHeight: 22,
     color: COLORS.actionBlueText,
     textAlign: "center",
