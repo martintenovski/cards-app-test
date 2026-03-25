@@ -1,8 +1,6 @@
 const fs = require("fs");
 const path = require("path");
 
-const { expo: baseConfig } = require("./app.json");
-
 function readEnvValue(value) {
   const trimmed = value?.trim();
   return trimmed ? trimmed : null;
@@ -77,7 +75,8 @@ const googleIosUrlScheme =
   readProjectEnvValue("EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME") ??
   deriveGoogleIosUrlScheme(googleIosClientId);
 
-module.exports = () => {
+module.exports = ({ config }) => {
+  const baseConfig = config ?? {};
   const plugins = [...(baseConfig.plugins ?? [])];
   const hasGoogleSigninPlugin = plugins.some((plugin) =>
     Array.isArray(plugin)
