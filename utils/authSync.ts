@@ -1,8 +1,10 @@
 import * as WebBrowser from "expo-web-browser";
 import * as Linking from "expo-linking";
+import Constants from "expo-constants";
 import { makeRedirectUri } from "expo-auth-session";
 import * as QueryParams from "expo-auth-session/build/QueryParams";
 import type { Session, User } from "@supabase/supabase-js";
+import { NativeModules, Platform, TurboModuleRegistry } from "react-native";
 
 import {
   fetchWalletSnapshot,
@@ -39,15 +41,196 @@ type ReconcileWalletSnapshotResult = {
   remoteOnlyCount: number;
 };
 
+type NativeGoogleSignInPackage =
+  typeof import("@react-native-google-signin/google-signin");
+
 WebBrowser.maybeCompleteAuthSession();
 
 const AUTH_CALLBACK_PATH = "auth/callback";
+const googleWebClientId =
+  readEnvValue(process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID) ??
+  getExpoExtraString("googleWebClientId");
+const googleIosClientId =
+  readEnvValue(process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID) ??
+  getExpoExtraString("googleIosClientId");
+let hasConfiguredNativeGoogleSignIn = false;
 
 const redirectTo = makeRedirectUri({
   scheme: getRuntimeAppScheme(),
   path: AUTH_CALLBACK_PATH,
   native: `${getRuntimeAppScheme()}://${AUTH_CALLBACK_PATH}`,
 });
+
+function readEnvValue(value: string | undefined) {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
+}
+
+function getExpoExtraString(key: string) {
+  const extra = Constants.expoConfig?.extra as
+    | Record<string, unknown>
+    | undefined;
+  const value = extra?.[key];
+  return typeof value === "string" ? readEnvValue(value) : null;
+}
+
+function isInvalidRefreshTokenError(error: unknown) {
+  return (
+    error instanceof Error &&
+    /invalid refresh token|refresh token not found/i.test(error.message)
+  );
+}
+
+function getNativeGoogleSignInPackage(): NativeGoogleSignInPackage | null {
+  const hasNativeGoogleSignInModule =
+    Boolean(NativeModules.RNGoogleSignin) ||
+    Boolean(TurboModuleRegistry.get?.("RNGoogleSignin"));
+
+  if (!hasNativeGoogleSignInModule) {
+    return null;
+  }
+
+  try {
+    return require("@react-native-google-signin/google-signin") as NativeGoogleSignInPackage;
+  } catch {
+    return null;
+  }
+}
+
+function getNativeGoogleConfigError() {
+  if (!googleWebClientId) {
+    return (
+      "Google Sign-In is not configured for native mobile builds. Add " +
+      "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID to your environment and rebuild the app."
+    );
+  }
+
+  if (Platform.OS === "ios" && !googleIosClientId) {
+    return (
+      "Google Sign-In is not configured for iOS native sign-in. Add " +
+      "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID to .env.local or your Expo environment, then rebuild iOS."
+    );
+  }
+
+  return null;
+}
+
+function configureNativeGoogleSignInOnce(
+  nativeGoogleSignIn: NativeGoogleSignInPackage,
+) {
+  const configurationError = getNativeGoogleConfigError();
+
+  if (configurationError) {
+    throw new Error(configurationError);
+  }
+
+  if (hasConfiguredNativeGoogleSignIn) {
+    return;
+  }
+
+  nativeGoogleSignIn.GoogleSignin.configure({
+    webClientId: googleWebClientId!,
+    iosClientId: googleIosClientId ?? undefined,
+    scopes: ["email", "profile"],
+  });
+
+  hasConfiguredNativeGoogleSignIn = true;
+}
+
+function toFriendlyGoogleSignInError(
+  nativeGoogleSignIn: NativeGoogleSignInPackage,
+  error: unknown,
+) {
+  if (nativeGoogleSignIn.isErrorWithCode(error)) {
+    switch (error.code) {
+      case nativeGoogleSignIn.statusCodes.SIGN_IN_CANCELLED:
+        return null;
+      case nativeGoogleSignIn.statusCodes.IN_PROGRESS:
+        return new Error("Google sign-in is already in progress.");
+      case nativeGoogleSignIn.statusCodes.PLAY_SERVICES_NOT_AVAILABLE:
+        return new Error(
+          "Google Play Services is unavailable or out of date on this device.",
+        );
+      default:
+        return new Error(error.message || "Google sign-in failed.");
+    }
+  }
+
+  if (error instanceof Error) {
+    return error;
+  }
+
+  return new Error("Google sign-in failed.");
+}
+
+async function signInWithNativeGoogle(options?: { selectAccount?: boolean }) {
+  const nativeGoogleSignIn = getNativeGoogleSignInPackage();
+
+  if (!nativeGoogleSignIn) {
+    throw new Error(
+      Platform.OS === "ios"
+        ? "Native Google Sign-In is not available in this iOS build. Rebuild the app after configuring EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID."
+        : "Native Google Sign-In is not available in this build. Rebuild the app to include the Google Sign-In module.",
+    );
+  }
+
+  configureNativeGoogleSignInOnce(nativeGoogleSignIn);
+
+  try {
+    await nativeGoogleSignIn.GoogleSignin.hasPlayServices({
+      showPlayServicesUpdateDialog: true,
+    });
+
+    if (
+      options?.selectAccount &&
+      nativeGoogleSignIn.GoogleSignin.hasPreviousSignIn()
+    ) {
+      await nativeGoogleSignIn.GoogleSignin.signOut().catch(() => null);
+    }
+
+    const response = await nativeGoogleSignIn.GoogleSignin.signIn();
+
+    if (nativeGoogleSignIn.isCancelledResponse(response)) {
+      return null;
+    }
+
+    if (!nativeGoogleSignIn.isSuccessResponse(response)) {
+      return null;
+    }
+
+    const idToken =
+      response.data.idToken ??
+      (await nativeGoogleSignIn.GoogleSignin.getTokens()).idToken;
+
+    if (!idToken) {
+      throw new Error(
+        "Google sign-in did not return an ID token. Check your Google OAuth client IDs.",
+      );
+    }
+
+    const { data, error } = await supabase!.auth.signInWithIdToken({
+      provider: "google",
+      token: idToken,
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    return data.session;
+  } catch (error) {
+    const friendlyError = toFriendlyGoogleSignInError(
+      nativeGoogleSignIn,
+      error,
+    );
+
+    if (!friendlyError) {
+      return null;
+    }
+
+    throw friendlyError;
+  }
+}
 
 export const createSessionFromUrl = async (url: string) => {
   const { params, errorCode } = QueryParams.getQueryParams(url);
@@ -85,8 +268,18 @@ export function mapSupabaseUser(user: User | null): AuthProfile | null {
 
 export async function getCurrentSession() {
   if (!supabase) return null;
-  const { data } = await supabase.auth.getSession();
-  return data.session;
+
+  try {
+    const { data } = await supabase.auth.getSession();
+    return data.session;
+  } catch (error) {
+    if (isInvalidRefreshTokenError(error)) {
+      await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
+      return null;
+    }
+
+    throw error;
+  }
 }
 
 export function onAuthStateChange(callback: (session: Session | null) => void) {
@@ -112,6 +305,25 @@ export async function signInWithProvider(
 ) {
   if (!supabase || !isSupabaseConfigured) {
     throw new Error("Supabase is not configured.");
+  }
+
+  if (provider === "google" && Platform.OS !== "web") {
+    const nativeGoogleSignIn = getNativeGoogleSignInPackage();
+
+    if (nativeGoogleSignIn) {
+      return await signInWithNativeGoogle(options);
+    }
+
+    const configurationError = getNativeGoogleConfigError();
+    if (configurationError) {
+      throw new Error(configurationError);
+    }
+
+    throw new Error(
+      Platform.OS === "ios"
+        ? "Native Google Sign-In is not available in this iOS build. Run `cd ios && pod install`, then rebuild the app."
+        : "Native Google Sign-In is not available in this build. Rebuild the app to include the Google Sign-In module.",
+    );
   }
 
   const shouldPromptForGoogleAccount =
@@ -153,6 +365,12 @@ export async function signInWithProvider(
 
 export async function signOut() {
   if (!supabase) return;
+
+  const nativeGoogleSignIn = getNativeGoogleSignInPackage();
+  if (nativeGoogleSignIn && Platform.OS !== "web") {
+    await nativeGoogleSignIn.GoogleSignin.signOut().catch(() => null);
+  }
+
   const { error } = await supabase.auth.signOut();
   if (error) throw error;
 }
