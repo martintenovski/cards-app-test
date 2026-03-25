@@ -23,6 +23,7 @@ import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { File } from "expo-file-system";
 
+import { AppPreviewShield } from "@/components/AppPreviewShield";
 import { CardForm } from "@/components/CardForm";
 import {
   FormSheetScaffold,
@@ -274,6 +275,7 @@ export default function ImportCardScreen() {
             </View>
           </GestureDetector>
         </Animated.View>
+        <AppPreviewShield />
       </SafeAreaView>
     </>
   );

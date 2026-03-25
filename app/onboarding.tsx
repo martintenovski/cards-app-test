@@ -1,454 +1,356 @@
-import { LinearGradient } from "expo-linear-gradient";
-import { Feather } from "@expo/vector-icons";
-import { useMemo, useState } from "react";
+import { useRef, useState } from "react";
 import {
+  FlatList,
+  Image,
   Pressable,
   ScrollView,
   StyleSheet,
   Text,
   View,
-  useColorScheme,
   useWindowDimensions,
+  type ListRenderItemInfo,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 
+import { AppPreviewShield } from "@/components/AppPreviewShield";
 import { useCardStore } from "@/store/useCardStore";
-import { APP_THEME, resolveTheme } from "@/utils/theme";
 
 const ONBOARDING_STEPS = [
   {
-    eyebrow: "Welcome",
-    icon: "credit-card",
-    title: "Pocket ID keeps your essentials in one refined wallet",
-    body: "Store cards and documents in a calm, structured wallet so the important things stay easy to reach without the usual visual clutter.",
-    highlights: ["Fast card stacks", "Organized categories", "Clean details"],
-    gradient: ["#171717", "#4B5563"] as const,
+    illustration: require("@/assets/onboarding/cloud.png"),
+    title: "Keep your wallet local or sync it across your devices",
+    body: "Pocket ID works beautifully on one device, but it can also keep your cards in the cloud so the same wallet is ready when you switch phones, add a tablet, or come back later.",
   },
   {
-    eyebrow: "Secure sync",
-    icon: "lock",
-    title: "Your cloud vault stays encrypted before it leaves the device",
-    body: "Connect Google, set a sync passphrase, and Pocket ID encrypts your vault locally before upload so the cloud only sees ciphertext.",
-    highlights: [
-      "Google sign-in",
-      "Local encryption",
-      "Manual refresh when you want it",
-    ],
-    gradient: ["#1D3B2A", "#78A96A"] as const,
+    illustration: require("@/assets/onboarding/encrypt.png"),
+    title: "Your information is encrypted before it is stored",
+    body: "Sensitive card details are protected on-device first, so synced data stays encrypted in transit and at rest instead of being uploaded as plain readable information.",
   },
   {
-    eyebrow: "Sharing",
-    icon: "download-cloud",
-    title: "Import and share one card at a time without retyping anything",
-    body: "Send a single Pocket ID card file when needed, then import it later from Files, Gmail, or Drive with the details already filled in.",
-    highlights: ["One-card exports", "Files app import", "Prefilled forms"],
-    gradient: ["#7A4A2A", "#D48A63"] as const,
+    illustration: require("@/assets/onboarding/share.png"),
+    title: "Share cards quickly when someone else needs them",
+    body: "Send a card in a few taps, import shared details without retyping, and move information between people or devices with a flow that stays simple and fast.",
+  },
+  {
+    illustration: require("@/assets/onboarding/customize.png"),
+    title: "Customize the app to fit how you organize things",
+    body: "Tune colors, themes, layout preferences, and security options so Pocket ID feels personal, stays easy to scan, and matches the way you like to manage important cards.",
   },
 ] as const;
 
+const COLORS = {
+  background: "#FFFFFF",
+  title: "#2D2B2E",
+  body: "rgba(45, 43, 46, 0.6)",
+  dot: "#D7D6DB",
+  dotActive: "#2D2B2E",
+  skip: "rgba(45, 43, 46, 0.4)",
+  actionBlue: "#1A6BC8",
+  actionBlueText: "#FFFFFF",
+} as const;
+
 export default function OnboardingScreen() {
   const router = useRouter();
+  const listRef = useRef<FlatList<(typeof ONBOARDING_STEPS)[number]> | null>(
+    null,
+  );
   const [stepIndex, setStepIndex] = useState(0);
+  const { width, height } = useWindowDimensions();
   const setHasSeenOnboarding = useCardStore(
     (state) => state.setHasSeenOnboarding,
   );
-  const themePreference = useCardStore((state) => state.themePreference);
-  const deviceScheme = useColorScheme();
-  const { width, height } = useWindowDimensions();
-  const resolvedTheme = resolveTheme(themePreference, deviceScheme);
-  const colors = APP_THEME[resolvedTheme];
-  const currentStep = useMemo(() => ONBOARDING_STEPS[stepIndex], [stepIndex]);
-  const isLastStep = stepIndex === ONBOARDING_STEPS.length - 1;
+
   const isCompact = width < 390 || height < 820;
-  const isVeryCompact = width < 370 || height < 760;
+  const isVeryCompact = width < 360 || height < 740;
+  const slideWidth = width;
+  const imageHeight = isVeryCompact ? 170 : isCompact ? 210 : 250;
+  const imageWidth = Math.min(width - (isCompact ? 92 : 110), 300);
+  const titleFontSize = isVeryCompact ? 22 : isCompact ? 24 : 27;
+  const bodyFontSize = isVeryCompact ? 12.5 : 13.5;
 
   const finishOnboarding = () => {
     setHasSeenOnboarding(true);
     router.replace("/");
   };
 
-  return (
-    <SafeAreaView style={[styles.root, { backgroundColor: colors.background }]}>
-      <View style={styles.screen}>
-        <ScrollView
-          contentContainerStyle={[
-            styles.content,
+  const scrollToStep = (index: number, animated: boolean) => {
+    const boundedIndex = Math.max(
+      0,
+      Math.min(index, ONBOARDING_STEPS.length - 1),
+    );
+    listRef.current?.scrollToIndex({ index: boundedIndex, animated });
+    setStepIndex(boundedIndex);
+  };
+
+  const handleNext = () => {
+    if (stepIndex === ONBOARDING_STEPS.length - 1) {
+      finishOnboarding();
+      return;
+    }
+
+    scrollToStep(stepIndex + 1, true);
+  };
+
+  const handleMomentumEnd = (
+    event: NativeSyntheticEvent<NativeScrollEvent>,
+  ) => {
+    const nextIndex = Math.round(
+      event.nativeEvent.contentOffset.x / slideWidth,
+    );
+    if (nextIndex !== stepIndex) {
+      setStepIndex(nextIndex);
+    }
+  };
+
+  const renderSlide = ({
+    item,
+  }: ListRenderItemInfo<(typeof ONBOARDING_STEPS)[number]>) => (
+    <View
+      style={[
+        styles.slide,
+        {
+          width: slideWidth,
+          paddingHorizontal: isCompact ? 24 : 32,
+          paddingTop: isVeryCompact ? 8 : 20,
+        },
+      ]}
+    >
+      <ScrollView
+        style={styles.slideScroll}
+        contentContainerStyle={[
+          styles.slideScrollContent,
+          {
+            paddingBottom: isVeryCompact ? 16 : 24,
+            paddingTop: isVeryCompact ? 2 : 8,
+          },
+        ]}
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+      >
+        <View
+          style={[
+            styles.illustrationWrap,
             {
-              paddingHorizontal: isCompact ? 20 : 24,
-              paddingTop: isCompact ? 16 : 24,
-              paddingBottom: isCompact ? 18 : 24,
+              height: imageHeight,
+              marginTop: isVeryCompact ? 6 : 16,
             },
           ]}
-          showsVerticalScrollIndicator={false}
         >
-          <View
+          <Image
+            source={item.illustration}
+            resizeMode="contain"
+            style={{ width: imageWidth, height: imageHeight }}
+          />
+        </View>
+
+        <View style={styles.copyWrap}>
+          <Text
             style={[
-              styles.hero,
+              styles.title,
               {
-                borderRadius: isCompact ? 28 : 32,
-                minHeight: isVeryCompact ? 320 : isCompact ? 360 : 390,
+                fontSize: titleFontSize,
+                lineHeight: Math.round(titleFontSize * 1.16),
+                marginTop: isVeryCompact ? 14 : 22,
               },
             ]}
           >
-            <LinearGradient
-              colors={currentStep.gradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={[
-                styles.heroGradient,
-                {
-                  paddingHorizontal: isCompact ? 20 : 24,
-                  paddingTop: isCompact ? 18 : 22,
-                  paddingBottom: isCompact ? 22 : 28,
-                },
-              ]}
-            >
-              <View style={styles.heroTopRow}>
-                <View style={styles.heroBadge}>
-                  <Text style={styles.heroBadgeText}>
-                    0{stepIndex + 1} / 0{ONBOARDING_STEPS.length}
-                  </Text>
-                </View>
-                <View
-                  style={[
-                    styles.heroIconWrap,
-                    {
-                      width: isCompact ? 38 : 42,
-                      height: isCompact ? 38 : 42,
-                      borderRadius: isCompact ? 19 : 21,
-                    },
-                  ]}
-                >
-                  <Feather
-                    name={currentStep.icon}
-                    size={isCompact ? 18 : 20}
-                    color="#FFFFFF"
-                  />
-                </View>
-              </View>
+            {item.title}
+          </Text>
+          <Text
+            style={[
+              styles.body,
+              {
+                fontSize: bodyFontSize,
+                lineHeight: isVeryCompact ? 19 : 21,
+                marginTop: isVeryCompact ? 10 : 14,
+              },
+            ]}
+          >
+            {item.body}
+          </Text>
+        </View>
+      </ScrollView>
+    </View>
+  );
 
-              <View
-                style={[
-                  styles.heroArt,
-                  {
-                    height: isVeryCompact ? 98 : isCompact ? 118 : 136,
-                    marginTop: isCompact ? 14 : 18,
-                    marginBottom: isCompact ? 10 : 12,
-                  },
-                ]}
-              >
-                <View style={styles.heroCardBack} />
-                <View style={styles.heroCardMid} />
-                <View style={styles.heroCardFront}>
-                  <Text
-                    style={[
-                      styles.heroCardLabel,
-                      { fontSize: isCompact ? 11 : 12 },
-                    ]}
-                  >
-                    Pocket ID
-                  </Text>
-                  <Text
-                    style={[
-                      styles.heroCardValue,
-                      {
-                        fontSize: isVeryCompact ? 18 : isCompact ? 20 : 22,
-                        marginTop: isCompact ? 6 : 8,
-                      },
-                    ]}
-                  >
-                    {currentStep.eyebrow}
-                  </Text>
-                </View>
-              </View>
-
-              <Text
-                style={[
-                  styles.heroEyebrow,
-                  {
-                    color: "rgba(255,255,255,0.72)",
-                    fontSize: isCompact ? 12 : 13,
-                  },
-                ]}
-              >
-                {currentStep.eyebrow}
-              </Text>
-              <Text
-                style={[
-                  styles.heroTitle,
-                  {
-                    color: "#FFFFFF",
-                    fontSize: isVeryCompact ? 20 : isCompact ? 24 : 27,
-                    lineHeight: isVeryCompact ? 28 : isCompact ? 31 : 35,
-                    marginTop: isCompact ? 10 : 12,
-                  },
-                ]}
-              >
-                {currentStep.title}
-              </Text>
-              <Text
-                style={[
-                  styles.heroBody,
-                  {
-                    color: "rgba(255,255,255,0.86)",
-                    fontSize: isVeryCompact ? 13.5 : isCompact ? 14 : 14.5,
-                    lineHeight: isVeryCompact ? 20 : isCompact ? 21 : 22,
-                    marginTop: isCompact ? 10 : 12,
-                  },
-                ]}
-              >
-                {currentStep.body}
-              </Text>
-
-              <View
-                style={[
-                  styles.highlightRow,
-                  { gap: isCompact ? 8 : 10, marginTop: isCompact ? 14 : 18 },
-                ]}
-              >
-                {currentStep.highlights.map((item) => (
-                  <View
-                    key={item}
-                    style={[
-                      styles.highlightChip,
-                      {
-                        paddingHorizontal: isCompact ? 10 : 12,
-                        paddingVertical: isCompact ? 7 : 8,
-                      },
-                    ]}
-                  >
-                    <Text
-                      style={[
-                        styles.highlightChipText,
-                        { fontSize: isCompact ? 11 : 12 },
-                      ]}
-                    >
-                      {item}
-                    </Text>
-                  </View>
-                ))}
-              </View>
-            </LinearGradient>
-          </View>
-
-          <View style={styles.paginationRow}>
-            {ONBOARDING_STEPS.map((step, index) => {
-              const active = index === stepIndex;
-
-              return (
-                <View
-                  key={step.title}
-                  style={[
-                    styles.paginationDot,
-                    {
-                      backgroundColor: active ? colors.accent : colors.border,
-                      width: active ? 28 : 10,
-                    },
-                  ]}
-                />
-              );
+  return (
+    <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
+      <View style={styles.screen}>
+        <View style={styles.carouselWrap}>
+          <FlatList
+            ref={listRef}
+            data={ONBOARDING_STEPS}
+            keyExtractor={(item) => item.title}
+            horizontal
+            pagingEnabled
+            bounces={false}
+            showsHorizontalScrollIndicator={false}
+            onMomentumScrollEnd={handleMomentumEnd}
+            renderItem={renderSlide}
+            style={styles.carousel}
+            contentContainerStyle={styles.carouselContent}
+            getItemLayout={(_, index) => ({
+              length: slideWidth,
+              offset: slideWidth * index,
+              index,
             })}
-          </View>
-        </ScrollView>
+          />
+        </View>
 
         <View
           style={[
-            styles.actions,
+            styles.footer,
             {
-              paddingHorizontal: isCompact ? 20 : 24,
-              paddingTop: 8,
-              paddingBottom: isCompact ? 16 : 20,
-              backgroundColor: colors.background,
+              paddingHorizontal: isCompact ? 24 : 32,
+              paddingTop: 12,
+              paddingBottom: isCompact ? 10 : 14,
             },
           ]}
         >
           <Pressable
-            onPress={
-              isLastStep
-                ? finishOnboarding
-                : () => setStepIndex((value) => value + 1)
-            }
-            style={[
-              styles.primaryButton,
-              {
-                backgroundColor: colors.accent,
-                minHeight: isCompact ? 52 : 56,
-                borderRadius: isCompact ? 20 : 22,
-              },
-            ]}
+            accessibilityRole="button"
+            accessibilityLabel="Skip onboarding"
+            hitSlop={10}
+            onPress={finishOnboarding}
+            style={styles.footerAction}
           >
-            <Text
-              style={[
-                styles.primaryButtonText,
-                {
-                  color: colors.accentText,
-                  fontSize: isCompact ? 15 : 16,
-                },
-              ]}
-            >
-              {isLastStep ? "Get started" : "Continue"}
+            <Text style={styles.skipText}>Skip</Text>
+          </Pressable>
+
+          <View style={styles.paginationRow}>
+            {ONBOARDING_STEPS.map((step, index) => (
+              <View
+                key={step.title}
+                style={[
+                  styles.dot,
+                  {
+                    backgroundColor:
+                      index === stepIndex ? COLORS.dotActive : COLORS.dot,
+                  },
+                ]}
+              />
+            ))}
+          </View>
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={
+              stepIndex === ONBOARDING_STEPS.length - 1
+                ? "Finish onboarding"
+                : "Next onboarding screen"
+            }
+            hitSlop={10}
+            onPress={handleNext}
+            style={[styles.footerAction, styles.primaryAction]}
+          >
+            <Text style={styles.nextText}>
+              {stepIndex === ONBOARDING_STEPS.length - 1 ? "Done" : "Next"}
             </Text>
           </Pressable>
         </View>
+
+        <AppPreviewShield />
       </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
+  safeArea: {
     flex: 1,
+    backgroundColor: COLORS.background,
   },
   screen: {
     flex: 1,
+    backgroundColor: COLORS.background,
   },
-  content: {
-    flexGrow: 1,
-  },
-  hero: {
-    borderRadius: 32,
-    overflow: "hidden",
-    minHeight: 420,
-  },
-  heroGradient: {
+  carouselWrap: {
     flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 22,
-    paddingBottom: 28,
-    justifyContent: "flex-end",
   },
-  heroTopRow: {
+  carousel: {
+    flex: 1,
+  },
+  carouselContent: {
+    alignItems: "stretch",
+  },
+  slide: {
+    flex: 1,
+    alignItems: "center",
+  },
+  slideScroll: {
+    flex: 1,
+    alignSelf: "stretch",
+  },
+  slideScrollContent: {
+    flexGrow: 1,
+    alignItems: "center",
+  },
+  illustrationWrap: {
+    width: "100%",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  copyWrap: {
+    width: "100%",
+    maxWidth: 296,
+    alignItems: "center",
+  },
+  title: {
+    fontFamily: "OpenSans-Bold",
+    color: COLORS.title,
+    textAlign: "center",
+    letterSpacing: -0.8,
+  },
+  body: {
+    fontFamily: "ReadexPro-Regular",
+    color: COLORS.body,
+    textAlign: "center",
+    letterSpacing: -0.2,
+  },
+  footer: {
+    minHeight: 76,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
   },
-  heroBadge: {
-    borderRadius: 999,
-    backgroundColor: "rgba(255,255,255,0.14)",
-    paddingHorizontal: 12,
-    paddingVertical: 7,
+  footerAction: {
+    minWidth: 84,
+    minHeight: 44,
+    justifyContent: "center",
   },
-  heroBadgeText: {
-    fontFamily: "ReadexPro-Bold",
-    fontSize: 12,
-    color: "#FFFFFF",
-    letterSpacing: 0.8,
-  },
-  heroIconWrap: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
+  primaryAction: {
+    backgroundColor: COLORS.actionBlue,
+    paddingHorizontal: 18,
+    borderRadius: 16,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "rgba(255,255,255,0.14)",
   },
-  heroArt: {
-    height: 164,
-    justifyContent: "center",
-    marginTop: 24,
-    marginBottom: 14,
-  },
-  heroCardBack: {
-    position: "absolute",
-    right: 18,
-    left: 46,
-    top: 14,
-    bottom: 22,
-    borderRadius: 26,
-    backgroundColor: "rgba(255,255,255,0.12)",
-  },
-  heroCardMid: {
-    position: "absolute",
-    right: 34,
-    left: 30,
-    top: 28,
-    bottom: 10,
-    borderRadius: 26,
-    backgroundColor: "rgba(255,255,255,0.16)",
-  },
-  heroCardFront: {
-    position: "absolute",
-    left: 0,
-    right: 58,
-    top: 0,
-    bottom: 18,
-    borderRadius: 28,
-    backgroundColor: "rgba(255,255,255,0.22)",
-    padding: 18,
-    justifyContent: "flex-end",
-  },
-  heroCardLabel: {
-    fontFamily: "ReadexPro-Medium",
-    fontSize: 12,
-    color: "rgba(255,255,255,0.7)",
-    textTransform: "uppercase",
-    letterSpacing: 0.9,
-  },
-  heroCardValue: {
-    fontFamily: "ReadexPro-Bold",
-    fontSize: 24,
-    color: "#FFFFFF",
-    marginTop: 8,
-  },
-  heroEyebrow: {
-    fontFamily: "ReadexPro-Medium",
-    fontSize: 13,
-    textTransform: "uppercase",
-    letterSpacing: 1,
-  },
-  heroTitle: {
-    fontFamily: "ReadexPro-Bold",
-    fontSize: 30,
-    lineHeight: 38,
-    marginTop: 14,
-  },
-  heroBody: {
+  skipText: {
     fontFamily: "ReadexPro-Regular",
-    fontSize: 15,
-    lineHeight: 24,
-    marginTop: 14,
+    fontSize: 18,
+    lineHeight: 28,
+    color: COLORS.skip,
   },
-  highlightRow: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 10,
-    marginTop: 18,
-  },
-  highlightChip: {
-    borderRadius: 999,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: "rgba(255,255,255,0.14)",
-  },
-  highlightChipText: {
+  nextText: {
     fontFamily: "ReadexPro-Medium",
-    fontSize: 12,
-    color: "#FFFFFF",
+    fontSize: 16,
+    lineHeight: 22,
+    color: COLORS.actionBlueText,
+    textAlign: "center",
   },
   paginationRow: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 10,
-    marginTop: 22,
+    gap: 8,
   },
-  paginationDot: {
-    height: 10,
+  dot: {
+    width: 8,
+    height: 8,
     borderRadius: 999,
-  },
-  actions: {
-    marginTop: 8,
-  },
-  primaryButton: {
-    minHeight: 56,
-    borderRadius: 22,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 18,
-  },
-  primaryButtonText: {
-    fontFamily: "ReadexPro-Bold",
-    fontSize: 16,
   },
 });

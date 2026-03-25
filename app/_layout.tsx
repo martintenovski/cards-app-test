@@ -18,8 +18,8 @@ import { AuthSessionManager } from "@/components/AuthSessionManager";
 import { CloudSyncManager } from "@/components/CloudSyncManager";
 import { ExpiryNotificationManager } from "@/components/ExpiryNotificationManager";
 import { GluestackUIProvider } from "@/components/ui/gluestack-ui-provider";
+import { SupportModalManager } from "@/src/components/SupportModalManager";
 import * as Notifications from "expo-notifications";
-import * as SplashScreen from "expo-splash-screen";
 import { useFonts } from "expo-font";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -30,8 +30,6 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { useCardStore } from "@/store/useCardStore";
 import { APP_THEME, resolveTheme } from "@/utils/theme";
-
-SplashScreen.preventAutoHideAsync();
 
 LogBox.ignoreLogs([
   "Sending `onAnimatedValueUpdate` with no listeners registered.",
@@ -58,12 +56,6 @@ export default function RootLayout() {
     "OpenSans-Bold": OpenSans_700Bold,
     "OpenSans-ExtraBold": OpenSans_800ExtraBold,
   });
-
-  useEffect(() => {
-    if (fontsLoaded && hasHydrated) {
-      SplashScreen.hideAsync();
-    }
-  }, [fontsLoaded, hasHydrated]);
 
   useEffect(() => {
     if (!fontsLoaded || !hasHydrated) {
@@ -105,7 +97,15 @@ export default function RootLayout() {
   }, [router]);
 
   if (!fontsLoaded || !hasHydrated) {
-    return null;
+    return (
+      <GestureHandlerRootView
+        style={{ flex: 1, backgroundColor: colors.background }}
+      >
+        <SafeAreaProvider>
+          <StatusBar style={resolvedTheme === "dark" ? "light" : "dark"} />
+        </SafeAreaProvider>
+      </GestureHandlerRootView>
+    );
   }
 
   return (
@@ -117,6 +117,7 @@ export default function RootLayout() {
             <AuthSessionManager />
             <CloudSyncManager />
             <ExpiryNotificationManager />
+            <SupportModalManager />
             <Stack
               screenOptions={{
                 headerShown: false,
@@ -144,7 +145,8 @@ export default function RootLayout() {
                 name="card-detail"
                 options={{
                   headerShown: false,
-                  animation: "slide_from_right",
+                  presentation: "modal",
+                  animation: "slide_from_bottom",
                 }}
               />
               <Stack.Screen

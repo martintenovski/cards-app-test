@@ -13,7 +13,7 @@ import {
   useColorScheme,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import * as FileSystem from "expo-file-system/legacy";
@@ -26,6 +26,7 @@ import Animated, {
 } from "react-native-reanimated";
 import ViewShot from "react-native-view-shot";
 
+import { AppPreviewShield } from "@/components/AppPreviewShield";
 import { CardItem } from "@/components/CardItem";
 import { EditCardSheet } from "@/components/EditCardSheet";
 import { ExpiryBadge } from "@/components/ExpiryBadge";
@@ -220,7 +221,10 @@ export default function CardDetailScreen() {
     return exportFileUri;
   }
 
-  async function sharePocketIdFileThroughApps(fileName: string, payload: string) {
+  async function sharePocketIdFileThroughApps(
+    fileName: string,
+    payload: string,
+  ) {
     try {
       setIsSharing(true);
       const exportFileUri = await createPocketIdShareFile(fileName, payload);
@@ -319,7 +323,9 @@ export default function CardDetailScreen() {
     }
   }
 
-  async function handleShareOption(option: "image" | "text" | "pocket-id-file") {
+  async function handleShareOption(
+    option: "image" | "text" | "pocket-id-file",
+  ) {
     setShareSheetOpen(false);
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
@@ -340,6 +346,12 @@ export default function CardDetailScreen() {
 
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: colors.background }]}>
+      <Stack.Screen
+        options={{
+          gestureEnabled: !editSheetOpen,
+        }}
+      />
+
       {/* ── Header ─────────────────────────────── */}
       <View style={styles.header}>
         <Pressable
@@ -620,65 +632,72 @@ export default function CardDetailScreen() {
         </View>
       </Modal>
 
-      <View
-        pointerEvents="none"
-        style={styles.captureStage}
-        collapsable={false}
-      >
-        <ViewShot
-          ref={shareCaptureRef}
-          options={{ format: "jpg", quality: 0.95, result: "tmpfile" }}
-          style={[styles.captureCanvas, { backgroundColor: colors.surface }]}
+      {shareSheetOpen || isSharing ? (
+        <View
+          pointerEvents="none"
+          style={styles.captureStage}
+          collapsable={false}
         >
-          <Text style={[styles.captureTitle, { color: colors.text }]}>
-            {card.title}
-          </Text>
-          <Text style={[styles.captureSubtitle, { color: colors.textMuted }]}>
-            Front and back card preview
-          </Text>
-
-          <View style={styles.captureCardBlock} collapsable={false}>
-            <Text style={[styles.captureSideLabel, { color: colors.textSoft }]}>
-              Front
+          <ViewShot
+            ref={shareCaptureRef}
+            options={{ format: "jpg", quality: 0.95, result: "tmpfile" }}
+            style={[styles.captureCanvas, { backgroundColor: colors.surface }]}
+          >
+            <Text style={[styles.captureTitle, { color: colors.text }]}>
+              {card.title}
             </Text>
-            <View style={styles.captureCardFrame} collapsable={false}>
-              <CardItem
-                card={card}
-                side="front"
-                size="full"
-                showExpirySuffix
-                showExpiryBadge={false}
-              />
-            </View>
-          </View>
+            <Text style={[styles.captureSubtitle, { color: colors.textMuted }]}>
+              Front and back card preview
+            </Text>
 
-          {canFlip ? (
             <View style={styles.captureCardBlock} collapsable={false}>
               <Text
                 style={[styles.captureSideLabel, { color: colors.textSoft }]}
               >
-                Back
+                Front
               </Text>
               <View style={styles.captureCardFrame} collapsable={false}>
                 <CardItem
                   card={card}
-                  side="back"
+                  side="front"
                   size="full"
                   showExpirySuffix
                   showExpiryBadge={false}
                 />
               </View>
             </View>
-          ) : null}
-        </ViewShot>
-      </View>
+
+            {canFlip ? (
+              <View style={styles.captureCardBlock} collapsable={false}>
+                <Text
+                  style={[styles.captureSideLabel, { color: colors.textSoft }]}
+                >
+                  Back
+                </Text>
+                <View style={styles.captureCardFrame} collapsable={false}>
+                  <CardItem
+                    card={card}
+                    side="back"
+                    size="full"
+                    showExpirySuffix
+                    showExpiryBadge={false}
+                  />
+                </View>
+              </View>
+            ) : null}
+          </ViewShot>
+        </View>
+      ) : null}
 
       {/* ── Edit sheet ────────────────────────── */}
-      <EditCardSheet
-        card={card}
-        isOpen={editSheetOpen}
-        onClose={() => setEditSheetOpen(false)}
-      />
+      {editSheetOpen ? (
+        <EditCardSheet
+          card={card}
+          isOpen={editSheetOpen}
+          onClose={() => setEditSheetOpen(false)}
+        />
+      ) : null}
+      <AppPreviewShield />
     </SafeAreaView>
   );
 }

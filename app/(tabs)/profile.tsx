@@ -1,7 +1,9 @@
 import { Feather } from "@expo/vector-icons";
-import { useEffect, useMemo, useState } from "react";
+import { LinearGradient } from "expo-linear-gradient";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Animated,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -13,6 +15,13 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { isSupabaseConfigured, supabaseConfigStatus } from "@/lib/supabase";
+import {
+  getSupporterLabel,
+  getSupporterStatus,
+  isSupporterActive,
+  useCustomerInfo,
+} from "@/src/services/purchases";
+import { useSupportModalStore } from "@/src/store/useSupportModalStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useCardStore } from "@/store/useCardStore";
 import { useCloudVaultStore } from "@/store/useCloudVaultStore";
@@ -68,6 +77,76 @@ function SetupValue({
   );
 }
 
+function SupporterBadge({
+  status,
+  colors,
+}: {
+  status: ReturnType<typeof getSupporterStatus>;
+  colors: (typeof APP_THEME)[keyof typeof APP_THEME];
+}) {
+  const scale = useRef(new Animated.Value(1)).current;
+  const isHighlighted = status !== null;
+
+  useEffect(() => {
+    if (!isHighlighted) {
+      scale.setValue(1);
+      return;
+    }
+
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(scale, {
+          toValue: 1.04,
+          duration: 900,
+          useNativeDriver: true,
+        }),
+        Animated.timing(scale, {
+          toValue: 1,
+          duration: 900,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+
+    animation.start();
+
+    return () => {
+      animation.stop();
+      scale.setValue(1);
+    };
+  }, [isHighlighted, scale]);
+
+  if (!isHighlighted) {
+    return (
+      <View
+        style={[
+          styles.supporterBadgeMuted,
+          { backgroundColor: colors.surfaceMuted, borderColor: colors.border },
+        ]}
+      >
+        <Text style={[styles.supporterBadgeText, { color: colors.textMuted }]}>
+          Not a supporter yet
+        </Text>
+      </View>
+    );
+  }
+
+  return (
+    <Animated.View style={{ transform: [{ scale }] }}>
+      <LinearGradient
+        colors={["#1A6BC8", "#4D93E6"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.supporterBadgeActive}
+      >
+        <Text style={styles.supporterBadgeText}>
+          {getSupporterLabel(status)}
+        </Text>
+      </LinearGradient>
+    </Animated.View>
+  );
+}
+
 export default function ProfileScreen() {
   const cards = useCardStore((state) => state.cards);
   const themePreference = useCardStore((state) => state.themePreference);
@@ -77,6 +156,8 @@ export default function ProfileScreen() {
     (state) => state.changeToken,
   );
   const requestSync = useCloudVaultStore((state) => state.requestSync);
+  const openSupportModal = useSupportModalStore((state) => state.open);
+  const { customerInfo } = useCustomerInfo();
   const deviceScheme = useColorScheme();
   const { width } = useWindowDimensions();
   const resolvedTheme = resolveTheme(themePreference, deviceScheme);
@@ -88,14 +169,13 @@ export default function ProfileScreen() {
       ? "This build did not receive a valid Supabase URL and anon key. Placeholder values and malformed keys are treated as not configured."
       : "Cloud sign-in does not use an app-store API. It needs your own Supabase project URL and anon key.";
   const [authBusy, setAuthBusy] = useState<
-    | "google"
-    | "switch-google"
-    | "signout"
-    | null
+    "google" | "switch-google" | "signout" | null
   >(null);
   const [cloudVaultStatus, setCloudVaultStatus] = useState<
     "loading" | "missing" | "ready"
   >("loading");
+  const supporterStatus = getSupporterStatus(customerInfo);
+  const hasActiveSupport = isSupporterActive(customerInfo);
 
   const categoryStats = useMemo(
     () =>
@@ -200,6 +280,9 @@ export default function ProfileScreen() {
           >
             {authUser?.displayName ?? "Personal Stats"}
           </Text>
+          <View style={styles.supporterBadgeWrap}>
+            <SupporterBadge status={supporterStatus} colors={colors} />
+          </View>
           <Text
             style={[
               styles.heroBody,
@@ -280,6 +363,36 @@ export default function ProfileScreen() {
           </View>
         </View>
 
+        {!hasActiveSupport ? (
+          <View
+            style={[
+              styles.section,
+              {
+                backgroundColor: colors.surface,
+                borderRadius: isCompact ? 26 : 32,
+                padding: isCompact ? 20 : 24,
+              },
+            ]}
+          >
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              Show me some love? 💛
+            </Text>
+            <Text style={[styles.accountBody, { color: colors.textMuted }]}>
+              Support my work and keep this app alive.
+            </Text>
+            <Pressable
+              onPress={() => openSupportModal("profile")}
+              style={[styles.authButton, { backgroundColor: colors.accent }]}
+            >
+              <Text
+                style={[styles.authButtonText, { color: colors.accentText }]}
+              >
+                Support the app →
+              </Text>
+            </Pressable>
+          </View>
+        ) : null}
+
         <View
           style={[
             styles.section,
@@ -343,7 +456,7 @@ export default function ProfileScreen() {
                 EAS builds do not read your local `.env.local` unless the same
                 values are configured in Expo/EAS before the build starts.
               </Text>
-              <Text style={[styles.setupHint, { color: colors.textSoft }]}> 
+              <Text style={[styles.setupHint, { color: colors.textSoft }]}>
                 Redirect scheme: {getPrimaryAppScheme()}://auth/callback
               </Text>
             </>
@@ -512,6 +625,25 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
     marginTop: 8,
+  },
+  supporterBadgeWrap: {
+    marginTop: 12,
+  },
+  supporterBadgeMuted: {
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  supporterBadgeActive: {
+    borderRadius: 999,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  supporterBadgeText: {
+    fontFamily: "ReadexPro-Bold",
+    fontSize: 12,
+    color: "#FFFFFF",
   },
   setupList: {
     marginTop: 18,

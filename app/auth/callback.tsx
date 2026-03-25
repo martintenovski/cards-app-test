@@ -10,6 +10,7 @@ import * as Linking from "expo-linking";
 import { useRouter } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { AppPreviewShield } from "@/components/AppPreviewShield";
 import { APP_THEME, resolveTheme } from "@/utils/theme";
 import { useCardStore } from "@/store/useCardStore";
 import { createSessionFromUrl } from "@/utils/authSync";
@@ -58,6 +59,7 @@ export default function AuthCallbackScreen() {
           {message}
         </Text>
       </View>
+      <AppPreviewShield />
     </SafeAreaView>
   );
 }

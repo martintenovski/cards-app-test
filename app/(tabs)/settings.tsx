@@ -14,6 +14,13 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 
 import { deleteWalletSnapshot, isSupabaseConfigured } from "@/lib/supabase";
+import {
+  getSupporterSummary,
+  initializePurchases,
+  restoreSupportPurchases,
+  useCustomerInfo,
+} from "@/src/services/purchases";
+import { useSupportModalStore } from "@/src/store/useSupportModalStore";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useCardStore } from "@/store/useCardStore";
 import { useCloudVaultStore } from "@/store/useCloudVaultStore";
@@ -72,6 +79,23 @@ function SettingToggle({
   );
 }
 
+function formatSupportDate(value: string | null) {
+  if (!value) {
+    return "—";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "—";
+  }
+
+  return date.toLocaleDateString(undefined, {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
 export default function SettingsScreen() {
   const router = useRouter();
   const themePreference = useCardStore((state) => state.themePreference);
@@ -100,6 +124,8 @@ export default function SettingsScreen() {
   const requestSync = useCloudVaultStore((state) => state.requestSync);
   const syncStatus = useCloudVaultStore((state) => state.syncStatus);
   const cards = useCardStore((state) => state.cards);
+  const openSupportModal = useSupportModalStore((state) => state.open);
+  const { customerInfo, refreshCustomerInfo } = useCustomerInfo();
   const deviceScheme = useColorScheme();
   const resolvedTheme = resolveTheme(themePreference, deviceScheme);
   const colors = APP_THEME[resolvedTheme];
@@ -110,6 +136,11 @@ export default function SettingsScreen() {
   const [cloudVaultStatus, setCloudVaultStatus] = useState<
     "loading" | "missing" | "ready"
   >("loading");
+  const supportSummary = getSupporterSummary(customerInfo);
+
+  useEffect(() => {
+    initializePurchases();
+  }, []);
 
   useEffect(() => {
     if (!authUser) {
@@ -159,6 +190,24 @@ export default function SettingsScreen() {
   const replayOnboarding = () => {
     setHasSeenOnboarding(false);
     router.push("/onboarding");
+  };
+
+  const handleRestorePurchases = async () => {
+    try {
+      await restoreSupportPurchases();
+      await refreshCustomerInfo();
+      Alert.alert(
+        "Purchases restored",
+        "Pocket ID refreshed your RevenueCat customer info and restored any eligible purchases.",
+      );
+    } catch (error) {
+      Alert.alert(
+        "Restore failed",
+        error instanceof Error
+          ? error.message
+          : "Pocket ID could not restore purchases right now.",
+      );
+    }
   };
 
   const handleOpenCloudPassphrase = () => {
@@ -376,7 +425,7 @@ export default function SettingsScreen() {
             up this device when needed.
           </Text>
           {!isSupabaseConfigured || !authUser ? (
-            <Text style={[styles.sectionBody, { color: colors.textMuted }]}> 
+            <Text style={[styles.sectionBody, { color: colors.textMuted }]}>
               Sign in from the Profile tab to manage cloud sync settings here.
             </Text>
           ) : (
@@ -410,9 +459,12 @@ export default function SettingsScreen() {
               </View>
               <Pressable
                 onPress={handleOpenCloudPassphrase}
-                style={[styles.testBtn, { backgroundColor: colors.surfaceMuted }]}
+                style={[
+                  styles.testBtn,
+                  { backgroundColor: colors.surfaceMuted },
+                ]}
               >
-                <Text style={[styles.testBtnText, { color: colors.text }]}> 
+                <Text style={[styles.testBtnText, { color: colors.text }]}>
                   {cloudVaultStatus === "ready"
                     ? "Update Sync Passphrase"
                     : "Set Sync Passphrase"}
@@ -421,9 +473,12 @@ export default function SettingsScreen() {
               {cloudVaultStatus === "ready" ? (
                 <Pressable
                   onPress={handleForgetPassphrase}
-                  style={[styles.testBtn, { backgroundColor: colors.surfaceMuted }]}
+                  style={[
+                    styles.testBtn,
+                    { backgroundColor: colors.surfaceMuted },
+                  ]}
                 >
-                  <Text style={[styles.testBtnText, { color: colors.text }]}> 
+                  <Text style={[styles.testBtnText, { color: colors.text }]}>
                     {authBusy === "forget-passphrase"
                       ? "Forgetting passphrase…"
                       : "Forget Passphrase on This Device"}
@@ -432,9 +487,12 @@ export default function SettingsScreen() {
               ) : null}
               <Pressable
                 onPress={handleFetchLatestData}
-                style={[styles.testBtn, { backgroundColor: colors.surfaceMuted }]}
+                style={[
+                  styles.testBtn,
+                  { backgroundColor: colors.surfaceMuted },
+                ]}
               >
-                <Text style={[styles.testBtnText, { color: colors.text }]}> 
+                <Text style={[styles.testBtnText, { color: colors.text }]}>
                   {syncStatus === "syncing"
                     ? "Fetching Latest Data…"
                     : "Fetch Latest Data"}
@@ -451,7 +509,7 @@ export default function SettingsScreen() {
                   },
                 ]}
               >
-                <Text style={[styles.testBtnText, { color: colors.danger }]}> 
+                <Text style={[styles.testBtnText, { color: colors.danger }]}>
                   {authBusy === "delete-data"
                     ? "Deleting data…"
                     : "Delete My Data"}
@@ -462,18 +520,110 @@ export default function SettingsScreen() {
         </View>
 
         <View style={[styles.section, { backgroundColor: colors.surface }]}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}> 
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            Your Support
+          </Text>
+          <Text style={[styles.sectionBody, { color: colors.textMuted }]}>
+            RevenueCat supporter details for this app-store account.
+          </Text>
+          <View
+            style={[styles.supportRow, { borderBottomColor: colors.border }]}
+          >
+            <Text style={[styles.rowLabel, { color: colors.text }]}>
+              Status
+            </Text>
+            <Text style={[styles.supportValue, { color: colors.textMuted }]}>
+              {supportSummary.active ? "Active ❤️" : "Not a supporter yet"}
+            </Text>
+          </View>
+          <View
+            style={[styles.supportRow, { borderBottomColor: colors.border }]}
+          >
+            <Text style={[styles.rowLabel, { color: colors.text }]}>
+              Support type
+            </Text>
+            <Text style={[styles.supportValue, { color: colors.textMuted }]}>
+              {supportSummary.status === "monthly"
+                ? "Monthly Subscription"
+                : supportSummary.status === "lifetime"
+                  ? "Lifetime"
+                  : supportSummary.status === "tipper"
+                    ? "Tip"
+                    : "—"}
+            </Text>
+          </View>
+          <View
+            style={[styles.supportRow, { borderBottomColor: colors.border }]}
+          >
+            <Text style={[styles.rowLabel, { color: colors.text }]}>
+              Last payment date
+            </Text>
+            <Text style={[styles.supportValue, { color: colors.textMuted }]}>
+              {formatSupportDate(supportSummary.lastPaymentDate)}
+            </Text>
+          </View>
+          <View
+            style={[styles.supportRow, { borderBottomColor: colors.border }]}
+          >
+            <Text style={[styles.rowLabel, { color: colors.text }]}>
+              Next renewal date
+            </Text>
+            <Text style={[styles.supportValue, { color: colors.textMuted }]}>
+              {supportSummary.status === "monthly"
+                ? formatSupportDate(supportSummary.nextRenewalDate)
+                : "—"}
+            </Text>
+          </View>
+          <View style={styles.supportRow}>
+            <Text style={[styles.rowLabel, { color: colors.text }]}>
+              Total tips count
+            </Text>
+            <Text style={[styles.supportValue, { color: colors.textMuted }]}>
+              {supportSummary.totalTipsCount}
+            </Text>
+          </View>
+          <Pressable
+            onPress={handleRestorePurchases}
+            style={[styles.testBtn, { backgroundColor: colors.surfaceMuted }]}
+          >
+            <Text style={[styles.testBtnText, { color: colors.text }]}>
+              Restore Purchases
+            </Text>
+          </Pressable>
+        </View>
+
+        <View style={[styles.section, { backgroundColor: colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
             Onboarding
           </Text>
-          <Text style={[styles.sectionBody, { color: colors.textMuted }]}> 
-            Replay the Pocket ID introduction whenever you want to review the welcome flow again.
+          <Text style={[styles.sectionBody, { color: colors.textMuted }]}>
+            Replay the Pocket ID introduction whenever you want to review the
+            welcome flow again.
           </Text>
           <Pressable
             onPress={replayOnboarding}
             style={[styles.testBtn, { backgroundColor: colors.surfaceMuted }]}
           >
-            <Text style={[styles.testBtnText, { color: colors.text }]}> 
+            <Text style={[styles.testBtnText, { color: colors.text }]}>
               View onboarding again
+            </Text>
+          </Pressable>
+        </View>
+
+        <View style={[styles.section, { backgroundColor: colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            DEV / TEST
+          </Text>
+          <Text style={[styles.sectionBody, { color: colors.textMuted }]}>
+            Manually open the support modal while testing RevenueCat Sandbox or
+            TestFlight flows.
+          </Text>
+          <Pressable
+            onPress={() => openSupportModal("dev")}
+            style={[styles.testBtn, { backgroundColor: colors.surfaceMuted }]}
+          >
+            <Text style={[styles.testBtnText, { color: colors.text }]}>
+              🧪 Trigger Support Modal
             </Text>
           </Pressable>
         </View>
@@ -549,6 +699,20 @@ const styles = StyleSheet.create({
   testBtnText: {
     fontFamily: "ReadexPro-Medium",
     fontSize: 14,
+  },
+  supportRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+  },
+  supportValue: {
+    fontFamily: "ReadexPro-Bold",
+    fontSize: 14,
+    flexShrink: 1,
+    textAlign: "right",
   },
   cloudStatusCard: {
     borderWidth: 1,

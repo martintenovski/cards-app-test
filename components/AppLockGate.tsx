@@ -15,7 +15,7 @@ import {
 import { useCardStore } from "@/store/useCardStore";
 import { APP_THEME, resolveTheme } from "@/utils/theme";
 
-const RELOCK_AFTER_MS = 15_000;
+const AUTO_AUTH_DELAY_MS = 180;
 const DEFAULT_UNLOCK_MESSAGE =
   "Use Face ID, Touch ID, or your device passcode to unlock this wallet.";
 const RESUME_UNLOCK_MESSAGE = "Unlocking Pocket ID after returning to the app.";
@@ -120,13 +120,18 @@ export function AppLockGate({ children }: AppLockGateProps) {
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [shouldAutoAuthenticate, setShouldAutoAuthenticate] = useState(false);
   const [hasAuthFailed, setHasAuthFailed] = useState(false);
+  const [isPreviewHidden, setIsPreviewHidden] = useState(
+    AppState.currentState !== "active",
+  );
   const [message, setMessage] = useState(DEFAULT_UNLOCK_MESSAGE);
   const [supportedAuthTypes, setSupportedAuthTypes] = useState<
     LocalAuthentication.AuthenticationType[]
   >([]);
 
   const appStateRef = useRef(AppState.currentState);
-  const backgroundedAtRef = useRef<number | null>(null);
+  const backgroundedSinceUnlockRef = useRef(
+    AppState.currentState === "background",
+  );
   const authInFlightRef = useRef(false);
   const authPromptActiveRef = useRef(false);
   const autoAuthenticateTimeoutRef = useRef<ReturnType<
@@ -231,40 +236,43 @@ export function AppLockGate({ children }: AppLockGateProps) {
       const previousState = appStateRef.current;
       appStateRef.current = nextState;
 
-      if (nextState === "background" || nextState === "inactive") {
+      if (nextState === "inactive") {
         if (authPromptActiveRef.current) {
           return;
         }
-        backgroundedAtRef.current = Date.now();
 
-        if (appLockEnabled && isSupported) {
-          setIsUnlocked(false);
-          setMessage(RESUME_UNLOCK_MESSAGE);
-          setHasAuthFailed(false);
+        setIsPreviewHidden(true);
+        return;
+      }
+
+      if (nextState === "background") {
+        if (authPromptActiveRef.current) {
+          return;
         }
+
+        backgroundedSinceUnlockRef.current = true;
+        setIsPreviewHidden(true);
         return;
       }
 
       if (
-        previousState.match(/inactive|background/) &&
+        previousState === "background" &&
         nextState === "active" &&
         isSupported &&
-        appLockEnabled
+        appLockEnabled &&
+        backgroundedSinceUnlockRef.current
       ) {
-        const backgroundedAt = backgroundedAtRef.current;
-        if (backgroundedAt && Date.now() - backgroundedAt >= RELOCK_AFTER_MS) {
-          setIsUnlocked(false);
-          setMessage(RESUME_UNLOCK_MESSAGE);
-          setShouldAutoAuthenticate(true);
-          setHasAuthFailed(false);
-        } else {
-          setIsUnlocked(true);
-          setShouldAutoAuthenticate(false);
-          setHasAuthFailed(false);
-          setMessage(DEFAULT_UNLOCK_MESSAGE);
-        }
+        backgroundedSinceUnlockRef.current = false;
+        setIsUnlocked(false);
+        setMessage(RESUME_UNLOCK_MESSAGE);
+        setShouldAutoAuthenticate(true);
+        setHasAuthFailed(false);
+        return;
+      }
 
-        backgroundedAtRef.current = null;
+      if (nextState === "active") {
+        backgroundedSinceUnlockRef.current = false;
+        setIsPreviewHidden(false);
       }
     });
 
@@ -286,17 +294,16 @@ export function AppLockGate({ children }: AppLockGateProps) {
       return;
     }
 
-    setMessage(WAITING_FOR_PROMPT_MESSAGE);
-
     if (autoAuthenticateTimeoutRef.current) {
       return;
     }
 
     autoAuthenticateTimeoutRef.current = setTimeout(() => {
       autoAuthenticateTimeoutRef.current = null;
+      setMessage(WAITING_FOR_PROMPT_MESSAGE);
       setShouldAutoAuthenticate(false);
       void authenticate();
-    }, 250);
+    }, AUTO_AUTH_DELAY_MS);
   }, [
     appLockEnabled,
     isAuthenticating,
@@ -315,6 +322,30 @@ export function AppLockGate({ children }: AppLockGateProps) {
       }
     };
   }, []);
+
+  const previewShield = isPreviewHidden ? (
+    <View
+      pointerEvents="none"
+      style={[styles.previewShield, { backgroundColor: colors.background }]}
+    >
+      <View
+        style={[
+          styles.lockCard,
+          { backgroundColor: colors.surface, borderColor: colors.border },
+        ]}
+      >
+        <View style={[styles.lockIcon, { backgroundColor: colors.input }]}>
+          <Feather name="shield" size={30} color={colors.text} />
+        </View>
+        <Text style={[styles.title, { color: colors.text }]}>
+          App preview unavailable for security reasons
+        </Text>
+        <Text style={[styles.body, { color: colors.textMuted }]}>
+          Return to Pocket ID to continue.
+        </Text>
+      </View>
+    </View>
+  ) : null;
 
   if (!appLockEnabled) {
     return (
@@ -397,6 +428,7 @@ export function AppLockGate({ children }: AppLockGateProps) {
             </View>
           </View>
         ) : null}
+        {previewShield}
       </>
     );
   }
@@ -482,6 +514,7 @@ export function AppLockGate({ children }: AppLockGateProps) {
             </View>
           </View>
         </View>
+        {previewShield}
       </>
     );
   }
@@ -495,7 +528,12 @@ export function AppLockGate({ children }: AppLockGateProps) {
   }
 
   if (!isSupported || isUnlocked) {
-    return <>{children}</>;
+    return (
+      <>
+        {children}
+        {previewShield}
+      </>
+    );
   }
 
   return (
@@ -612,6 +650,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     zIndex: 1000,
     elevation: 1000,
+  },
+  previewShield: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 24,
+    zIndex: 1100,
+    elevation: 1100,
   },
   promptCard: {
     width: "100%",

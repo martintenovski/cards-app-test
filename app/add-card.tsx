@@ -18,6 +18,7 @@ import Animated, {
   withSpring,
 } from "react-native-reanimated";
 
+import { AppPreviewShield } from "@/components/AppPreviewShield";
 import { CardForm } from "@/components/CardForm";
 import {
   FormSheetScaffold,
@@ -162,13 +163,19 @@ export default function AddCardScreen() {
                         />
                       </View>
                       <View style={styles.importTextWrap}>
-                        <Text style={[styles.importTitle, { color: colors.text }]}>
+                        <Text
+                          style={[styles.importTitle, { color: colors.text }]}
+                        >
                           Import shared card
                         </Text>
                         <Text
-                          style={[styles.importBody, { color: colors.textMuted }]}
+                          style={[
+                            styles.importBody,
+                            { color: colors.textMuted },
+                          ]}
                         >
-                          Have a Pocket ID card file? Bring it in here instead of typing everything manually.
+                          Have a Pocket ID card file? Bring it in here instead
+                          of typing everything manually.
                         </Text>
                       </View>
                       <Feather
@@ -183,6 +190,7 @@ export default function AddCardScreen() {
             </View>
           </GestureDetector>
         </Animated.View>
+        <AppPreviewShield />
       </View>
     </>
   );

@@ -1,4 +1,5 @@
-import { useEffect, useRef } from "react";
+import { Feather } from "@expo/vector-icons";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   StyleSheet,
@@ -6,15 +7,16 @@ import {
   View,
   useColorScheme,
 } from "react-native";
-import { Feather } from "@expo/vector-icons";
 
 import { isSupabaseConfigured } from "@/lib/supabase";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useCardStore } from "@/store/useCardStore";
 import { useCloudVaultStore } from "@/store/useCloudVaultStore";
-import { hasStoredSyncPassphrase } from "@/utils/cloudVault";
 import { pushWalletSnapshot, reconcileWalletSnapshot } from "@/utils/authSync";
+import { hasStoredSyncPassphrase } from "@/utils/cloudVault";
 import { APP_THEME, resolveTheme } from "@/utils/theme";
+
+const MAX_BLOCKING_SYNC_MS = 25_000;
 
 function isPassphraseMissingError(error: unknown) {
   return (
@@ -42,9 +44,11 @@ export function CloudSyncManager() {
   const deviceScheme = useColorScheme();
   const colors = APP_THEME[resolveTheme("system", deviceScheme)];
   const hasReconciled = useRef(false);
+  const reconcileInFlight = useRef(false);
   const lastPushedAt = useRef<string | null>(null);
   const lastObservedModifiedAt = useRef<string | null>(null);
   const handledSyncRequestToken = useRef(0);
+  const [isLocalPushSyncing, setIsLocalPushSyncing] = useState(false);
 
   useEffect(() => {
     if (syncStatus !== "success" && syncStatus !== "error") {
@@ -60,9 +64,22 @@ export function CloudSyncManager() {
 
   useEffect(() => {
     hasReconciled.current = false;
-    lastPushedAt.current = lastModifiedAt;
+    lastPushedAt.current = null;
     lastObservedModifiedAt.current = lastModifiedAt;
-  }, [cloudVaultChangeToken, lastModifiedAt, user?.id]);
+    handledSyncRequestToken.current = 0;
+  }, [cloudVaultChangeToken, user?.id]);
+
+  useEffect(() => {
+    if (syncStatus !== "syncing") {
+      return undefined;
+    }
+
+    const timer = setTimeout(() => {
+      setSyncState("idle");
+    }, MAX_BLOCKING_SYNC_MS);
+
+    return () => clearTimeout(timer);
+  }, [setSyncState, syncStatus]);
 
   useEffect(() => {
     if (!isSupabaseConfigured || !authReady || !hasHydrated || !user) {
@@ -70,22 +87,26 @@ export function CloudSyncManager() {
     }
 
     const currentUser = user;
-
     let cancelled = false;
     const hasPendingSyncRequest =
       syncRequestToken > handledSyncRequestToken.current;
     const shouldAutoReconcile = !hasReconciled.current && cards.length === 0;
 
+    if (reconcileInFlight.current) {
+      return undefined;
+    }
+
     if (!hasPendingSyncRequest && !shouldAutoReconcile) {
       if (!hasReconciled.current) {
         hasReconciled.current = true;
-        lastPushedAt.current = lastModifiedAt;
         lastObservedModifiedAt.current = lastModifiedAt;
       }
       return undefined;
     }
 
     async function reconcile() {
+      reconcileInFlight.current = true;
+
       try {
         const hasPassphrase = await hasStoredSyncPassphrase(currentUser.id);
 
@@ -102,7 +123,9 @@ export function CloudSyncManager() {
           lastModifiedAt,
         });
 
-        if (cancelled) return;
+        if (cancelled) {
+          return;
+        }
 
         if (result.action === "pull" && result.remote) {
           replaceCards(result.remote.cards, result.remote.updated_at);
@@ -158,6 +181,8 @@ export function CloudSyncManager() {
           setSyncState("idle");
         }
         hasReconciled.current = true;
+      } finally {
+        reconcileInFlight.current = false;
       }
     }
 
@@ -200,6 +225,12 @@ export function CloudSyncManager() {
     lastObservedModifiedAt.current = lastModifiedAt;
 
     const timer = setTimeout(() => {
+      setIsLocalPushSyncing(true);
+      setSyncState(
+        "syncing",
+        "Syncing your latest card securely to the cloud vault...",
+      );
+
       void hasStoredSyncPassphrase(currentUser.id)
         .then((hasPassphrase) => {
           if (!hasPassphrase) {
@@ -212,16 +243,19 @@ export function CloudSyncManager() {
             lastModifiedAt,
           }).then(() => {
             lastPushedAt.current = lastModifiedAt;
+            setSyncState("success", "Your latest card is now synced.");
           });
         })
-        .then(() => {
-          return undefined;
-        })
+        .then(() => undefined)
         .catch((error) => {
           if (!isPassphraseMissingError(error)) {
             console.warn("Cloud sync push failed", error);
           }
+          setSyncState("error", "Could not sync your latest card.");
           return undefined;
+        })
+        .finally(() => {
+          setIsLocalPushSyncing(false);
         });
     }, 800);
 
@@ -241,6 +275,7 @@ export function CloudSyncManager() {
 
   const isSyncing = syncStatus === "syncing";
   const isSuccess = syncStatus === "success";
+  const shouldShowLocalSyncModal = isSyncing && isLocalPushSyncing;
   const title = isSyncing
     ? "Fetching latest data"
     : isSuccess
@@ -256,12 +291,16 @@ export function CloudSyncManager() {
 
   return (
     <View
-      pointerEvents={isSyncing ? "auto" : "none"}
-      style={[styles.overlay, isSyncing && { backgroundColor: colors.overlay }]}
+      pointerEvents="none"
+      style={[
+        styles.overlay,
+        shouldShowLocalSyncModal ? styles.centeredOverlay : null,
+      ]}
     >
       <View
         style={[
           styles.modal,
+          shouldShowLocalSyncModal ? styles.centeredModal : null,
           {
             backgroundColor: colors.surface,
             borderColor: colors.border,
@@ -287,12 +326,8 @@ export function CloudSyncManager() {
             />
           </View>
         )}
-        <Text style={[styles.title, { color: colors.text }]}>
-          {title}
-        </Text>
-        <Text style={[styles.body, { color: colors.textMuted }]}>
-          {body}
-        </Text>
+        <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
+        <Text style={[styles.body, { color: colors.textMuted }]}>{body}</Text>
       </View>
     </View>
   );
@@ -302,24 +337,36 @@ const styles = StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFillObject,
     alignItems: "center",
-    justifyContent: "center",
+    justifyContent: "flex-start",
     zIndex: 999,
     elevation: 999,
     paddingHorizontal: 24,
+    paddingTop: 88,
+  },
+  centeredOverlay: {
+    justifyContent: "center",
+    paddingTop: 24,
   },
   modal: {
     width: "100%",
     minWidth: 260,
     maxWidth: 420,
-    borderRadius: 24,
+    borderRadius: 20,
     borderWidth: 1,
-    paddingHorizontal: 18,
-    paddingVertical: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     alignItems: "center",
     gap: 10,
-    shadowOpacity: 0.12,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    shadowOffset: {
+      width: 0,
+      height: 8,
+    },
+    elevation: 4,
+  },
+  centeredModal: {
+    maxWidth: 360,
   },
   statusIcon: {
     width: 36,

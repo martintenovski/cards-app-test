@@ -3,14 +3,15 @@
     "name": "Pocket ID",
     "slug": "cards-app",
     "scheme": "pocketid",
-    "version": "1.0.1",
+    "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "backgroundColor": "#239bff",
+    "backgroundColor": "#1C1E21",
     "splash": {
-      "image": "./assets/splash-icon.png",
+      "image": "./assets/ios-logo.png",
       "resizeMode": "contain",
-      "backgroundColor": "#239bff"
+      "backgroundColor": "#1C1E21",
+      "imageWidth": 88
     },
     "userInterfaceStyle": "automatic",
     "plugins": [
@@ -38,7 +39,7 @@
     "ios": {
       "icon": "./assets/ios-logo.png",
       "supportsTablet": true,
-      "buildNumber": "4",
+      "buildNumber": "18",
       "bundleIdentifier": "com.tenovski.cardsapp",
       "infoPlist": {
         "NSCameraUsageDescription": "Camera is required to scan identity documents and bank cards",
@@ -48,18 +49,29 @@
     },
     "android": {
       "icon": "./assets/droid-foreground.png",
+      "splash": {
+        "image": "./assets/ios-logo.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#1C1E21",
+        "imageWidth": 72
+      },
       "adaptiveIcon": {
         "foregroundImage": "./assets/droid-foreground.png",
         "backgroundImage": "./assets/droid-icon-background.png",
         "monochromeImage": "./assets/droid-monochrome.png"
       },
-      "versionCode": 4,
+      "versionCode": 18,
       "predictiveBackGestureEnabled": false,
       "package": "com.tenovski.cardsapp",
       "permissions": [
         "android.permission.CAMERA",
         "android.permission.POST_NOTIFICATIONS"
       ]
+    },
+    "androidStatusBar": {
+      "backgroundColor": "#1C1E21",
+      "barStyle": "light-content",
+      "translucent": false
     },
     "web": {
       "favicon": "./assets/favicon.png",

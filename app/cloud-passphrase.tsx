@@ -14,6 +14,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 
+import { AppPreviewShield } from "@/components/AppPreviewShield";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useCardStore } from "@/store/useCardStore";
 import { useCloudVaultStore } from "@/store/useCloudVaultStore";
@@ -44,7 +45,11 @@ function getPassphraseStrength(passphrase: string): PassphraseStrength {
   if (/[^A-Za-z0-9]/.test(passphrase)) score += 1;
 
   if (score <= 1) {
-    return { label: passphrase.length < MIN_SYNC_PASSPHRASE_LENGTH ? "Too weak" : "Weak", score: Math.max(score, 1) };
+    return {
+      label:
+        passphrase.length < MIN_SYNC_PASSPHRASE_LENGTH ? "Too weak" : "Weak",
+      score: Math.max(score, 1),
+    };
   }
 
   if (score === 2) {
@@ -114,7 +119,10 @@ export default function CloudPassphraseScreen() {
     if (!authUser || isSaving) return;
 
     if (passphrase !== confirmation) {
-      Alert.alert("Passphrases do not match", "Enter the same passphrase twice.");
+      Alert.alert(
+        "Passphrases do not match",
+        "Enter the same passphrase twice.",
+      );
       return;
     }
 
@@ -163,7 +171,10 @@ export default function CloudPassphraseScreen() {
           <Pressable
             onPress={() => router.back()}
             hitSlop={12}
-            style={[styles.backButton, { backgroundColor: colors.surfaceMuted }]}
+            style={[
+              styles.backButton,
+              { backgroundColor: colors.surfaceMuted },
+            ]}
           >
             <Feather name="arrow-left" size={20} color={colors.text} />
           </Pressable>
@@ -171,29 +182,36 @@ export default function CloudPassphraseScreen() {
             <Text style={[styles.eyebrow, { color: colors.textSoft }]}>
               Cloud Vault
             </Text>
-            <Text style={[styles.title, { color: colors.text }]}>Sync passphrase</Text>
+            <Text style={[styles.title, { color: colors.text }]}>
+              Sync passphrase
+            </Text>
           </View>
         </View>
 
-        <View style={[styles.card, { backgroundColor: colors.surface }]}> 
-          <Text style={[styles.cardTitle, { color: colors.text }]}>End-to-end encrypted sync</Text>
+        <View style={[styles.card, { backgroundColor: colors.surface }]}>
+          <Text style={[styles.cardTitle, { color: colors.text }]}>
+            End-to-end encrypted sync
+          </Text>
           <Text style={[styles.cardBody, { color: colors.textMuted }]}>
             {helperText}
           </Text>
-          <Text style={[styles.cardHint, { color: colors.textSoft }]}> 
-            Use at least {MIN_SYNC_PASSPHRASE_LENGTH} characters. A longer phrase is much safer than a short clever one.
+          <Text style={[styles.cardHint, { color: colors.textSoft }]}>
+            Use at least {MIN_SYNC_PASSPHRASE_LENGTH} characters. A longer
+            phrase is much safer than a short clever one.
           </Text>
         </View>
 
-        <View style={[styles.card, { backgroundColor: colors.surface }]}> 
+        <View style={[styles.card, { backgroundColor: colors.surface }]}>
           {isChecking ? (
             <View style={styles.loadingRow}>
               <ActivityIndicator size="small" color={colors.text} />
-              <Text style={[styles.loadingText, { color: colors.textMuted }]}>Checking current cloud vault status…</Text>
+              <Text style={[styles.loadingText, { color: colors.textMuted }]}>
+                Checking current cloud vault status…
+              </Text>
             </View>
           ) : (
             <>
-              <Text style={[styles.fieldLabel, { color: colors.text }]}> 
+              <Text style={[styles.fieldLabel, { color: colors.text }]}>
                 {hasExistingPassphrase ? "New passphrase" : "Passphrase"}
               </Text>
               <TextInput
@@ -240,12 +258,19 @@ export default function CloudPassphraseScreen() {
                     );
                   })}
                 </View>
-                <Text style={[styles.strengthLabel, { color: colors.textMuted }]}> 
-                  Strength: <Text style={{ color: colors.text }}>{passphraseStrength.label}</Text>
+                <Text
+                  style={[styles.strengthLabel, { color: colors.textMuted }]}
+                >
+                  Strength:{" "}
+                  <Text style={{ color: colors.text }}>
+                    {passphraseStrength.label}
+                  </Text>
                 </Text>
               </View>
 
-              <Text style={[styles.fieldLabel, { color: colors.text }]}>Confirm passphrase</Text>
+              <Text style={[styles.fieldLabel, { color: colors.text }]}>
+                Confirm passphrase
+              </Text>
               <TextInput
                 value={confirmation}
                 onChangeText={setConfirmation}
@@ -273,22 +298,37 @@ export default function CloudPassphraseScreen() {
                   },
                 ]}
               >
-                <Feather name="alert-triangle" size={18} color={colors.danger} />
+                <Feather
+                  name="alert-triangle"
+                  size={18}
+                  color={colors.danger}
+                />
                 <View style={styles.warningTextWrap}>
-                  <Text style={[styles.warningTitle, { color: colors.danger }]}> 
+                  <Text style={[styles.warningTitle, { color: colors.danger }]}>
                     Keep this passphrase safe
                   </Text>
-                  <Text style={[styles.warningBody, { color: colors.textMuted }]}> 
-                    If you forget it, Pocket ID, Google, and Supabase cannot recover your encrypted synced vault on a new device.
+                  <Text
+                    style={[styles.warningBody, { color: colors.textMuted }]}
+                  >
+                    If you forget it, Pocket ID, Google, and Supabase cannot
+                    recover your encrypted synced vault on a new device.
                   </Text>
                 </View>
               </View>
 
               <Pressable
                 onPress={handleSave}
-                style={[styles.primaryButton, { backgroundColor: colors.accent }]}
+                style={[
+                  styles.primaryButton,
+                  { backgroundColor: colors.accent },
+                ]}
               >
-                <Text style={[styles.primaryButtonText, { color: colors.accentText }]}> 
+                <Text
+                  style={[
+                    styles.primaryButtonText,
+                    { color: colors.accentText },
+                  ]}
+                >
                   {isSaving
                     ? hasExistingPassphrase
                       ? "Updating…"
@@ -302,6 +342,7 @@ export default function CloudPassphraseScreen() {
           )}
         </View>
       </ScrollView>
+      <AppPreviewShield />
     </SafeAreaView>
   );
 }

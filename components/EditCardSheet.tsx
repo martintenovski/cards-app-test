@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
   Dimensions,
   Pressable,
@@ -52,6 +52,7 @@ export function EditCardSheet({ card, isOpen, onClose }: EditCardSheetProps) {
   const deviceScheme = useColorScheme();
   const resolvedTheme = resolveTheme(themePreference, deviceScheme);
   const colors = APP_THEME[resolvedTheme];
+  const [isFormAtTop, setIsFormAtTop] = useState(true);
 
   const translateY = useSharedValue(SHEET_HEIGHT);
   const backdropOpacity = useSharedValue(0);
@@ -67,6 +68,9 @@ export function EditCardSheet({ card, isOpen, onClose }: EditCardSheetProps) {
   }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const dragGesture = Gesture.Pan()
+    .enabled(isFormAtTop)
+    .activeOffsetY([12, 9999])
+    .failOffsetX([-12, 12])
     .onUpdate((e) => {
       if (e.translationY > 0) {
         translateY.value = e.translationY;
@@ -135,6 +139,7 @@ export function EditCardSheet({ card, isOpen, onClose }: EditCardSheetProps) {
                 initialValues={cardToFormValues(card)}
                 initialPalette={card.palette}
                 submitLabel="Save Changes"
+                onScrollOffsetChange={(offsetY) => setIsFormAtTop(offsetY <= 4)}
               />
             </FormSheetScaffold>
           </View>

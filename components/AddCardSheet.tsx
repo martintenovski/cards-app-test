@@ -47,6 +47,7 @@ export function AddCardSheet({ isOpen, onClose }: AddCardSheetProps) {
   const sheetHeight = height * (isCompact ? 0.93 : 0.85);
   const [formKey, setFormKey] = useState(0);
   const [modalVisible, setModalVisible] = useState(false);
+  const [isFormAtTop, setIsFormAtTop] = useState(true);
 
   const translateY = useSharedValue(sheetHeight);
   const backdropOpacity = useSharedValue(0);
@@ -77,6 +78,9 @@ export function AddCardSheet({ isOpen, onClose }: AddCardSheetProps) {
   }, [isOpen, sheetHeight]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const dragGesture = Gesture.Pan()
+    .enabled(isFormAtTop)
+    .activeOffsetY([12, 9999])
+    .failOffsetX([-12, 12])
     .onUpdate((e) => {
       if (e.translationY > 0) {
         translateY.value = e.translationY;
@@ -134,93 +138,96 @@ export function AddCardSheet({ isOpen, onClose }: AddCardSheetProps) {
       </Animated.View>
 
       {/* Sheet panel */}
-      <Animated.View
-        style={[
-          styles.sheet,
-          sheetStyle,
-          {
-            height: sheetHeight,
-            borderTopLeftRadius: isCompact ? 20 : 24,
-            borderTopRightRadius: isCompact ? 20 : 24,
-            backgroundColor: colors.surface,
-          },
-        ]}
-      >
-        {/* Drag handle */}
-        <GestureDetector gesture={dragGesture}>
+      <GestureDetector gesture={dragGesture}>
+        <Animated.View
+          style={[
+            styles.sheet,
+            sheetStyle,
+            {
+              height: sheetHeight,
+              borderTopLeftRadius: isCompact ? 20 : 24,
+              borderTopRightRadius: isCompact ? 20 : 24,
+              backgroundColor: colors.surface,
+            },
+          ]}
+        >
           <View style={styles.handleArea}>
             <View
               style={[styles.handle, { backgroundColor: colors.textSoft }]}
             />
           </View>
-        </GestureDetector>
 
-        {/* Header */}
-        <View
-          style={[
-            styles.header,
-            { paddingHorizontal: isCompact ? 18 : 24, paddingBottom: isCompact ? 10 : 12 },
-          ]}
-        >
-          <Text
+          <View
             style={[
-              styles.title,
-              { color: colors.text, fontSize: isCompact ? 20 : 22 },
+              styles.header,
+              {
+                paddingHorizontal: isCompact ? 18 : 24,
+                paddingBottom: isCompact ? 10 : 12,
+              },
             ]}
           >
-            Add New Card
-          </Text>
-          <Pressable onPress={onClose} hitSlop={12} style={styles.closeBtn}>
-            <Feather name="x" size={22} color={colors.textMuted} />
-          </Pressable>
-        </View>
-
-        {/* Form */}
-        <CardForm
-          key={formKey}
-          onSubmit={handleSubmit}
-          contentHorizontalPadding={isCompact ? 16 : 20}
-          topAccessory={
-            <Pressable
-              onPress={handleImportSharedCard}
+            <Text
               style={[
-                styles.importCard,
-                {
-                  backgroundColor: colors.surfaceMuted,
-                  borderColor: colors.border,
-                },
+                styles.title,
+                { color: colors.text, fontSize: isCompact ? 20 : 22 },
               ]}
             >
-              <View
+              Add New Card
+            </Text>
+            <Pressable onPress={onClose} hitSlop={12} style={styles.closeBtn}>
+              <Feather name="x" size={22} color={colors.textMuted} />
+            </Pressable>
+          </View>
+
+          <CardForm
+            key={formKey}
+            onSubmit={handleSubmit}
+            contentHorizontalPadding={isCompact ? 16 : 20}
+            onScrollOffsetChange={(offsetY) => setIsFormAtTop(offsetY <= 4)}
+            topAccessory={
+              <Pressable
+                onPress={handleImportSharedCard}
                 style={[
-                  styles.importIcon,
-                  { backgroundColor: colors.accent },
+                  styles.importCard,
+                  {
+                    backgroundColor: colors.surfaceMuted,
+                    borderColor: colors.border,
+                  },
                 ]}
               >
+                <View
+                  style={[
+                    styles.importIcon,
+                    { backgroundColor: colors.accent },
+                  ]}
+                >
+                  <Feather
+                    name="download-cloud"
+                    size={18}
+                    color={colors.accentText}
+                  />
+                </View>
+                <View style={styles.importTextWrap}>
+                  <Text style={[styles.importTitle, { color: colors.text }]}>
+                    Import shared card
+                  </Text>
+                  <Text
+                    style={[styles.importBody, { color: colors.textMuted }]}
+                  >
+                    Have a Pocket ID card file? Bring it in here instead of
+                    typing everything manually.
+                  </Text>
+                </View>
                 <Feather
-                  name="download-cloud"
+                  name="chevron-right"
                   size={18}
-                  color={colors.accentText}
+                  color={colors.textSoft}
                 />
-              </View>
-              <View style={styles.importTextWrap}>
-                <Text style={[styles.importTitle, { color: colors.text }]}>
-                  Import shared card
-                </Text>
-                <Text style={[styles.importBody, { color: colors.textMuted }]}>
-                  Have a Pocket ID card file? Bring it in here instead of
-                  typing everything manually.
-                </Text>
-              </View>
-              <Feather
-                name="chevron-right"
-                size={18}
-                color={colors.textSoft}
-              />
-            </Pressable>
-          }
-        />
-      </Animated.View>
+              </Pressable>
+            }
+          />
+        </Animated.View>
+      </GestureDetector>
     </Modal>
   );
 }

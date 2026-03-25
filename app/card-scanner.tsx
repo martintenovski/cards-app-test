@@ -17,6 +17,7 @@ import {
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
 
+import { AppPreviewShield } from "@/components/AppPreviewShield";
 import { useCardStore } from "@/store/useCardStore";
 import {
   FIELD_SCAN_CONFIG,
@@ -209,6 +210,7 @@ export default function CardScannerScreen() {
               </Text>
             </View>
           </View>
+          <AppPreviewShield />
         </SafeAreaView>
       );
     }
@@ -269,6 +271,7 @@ export default function CardScannerScreen() {
             </View>
           ) : null}
         </View>
+        <AppPreviewShield />
       </SafeAreaView>
     );
   }
@@ -301,6 +304,7 @@ export default function CardScannerScreen() {
           </Pressable>
         </View>
       </View>
+      <AppPreviewShield />
     </SafeAreaView>
   );
 }

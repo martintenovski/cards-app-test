@@ -1,11 +1,15 @@
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   Alert,
   Dimensions,
+  InputAccessoryView,
+  Keyboard,
   KeyboardAvoidingView,
   Modal,
+  type NativeSyntheticEvent,
+  type NativeScrollEvent,
   NativeModules,
   Platform,
   Pressable,
@@ -80,6 +84,7 @@ type CardFormProps = {
   contentHorizontalPadding?: number;
   forcedTheme?: ResolvedTheme;
   topAccessory?: ReactNode;
+  onScrollOffsetChange?: (offsetY: number) => void;
 };
 
 type FieldName = keyof CardFormValues;
@@ -1023,7 +1028,12 @@ function FormRow({
   label,
   value,
   onChange,
+  onFocus,
+  onSubmitEditing,
   keyboardType,
+  returnKeyType,
+  inputAccessoryViewID,
+  inputRef,
   colors,
   error,
   helperText,
@@ -1033,7 +1043,12 @@ function FormRow({
   label: string;
   value: string;
   onChange: (v: string) => void;
+  onFocus?: () => void;
+  onSubmitEditing?: () => void;
   keyboardType?: "default" | "number-pad" | "phone-pad";
+  returnKeyType?: "done" | "next";
+  inputAccessoryViewID?: string;
+  inputRef?: (input: TextInput | null) => void;
   colors: ThemeColors;
   error?: string;
   helperText: string;
@@ -1058,11 +1073,16 @@ function FormRow({
         <View style={fieldSt.pillInner}>
           <FieldLabel label={label} required={required} colors={colors} />
           <TextInput
+            ref={inputRef}
             style={[fieldSt.input, { color: colors.text }]}
             value={value}
             onChangeText={onChange}
+            onFocus={onFocus}
             keyboardType={keyboardType}
-            returnKeyType="done"
+            returnKeyType={returnKeyType ?? "done"}
+            blurOnSubmit={false}
+            onSubmitEditing={onSubmitEditing}
+            inputAccessoryViewID={inputAccessoryViewID}
             placeholderTextColor={colors.textSoft}
           />
         </View>
@@ -1210,6 +1230,11 @@ function DateRow({
   value,
   kind,
   onChange,
+  onFocus,
+  onSubmitEditing,
+  returnKeyType,
+  inputAccessoryViewID,
+  inputRef,
   colors,
   error,
   helperText,
@@ -1220,6 +1245,11 @@ function DateRow({
   value: string;
   kind: "date" | "expiry";
   onChange: (v: string) => void;
+  onFocus?: () => void;
+  onSubmitEditing?: () => void;
+  returnKeyType?: "done" | "next";
+  inputAccessoryViewID?: string;
+  inputRef?: (input: TextInput | null) => void;
   colors: ThemeColors;
   error?: string;
   helperText: string;
@@ -1289,10 +1319,16 @@ function DateRow({
         <View style={fieldSt.pillInner}>
           <FieldLabel label={label} required={required} colors={colors} />
           <TextInput
+            ref={inputRef}
             style={[fieldSt.input, { color: colors.text }]}
             value={value}
             onChangeText={onChange}
+            onFocus={onFocus}
             keyboardType="number-pad"
+            returnKeyType={returnKeyType ?? "done"}
+            blurOnSubmit={false}
+            onSubmitEditing={onSubmitEditing}
+            inputAccessoryViewID={inputAccessoryViewID}
             placeholder={kind === "expiry" ? "MM.YY" : "DD.MM.YYYY"}
             placeholderTextColor={colors.textSoft}
             maxLength={kind === "expiry" ? 5 : 10}
@@ -1579,7 +1615,9 @@ export function CardForm({
   contentHorizontalPadding = 20,
   forcedTheme,
   topAccessory,
+  onScrollOffsetChange,
 }: CardFormProps) {
+  const keyboardAccessoryId = "card-form-keyboard-accessory";
   const insets = useSafeAreaInsets();
   const deviceScheme = useColorScheme();
   const themePreference = useCardStore((state) => state.themePreference);
@@ -1606,8 +1644,18 @@ export function CardForm({
   const [selectedGradient, setSelectedGradient] = useState<
     [string, string] | null
   >(null);
+  const [focusedField, setFocusedField] = useState<FieldName | null>(null);
+  const [androidKeyboardHeight, setAndroidKeyboardHeight] = useState(0);
+  const inputRefs = useRef<Partial<Record<FieldName, TextInput | null>>>({});
 
   const sections = useMemo(() => getFormSections(values), [values]);
+  const editableFieldOrder = useMemo(
+    () =>
+      [...sections.front, ...sections.back]
+        .filter((field) => field.kind !== "select")
+        .map((field) => field.key),
+    [sections],
+  );
   const requiredFields = useMemo(
     () => new Set(getRequiredFields(values)),
     [values],
@@ -1689,11 +1737,64 @@ export function CardForm({
     onSubmit(values, previewPalette);
   };
 
+  const focusField = (field: FieldName | undefined) => {
+    if (!field) {
+      Keyboard.dismiss();
+      setFocusedField(null);
+      return;
+    }
+
+    inputRefs.current[field]?.focus();
+    setFocusedField(field);
+  };
+
+  const focusedFieldIndex = focusedField
+    ? editableFieldOrder.indexOf(focusedField)
+    : -1;
+  const nextField =
+    focusedFieldIndex >= 0
+      ? editableFieldOrder[focusedFieldIndex + 1]
+      : undefined;
+
+  useEffect(() => {
+    if (Platform.OS !== "android") {
+      return undefined;
+    }
+
+    const showSubscription = Keyboard.addListener(
+      "keyboardDidShow",
+      (event) => {
+        setAndroidKeyboardHeight(event.endCoordinates.height);
+      },
+    );
+    const hideSubscription = Keyboard.addListener("keyboardDidHide", () => {
+      setAndroidKeyboardHeight(0);
+      setFocusedField(null);
+    });
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, []);
+
   const renderField = (field: FieldConfig) => {
     const value = String(values[field.key] ?? "");
     const error = touched[field.key] ? errors[field.key] : undefined;
     const valid = !!value.trim() && !validateField(field.key, values);
     const required = requiredFields.has(field.key);
+    const isLastEditableField =
+      editableFieldOrder[editableFieldOrder.length - 1] === field.key;
+    const returnKeyType = isLastEditableField ? "done" : "next";
+    const registerInput = (input: TextInput | null) => {
+      inputRefs.current[field.key] = input;
+    };
+    const handleFocus = () => {
+      setFocusedField(field.key);
+    };
+    const handleSubmitEditing = () => {
+      focusField(isLastEditableField ? undefined : nextField);
+    };
 
     if (field.kind === "select" && field.options) {
       return (
@@ -1747,6 +1848,11 @@ export function CardForm({
           helperText={field.helperText}
           valid={valid}
           required={required}
+          onFocus={handleFocus}
+          onSubmitEditing={handleSubmitEditing}
+          returnKeyType={returnKeyType}
+          inputAccessoryViewID={keyboardAccessoryId}
+          inputRef={registerInput}
         />
       );
     }
@@ -1771,6 +1877,11 @@ export function CardForm({
         helperText={field.helperText}
         valid={valid}
         required={required}
+        onFocus={handleFocus}
+        onSubmitEditing={handleSubmitEditing}
+        returnKeyType={returnKeyType}
+        inputAccessoryViewID={keyboardAccessoryId}
+        inputRef={registerInput}
       />
     );
   };
@@ -1792,6 +1903,10 @@ export function CardForm({
         ]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
+        scrollEventThrottle={16}
+        onScroll={(event: NativeSyntheticEvent<NativeScrollEvent>) => {
+          onScrollOffsetChange?.(event.nativeEvent.contentOffset.y);
+        }}
       >
         {topAccessory ? topAccessory : null}
 
@@ -1878,6 +1993,114 @@ export function CardForm({
           colors={colors}
         />
       </ScrollView>
+
+      {Platform.OS === "ios" ? (
+        <InputAccessoryView nativeID={keyboardAccessoryId}>
+          <View
+            style={[
+              accessorySt.toolbar,
+              {
+                backgroundColor: colors.surface,
+                borderTopColor: colors.border,
+              },
+            ]}
+          >
+            <Pressable
+              accessibilityRole="button"
+              disabled={!nextField}
+              onPress={() => focusField(nextField)}
+              style={({ pressed }) => [
+                accessorySt.actionButton,
+                !nextField ? accessorySt.actionButtonDisabled : null,
+                pressed && nextField ? accessorySt.actionButtonPressed : null,
+              ]}
+            >
+              <Text
+                style={[
+                  accessorySt.actionText,
+                  { color: nextField ? colors.accent : colors.textSoft },
+                ]}
+              >
+                Next
+              </Text>
+            </Pressable>
+
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => focusField(undefined)}
+              style={({ pressed }) => [
+                accessorySt.doneButton,
+                { backgroundColor: colors.accent },
+                pressed ? accessorySt.actionButtonPressed : null,
+              ]}
+            >
+              <Text
+                style={[accessorySt.doneText, { color: colors.accentText }]}
+              >
+                Done
+              </Text>
+            </Pressable>
+          </View>
+        </InputAccessoryView>
+      ) : null}
+
+      {Platform.OS === "android" && focusedField ? (
+        <View
+          pointerEvents="box-none"
+          style={[
+            accessorySt.androidToolbarWrap,
+            { bottom: androidKeyboardHeight },
+          ]}
+        >
+          <View
+            style={[
+              accessorySt.toolbar,
+              accessorySt.androidToolbar,
+              {
+                backgroundColor: colors.surface,
+                borderTopColor: colors.border,
+                borderColor: colors.border,
+              },
+            ]}
+          >
+            <Pressable
+              accessibilityRole="button"
+              disabled={!nextField}
+              onPress={() => focusField(nextField)}
+              style={({ pressed }) => [
+                accessorySt.actionButton,
+                !nextField ? accessorySt.actionButtonDisabled : null,
+                pressed && nextField ? accessorySt.actionButtonPressed : null,
+              ]}
+            >
+              <Text
+                style={[
+                  accessorySt.actionText,
+                  { color: nextField ? colors.accent : colors.textSoft },
+                ]}
+              >
+                Next
+              </Text>
+            </Pressable>
+
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => focusField(undefined)}
+              style={({ pressed }) => [
+                accessorySt.doneButton,
+                { backgroundColor: colors.accent },
+                pressed ? accessorySt.actionButtonPressed : null,
+              ]}
+            >
+              <Text
+                style={[accessorySt.doneText, { color: colors.accentText }]}
+              >
+                Done
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      ) : null}
 
       <View
         style={[
@@ -2230,6 +2453,60 @@ const cpSt = StyleSheet.create({
     justifyContent: "center",
   },
   applyText: {
+    fontFamily: "ReadexPro-Medium",
+    fontSize: 16,
+  },
+});
+
+const accessorySt = StyleSheet.create({
+  androidToolbarWrap: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    zIndex: 20,
+    elevation: 20,
+  },
+  toolbar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  androidToolbar: {
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    paddingHorizontal: 18,
+    shadowColor: "#000",
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: -2 },
+    elevation: 8,
+  },
+  actionButton: {
+    minWidth: 64,
+    paddingVertical: 8,
+  },
+  actionButtonDisabled: {
+    opacity: 0.45,
+  },
+  actionButtonPressed: {
+    opacity: 0.72,
+  },
+  actionText: {
+    fontFamily: "ReadexPro-Medium",
+    fontSize: 16,
+  },
+  doneButton: {
+    minWidth: 76,
+    borderRadius: 999,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  doneText: {
     fontFamily: "ReadexPro-Medium",
     fontSize: 16,
   },
