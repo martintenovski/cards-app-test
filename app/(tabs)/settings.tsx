@@ -219,7 +219,8 @@ export default function SettingsScreen() {
     const permissions = await Notifications.requestPermissionsAsync();
     const notificationsAllowed =
       permissions.status === Notifications.PermissionStatus.GRANTED ||
-      permissions.ios?.status === Notifications.IosAuthorizationStatus.PROVISIONAL;
+      permissions.ios?.status ===
+        Notifications.IosAuthorizationStatus.PROVISIONAL;
 
     if (!notificationsAllowed) return;
     // Pick the first card that has an expiry date, fall back to any card

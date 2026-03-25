@@ -510,7 +510,7 @@ export function SupportModal({
                 handleColor={colors.textSoft}
                 onClose={dismissWithAnimation}
               >
-                <Text style={[styles.subheading, { color: colors.textMuted }]}> 
+                <Text style={[styles.subheading, { color: colors.textMuted }]}>
                   Optional support for the developer, entirely by free will.
                 </Text>
 
