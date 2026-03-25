@@ -5,6 +5,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -52,6 +53,14 @@ const SUPABASE_SETUP_STEPS = [
   "For preview or production phone builds, also add the same EXPO_PUBLIC_* values to your Expo/EAS environment variables and rebuild.",
   "In Authentication > Providers, enable Google before testing sign-in.",
 ];
+
+function getAuthErrorMessage(error: unknown) {
+  if (error instanceof Error && error.message.trim().length > 0) {
+    return error.message;
+  }
+
+  return "Pocket ID could not finish Google sign-in right now. Please try again.";
+}
 
 function SetupValue({
   label,
@@ -227,6 +236,8 @@ export default function ProfileScreen() {
       if (session) {
         requestSync("Syncing your device and encrypted cloud vault...");
       }
+    } catch (error) {
+      Alert.alert("Google sign-in failed", getAuthErrorMessage(error));
     } finally {
       setAuthBusy(null);
     }
@@ -235,13 +246,17 @@ export default function ProfileScreen() {
   const handleSwitchGoogleAccount = async () => {
     try {
       setAuthBusy("switch-google");
-      await signOut();
       const session = await signInWithProvider("google", {
         selectAccount: true,
       });
       if (session) {
         requestSync("Syncing your device and encrypted cloud vault...");
       }
+    } catch (error) {
+      Alert.alert(
+        "Could not switch Google account",
+        getAuthErrorMessage(error),
+      );
     } finally {
       setAuthBusy(null);
     }
@@ -251,6 +266,8 @@ export default function ProfileScreen() {
     try {
       setAuthBusy("signout");
       await signOut();
+    } catch (error) {
+      Alert.alert("Could not sign out", getAuthErrorMessage(error));
     } finally {
       setAuthBusy(null);
     }

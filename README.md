@@ -245,6 +245,9 @@ For local development, add the following to `.env.local`:
 
 - `EXPO_PUBLIC_SUPABASE_URL`
 - `EXPO_PUBLIC_SUPABASE_ANON_KEY`
+- `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`
+- `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID`
+- `EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME`
 
 For EAS `preview`, `development`, or `production` builds, you must also add
 the same `EXPO_PUBLIC_*` values in your Expo/EAS environment configuration
@@ -254,6 +257,27 @@ before starting the build. Remote builds do not receive your ignored local
 If these values are missing or still set to the example placeholders, the app
 will treat Supabase as not configured and Google/Supabase cloud sync will stay
 disabled in that build.
+
+### Native Google Sign-In setup
+
+Pocket ID now uses native Google account selection on iOS and Android and then
+hands the returned Google ID token to Supabase with
+`supabase.auth.signInWithIdToken({ provider: "google", token })`.
+
+Google Cloud setup summary:
+
+- create an **Android OAuth client ID** for package `com.tenovski.cardsapp`
+- add every required Android **SHA-1** fingerprint for your debug, EAS, and
+  release signing configs
+- create an **iOS OAuth client ID** for bundle ID `com.tenovski.cardsapp`
+- copy that iOS client's **reversed client ID** into
+  `EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME`
+- create a **Web OAuth client ID** and place it in
+  `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` so the native SDK can mint the ID token
+  that Supabase verifies
+
+After adding or changing the Google native credentials, rebuild the native app
+or development client so the Expo config plugin can register the iOS URL scheme.
 
 ### OAuth redirect scheme
 
