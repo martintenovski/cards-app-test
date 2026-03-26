@@ -3,7 +3,7 @@
     "name": "Pocket ID",
     "slug": "cards-app",
     "scheme": "pocketid",
-    "version": "1.0.0",
+    "version": "1.0.2",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "backgroundColor": "#1C1E21",
@@ -40,7 +40,7 @@
     "ios": {
       "icon": "./assets/ios-logo.png",
       "supportsTablet": true,
-      "buildNumber": "20",
+      "buildNumber": "21",
       "bundleIdentifier": "com.tenovski.cardsapp",
       "infoPlist": {
         "NSUserNotificationsUsageDescription": "Pocket ID uses notifications to remind you before cards and documents expire.",
@@ -60,7 +60,7 @@
         "backgroundImage": "./assets/droid-icon-background.png",
         "monochromeImage": "./assets/droid-monochrome.png"
       },
-      "versionCode": 19,
+      "versionCode": 21,
       "predictiveBackGestureEnabled": false,
       "package": "com.tenovski.cardsapp",
       "permissions": [
