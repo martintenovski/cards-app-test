@@ -1,6 +1,10 @@
+import { Feather } from "@expo/vector-icons";
 import { useIsFocused } from "@react-navigation/native";
 import { useEffect, useRef, useState } from "react";
+import * as Linking from "expo-linking";
+import { openURL } from "expo-linking";
 import * as Notifications from "expo-notifications";
+import Svg, { Path } from "react-native-svg";
 import {
   Alert,
   Pressable,
@@ -16,6 +20,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 
 import { deleteWalletSnapshot, isSupabaseConfigured } from "@/lib/supabase";
+import { CloudSyncInfoModal } from "@/components/CloudSyncInfoModal";
 import { GoogleWordmark } from "@/components/GoogleWordmark";
 import {
   canManageMonthlySubscription,
@@ -40,6 +45,28 @@ import { APP_THEME, resolveTheme } from "@/utils/theme";
 
 const THEME_OPTIONS: ThemePreference[] = ["system", "light", "dark"];
 const FLOATING_TAB_SCROLL_BUFFER = 132;
+const GITHUB_REPO_URL = "https://github.com/PowerCube0/pocket-id";
+
+function GitHubIcon({ size = 20, color = "#000" }: { size?: number; color?: string }) {
+  // Path from the official GitHub mark SVG (viewBox 0 0 16 16)
+  return (
+    <Svg viewBox="0 0 16 16" width={size} height={size}>
+      <Path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38
+           0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13
+           -.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66
+           .07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15
+           -.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2 .82.64-.18 1.32-.27 2-.27
+           .68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12
+           .51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48
+           0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"
+        fill={color}
+      />
+    </Svg>
+  );
+}
 
 function SettingToggle({
   label,
@@ -75,7 +102,7 @@ function SettingToggle({
           {description}
         </Text>
       </View>
-      <View style={[styles.switchWrap, { borderColor }]}>
+      <View style={[styles.switchWrap]}>
         <Switch
           value={value}
           onValueChange={onChange}
@@ -153,6 +180,7 @@ export default function SettingsScreen() {
   const [authBusy, setAuthBusy] = useState<
     "delete-data" | "forget-passphrase" | null
   >(null);
+  const [cloudInfoVisible, setCloudInfoVisible] = useState(false);
   const [cloudVaultStatus, setCloudVaultStatus] = useState<
     "loading" | "missing" | "ready"
   >("loading");
@@ -497,20 +525,6 @@ export default function SettingsScreen() {
             isDark={isDark}
             borderColor={colors.buttonBorder}
           />
-          <Pressable
-            onPress={sendTestNotification}
-            style={[
-              styles.testBtn,
-              {
-                backgroundColor: colors.surfaceMuted,
-                borderColor: colors.buttonBorder,
-              },
-            ]}
-          >
-            <Text style={[styles.testBtnText, { color: colors.text }]}>
-              Send test notification (5 s)
-            </Text>
-          </Pressable>
         </View>
 
         <View style={[styles.section, { backgroundColor: colors.surface }]}>
@@ -519,7 +533,18 @@ export default function SettingsScreen() {
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
               Cloud Sync
             </Text>
+            <Pressable
+              onPress={() => setCloudInfoVisible(true)}
+              style={styles.infoButton}
+              hitSlop={8}
+            >
+              <Feather name="info" size={18} color={colors.textMuted} />
+            </Pressable>
           </View>
+          <CloudSyncInfoModal
+            visible={cloudInfoVisible}
+            onClose={() => setCloudInfoVisible(false)}
+          />
           <Text style={[styles.sectionBody, { color: colors.textMuted }]}>
             Manage your encrypted cloud vault, sync cloud data on demand, and
             clean up this device when needed.
@@ -738,13 +763,45 @@ export default function SettingsScreen() {
         </View>
 
         <View style={[styles.section, { backgroundColor: colors.surface }]}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Onboarding
-          </Text>
+          <View style={styles.githubHeaderRow}>
+            <GitHubIcon size={22} color={colors.text} />
+            <Text style={[styles.sectionTitle, { color: colors.text }]}>
+              Open Source
+            </Text>
+          </View>
           <Text style={[styles.sectionBody, { color: colors.textMuted }]}>
-            Replay the Pocket ID introduction whenever you want to review the
-            welcome flow again.
+            Pocket ID is fully open source. Browse the code, report issues, or
+            contribute on GitHub.
           </Text>
+          <Pressable
+            onPress={() => void openURL(GITHUB_REPO_URL)}
+            style={[styles.githubButton, { borderColor: colors.buttonBorder }]}
+          >
+            <GitHubIcon size={18} color={colors.text} />
+            <Text style={[styles.githubButtonText, { color: colors.text }]}>
+              Open on GitHub
+            </Text>
+          </Pressable>
+        </View>
+
+        <View style={[styles.section, { backgroundColor: colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            Developer Actions
+          </Text>
+          <Pressable
+            onPress={sendTestNotification}
+            style={[
+              styles.testBtn,
+              {
+                backgroundColor: colors.surfaceMuted,
+                borderColor: colors.buttonBorder,
+              },
+            ]}
+          >
+            <Text style={[styles.testBtnText, { color: colors.text }]}>
+              Send test notification (5 s)
+            </Text>
+          </Pressable>
           <Pressable
             onPress={replayOnboarding}
             style={[
@@ -757,30 +814,6 @@ export default function SettingsScreen() {
           >
             <Text style={[styles.testBtnText, { color: colors.text }]}>
               View onboarding again
-            </Text>
-          </Pressable>
-        </View>
-
-        <View style={[styles.section, { backgroundColor: colors.surface }]}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            DEV / TEST
-          </Text>
-          <Text style={[styles.sectionBody, { color: colors.textMuted }]}>
-            Manually open the support modal while testing RevenueCat Sandbox or
-            TestFlight flows.
-          </Text>
-          <Pressable
-            onPress={() => openSupportModal("dev")}
-            style={[
-              styles.testBtn,
-              {
-                backgroundColor: colors.surfaceMuted,
-                borderColor: colors.buttonBorder,
-              },
-            ]}
-          >
-            <Text style={[styles.testBtnText, { color: colors.text }]}>
-              🧪 Trigger Support Modal
             </Text>
           </Pressable>
         </View>
@@ -821,6 +854,31 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     marginBottom: 8,
+  },
+  infoButton: {
+    marginLeft: "auto",
+    padding: 2,
+  },
+  githubHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 8,
+  },
+  githubButton: {
+    marginTop: 14,
+    borderRadius: 20,
+    minHeight: 52,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+  },
+  githubButtonText: {
+    fontFamily: "ReadexPro-Medium",
+    fontSize: 15,
   },
   sectionTitle: {
     fontFamily: "ReadexPro-Bold",
@@ -907,7 +965,7 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   switchWrap: {
-    borderWidth: 1,
+    borderWidth: 0,
     borderRadius: 999,
     padding: 2,
   },

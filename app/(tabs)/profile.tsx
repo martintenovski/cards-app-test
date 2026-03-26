@@ -17,6 +17,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { GoogleWordmark } from "@/components/GoogleWordmark";
+import { CloudSyncInfoModal } from "@/components/CloudSyncInfoModal";
 import { isSupabaseConfigured, supabaseConfigStatus } from "@/lib/supabase";
 import {
   getSupportBadges,
@@ -176,6 +177,7 @@ export default function ProfileScreen() {
   const [authBusy, setAuthBusy] = useState<
     "google" | "switch-google" | "signout" | null
   >(null);
+  const [cloudInfoVisible, setCloudInfoVisible] = useState(false);
   const [cloudVaultStatus, setCloudVaultStatus] = useState<
     "loading" | "missing" | "ready"
   >("loading");
@@ -420,7 +422,18 @@ export default function ProfileScreen() {
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
               Account
             </Text>
+            <Pressable
+              onPress={() => setCloudInfoVisible(true)}
+              style={styles.infoButton}
+              hitSlop={8}
+            >
+              <Feather name="info" size={18} color={colors.textMuted} />
+            </Pressable>
           </View>
+          <CloudSyncInfoModal
+            visible={cloudInfoVisible}
+            onClose={() => setCloudInfoVisible(false)}
+          />
           {!isSupabaseConfigured ? (
             <>
               <Text style={[styles.accountLabel, { color: colors.text }]}>
@@ -741,6 +754,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: 8,
     marginBottom: 10,
+  },
+  infoButton: {
+    marginLeft: "auto",
+    padding: 2,
   },
   sectionTitle: {
     fontFamily: "ReadexPro-Bold",

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import {
@@ -41,6 +41,9 @@ export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
   const { width, height } = useWindowDimensions();
   const [menuOpen, setMenuOpen] = useState(false);
   const [quickViewCard, setQuickViewCard] = useState<WalletCard | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [funMessage, setFunMessage] = useState({ emoji: "🃏", text: "Shuffling your cards..." });
+  const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cards = useCardStore((state) => state.cards);
   const viewMode = useCardStore((state) => state.viewMode);
   const homeFilter = useCardStore((state) => state.homeFilter);
@@ -53,6 +56,35 @@ export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
   const colors = APP_THEME[resolvedTheme];
   const isCompact = width < 390;
   const isShort = height < 760;
+
+  const FUN_MESSAGES = [
+    { emoji: "🃏", text: "Shuffling your cards..." },
+    { emoji: "✨", text: "Polishing your wallet..." },
+    { emoji: "🔍", text: "Checking for secret cards..." },
+    { emoji: "🧹", text: "Dusting off the deck..." },
+    { emoji: "🎴", text: "Dealing from the top..." },
+    { emoji: "🪄", text: "Nothing up my sleeve..." },
+    { emoji: "🎩", text: "Pulling a card out of a hat..." },
+    { emoji: "💳", text: "Card inspection in progress..." },
+    { emoji: "🎰", text: "Jackpot? Nope. Still the same cards." },
+  ];
+
+  const handleRefresh = () => {
+    const msg = FUN_MESSAGES[Math.floor(Math.random() * FUN_MESSAGES.length)];
+    setFunMessage(msg);
+    setRefreshing(true);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    if (refreshTimer.current) clearTimeout(refreshTimer.current);
+    refreshTimer.current = setTimeout(() => {
+      setRefreshing(false);
+    }, 1400);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (refreshTimer.current) clearTimeout(refreshTimer.current);
+    };
+  }, []);
 
   // Chevron rotation animation
   const chevronRotate = useSharedValue(0);
@@ -177,6 +209,9 @@ export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
             onCardLongPress={(id) =>
               openQuickViewForCard(filteredDemoCards, id)
             }
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            funMessage={funMessage}
             header={
               <View style={styles.demoHeaderStack}>
                 <Pressable
@@ -287,6 +322,9 @@ export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
               router.push({ pathname: "/card-detail", params: { id } })
             }
             onCardLongPress={(id) => openQuickViewForCard(filteredCards, id)}
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            funMessage={funMessage}
           />
         )}
       </View>
