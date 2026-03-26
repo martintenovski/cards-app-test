@@ -211,18 +211,22 @@ async function signInWithNativeGoogle(options?: { selectAccount?: boolean }) {
       await nativeGoogleSignIn.GoogleSignin.signOut().catch(() => null);
     }
 
-    // Generate a nonce so both Google's id_token and Supabase share the same value.
-    // On iOS, Google Sign-In embeds a SHA-256 hash of the nonce in the id_token;
-    // Supabase verifies this by re-hashing the raw nonce we provide.
-    const rawNonce = Crypto.randomUUID();
-    const hashedNonce = await Crypto.digestStringAsync(
-      Crypto.CryptoDigestAlgorithm.SHA256,
-      rawNonce,
-    );
+    // Nonce is only supported on iOS. The patched iOS bridge forwards hashedNonce to
+    // GIDSignIn, which embeds it in the id_token; Supabase verifies by re-hashing rawNonce.
+    // On Android, the old GoogleSignInOptions API has no nonce support — the id_token
+    // never contains a nonce claim, so we must not pass one to Supabase either.
+    const rawNonce = Platform.OS === "ios" ? Crypto.randomUUID() : undefined;
+    const hashedNonce =
+      rawNonce !== undefined
+        ? await Crypto.digestStringAsync(
+            Crypto.CryptoDigestAlgorithm.SHA256,
+            rawNonce,
+          )
+        : undefined;
 
-    const response = await nativeGoogleSignIn.GoogleSignin.signIn({
-      nonce: hashedNonce,
-    });
+    const response = await nativeGoogleSignIn.GoogleSignin.signIn(
+      hashedNonce !== undefined ? { nonce: hashedNonce } : {},
+    );
 
     if (nativeGoogleSignIn.isCancelledResponse(response)) {
       return null;
@@ -245,7 +249,7 @@ async function signInWithNativeGoogle(options?: { selectAccount?: boolean }) {
     const { data, error } = await supabase!.auth.signInWithIdToken({
       provider: "google",
       token: idToken,
-      nonce: rawNonce,
+      ...(rawNonce !== undefined ? { nonce: rawNonce } : {}),
     });
 
     if (error) {
