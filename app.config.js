@@ -29,13 +29,66 @@ function readEnvFileValue(fileContents, key) {
   return readEnvValue(value);
 }
 
+function parseEnvFile(filePath) {
+  if (!fs.existsSync(filePath)) {
+    return {};
+  }
+
+  const fileContents = fs.readFileSync(filePath, "utf8");
+  const values = {};
+
+  for (const line of fileContents.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) {
+      continue;
+    }
+
+    const separatorIndex = trimmed.indexOf("=");
+    if (separatorIndex === -1) {
+      continue;
+    }
+
+    const key = trimmed.slice(0, separatorIndex).trim();
+    if (!key) {
+      continue;
+    }
+
+    const value = readEnvFileValue(fileContents, key);
+    if (value) {
+      values[key] = value;
+    }
+  }
+
+  return values;
+}
+
+function getRuntimeEnvValues() {
+  const envLocalValues = parseEnvFile(path.join(__dirname, ".env.local"));
+  const envValues = parseEnvFile(path.join(__dirname, ".env"));
+  const mergedValues = {
+    ...envLocalValues,
+    ...envValues,
+  };
+
+  for (const [key, value] of Object.entries(process.env)) {
+    if (key === "NODE_ENV" || key.startsWith("EXPO_PUBLIC_")) {
+      const normalizedValue = readEnvValue(value);
+      if (normalizedValue) {
+        mergedValues[key] = normalizedValue;
+      }
+    }
+  }
+
+  return mergedValues;
+}
+
 function readProjectEnvValue(key) {
   const directValue = readEnvValue(process.env[key]);
   if (directValue) {
     return directValue;
   }
 
-  for (const fileName of [".env.local", ".env"]) {
+  for (const fileName of [".env", ".env.local"]) {
     const filePath = path.join(__dirname, fileName);
     if (!fs.existsSync(filePath)) {
       continue;
@@ -74,6 +127,7 @@ const googleIosClientId = readProjectEnvValue(
 const googleIosUrlScheme =
   readProjectEnvValue("EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME") ??
   deriveGoogleIosUrlScheme(googleIosClientId);
+const runtimeEnvValues = getRuntimeEnvValues();
 
 module.exports = ({ config }) => {
   const baseConfig = config ?? {};
@@ -102,6 +156,7 @@ module.exports = ({ config }) => {
     ...baseConfig,
     extra: {
       ...(baseConfig.extra ?? {}),
+      ...runtimeEnvValues,
       googleWebClientId,
       googleIosClientId,
       googleIosUrlScheme,

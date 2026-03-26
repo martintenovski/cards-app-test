@@ -30,6 +30,7 @@ import { AppPreviewShield } from "@/components/AppPreviewShield";
 import { CardItem } from "@/components/CardItem";
 import { EditCardSheet } from "@/components/EditCardSheet";
 import { ExpiryBadge } from "@/components/ExpiryBadge";
+import { findDemoCardById } from "@/constants/demoCards";
 import { useCardStore } from "@/store/useCardStore";
 import {
   createSharedCardFileName,
@@ -58,7 +59,8 @@ export default function CardDetailScreen() {
 
   const [toastMessage, setToastMessage] = useState("");
   const [toastVisible, setToastVisible] = useState(false);
-  const initialCard = cards.find((c) => c.id === id);
+  const demoCard = findDemoCardById(id);
+  const initialCard = cards.find((c) => c.id === id) ?? demoCard ?? undefined;
   const defaultsToBack =
     initialCard?.category === "club" &&
     (initialCard as import("@/types/card").ClubCard).memberIdFormat ===
@@ -91,7 +93,8 @@ export default function CardDetailScreen() {
     backfaceVisibility: "hidden",
   }));
 
-  const card = cards.find((c) => c.id === id);
+  const card = cards.find((c) => c.id === id) ?? demoCard;
+  const isDemoCard = Boolean(demoCard);
 
   if (!card) {
     return (
@@ -108,6 +111,13 @@ export default function CardDetailScreen() {
   }
 
   const currentCard = card;
+
+  function showDemoActionWarning(actionLabel: string) {
+    Alert.alert(
+      "Demo card",
+      `${actionLabel} is not available for demo cards. Add your own card or sync your saved cards to use this action.`,
+    );
+  }
 
   const canFlip = supportsCardBack(currentCard);
 
@@ -133,6 +143,11 @@ export default function CardDetailScreen() {
   }
 
   function handleDelete() {
+    if (isDemoCard) {
+      showDemoActionWarning("Delete");
+      return;
+    }
+
     Alert.alert(
       "Delete Card",
       "This card will be removed from this device immediately. If cloud sync is unlocked on this device, Pocket ID will also sync that deletion to your encrypted cloud vault. Continue?",
@@ -326,6 +341,12 @@ export default function CardDetailScreen() {
   async function handleShareOption(
     option: "image" | "text" | "pocket-id-file",
   ) {
+    if (isDemoCard) {
+      setShareSheetOpen(false);
+      showDemoActionWarning("Share");
+      return;
+    }
+
     setShareSheetOpen(false);
     await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
@@ -367,7 +388,13 @@ export default function CardDetailScreen() {
         <Pressable
           hitSlop={12}
           style={styles.headerBtn}
-          onPress={() => setEditSheetOpen(true)}
+          onPress={() => {
+            if (isDemoCard) {
+              showDemoActionWarning("Edit");
+              return;
+            }
+            setEditSheetOpen(true);
+          }}
         >
           <Feather name="edit-2" size={20} color={colors.text} />
         </Pressable>
@@ -492,7 +519,13 @@ export default function CardDetailScreen() {
           accessibilityRole="button"
           accessibilityLabel="Share card"
           disabled={isSharing}
-          onPress={() => setShareSheetOpen(true)}
+          onPress={() => {
+            if (isDemoCard) {
+              showDemoActionWarning("Share");
+              return;
+            }
+            setShareSheetOpen(true);
+          }}
           style={[
             styles.shareBtn,
             {
@@ -563,7 +596,7 @@ export default function CardDetailScreen() {
 
             <Pressable
               onPress={() => handleShareOption("image")}
-              style={[styles.shareOption, { borderColor: colors.border }]}
+              style={[styles.shareOption, { borderColor: colors.buttonBorder }]}
             >
               <View>
                 <Text style={[styles.shareOptionTitle, { color: colors.text }]}>
@@ -580,7 +613,7 @@ export default function CardDetailScreen() {
 
             <Pressable
               onPress={() => handleShareOption("text")}
-              style={[styles.shareOption, { borderColor: colors.border }]}
+              style={[styles.shareOption, { borderColor: colors.buttonBorder }]}
             >
               <View>
                 <Text style={[styles.shareOptionTitle, { color: colors.text }]}>
@@ -597,7 +630,7 @@ export default function CardDetailScreen() {
 
             <Pressable
               onPress={() => handleShareOption("pocket-id-file")}
-              style={[styles.shareOption, { borderColor: colors.border }]}
+              style={[styles.shareOption, { borderColor: colors.buttonBorder }]}
             >
               <View>
                 <Text style={[styles.shareOptionTitle, { color: colors.text }]}>

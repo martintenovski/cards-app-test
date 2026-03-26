@@ -538,7 +538,11 @@ export default function ProfileScreen() {
                   style={[
                     styles.authButton,
                     styles.authButtonSecondary,
-                    { backgroundColor: colors.surfaceMuted },
+                    {
+                      backgroundColor: colors.surfaceMuted,
+                      borderWidth: 1,
+                      borderColor: colors.buttonBorder,
+                    },
                   ]}
                 >
                   <Text style={[styles.authButtonText, { color: colors.text }]}>

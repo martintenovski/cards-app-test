@@ -48,11 +48,13 @@ WebBrowser.maybeCompleteAuthSession();
 
 const AUTH_CALLBACK_PATH = "auth/callback";
 const googleWebClientId =
-  readEnvValue(process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID) ??
-  getExpoExtraString("googleWebClientId");
+  getExpoExtraString("EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID") ??
+  getExpoExtraString("googleWebClientId") ??
+  readEnvValue(process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID);
 const googleIosClientId =
-  readEnvValue(process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID) ??
-  getExpoExtraString("googleIosClientId");
+  getExpoExtraString("EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID") ??
+  getExpoExtraString("googleIosClientId") ??
+  readEnvValue(process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID);
 let hasConfiguredNativeGoogleSignIn = false;
 
 const redirectTo = makeRedirectUri({

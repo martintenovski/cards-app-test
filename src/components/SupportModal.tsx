@@ -379,7 +379,9 @@ export function SupportModal({
                     backgroundColor: canPurchase
                       ? colors.accent
                       : colors.surface,
-                    borderColor: canPurchase ? colors.accent : colors.border,
+                    borderColor: canPurchase
+                      ? colors.accent
+                      : colors.buttonBorder,
                     borderWidth: 1,
                     opacity: purchasingIdentifier && !isPurchasing ? 0.55 : 1,
                   },
@@ -407,7 +409,7 @@ export function SupportModal({
                     styles.secondaryAction,
                     {
                       backgroundColor: colors.surface,
-                      borderColor: colors.border,
+                      borderColor: colors.buttonBorder,
                       borderWidth: 1,
                     },
                   ]}

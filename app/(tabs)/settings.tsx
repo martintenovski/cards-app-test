@@ -50,6 +50,7 @@ function SettingToggle({
   mutedColor,
   accentColor,
   isDark,
+  borderColor,
 }: {
   label: string;
   description: string;
@@ -59,6 +60,7 @@ function SettingToggle({
   mutedColor: string;
   accentColor: string;
   isDark: boolean;
+  borderColor: string;
 }) {
   const falseTrack = isDark ? "#353535" : "rgba(127,127,127,0.35)";
   const falseThumb = isDark ? "#7A7A7A" : "#FFFFFF";
@@ -73,13 +75,15 @@ function SettingToggle({
           {description}
         </Text>
       </View>
-      <Switch
-        value={value}
-        onValueChange={onChange}
-        trackColor={{ false: falseTrack, true: trueTrack }}
-        thumbColor={value ? trueThumb : falseThumb}
-        ios_backgroundColor={falseTrack}
-      />
+      <View style={[styles.switchWrap, { borderColor }]}>
+        <Switch
+          value={value}
+          onValueChange={onChange}
+          trackColor={{ false: falseTrack, true: trueTrack }}
+          thumbColor={value ? trueThumb : falseThumb}
+          ios_backgroundColor={falseTrack}
+        />
+      </View>
     </View>
   );
 }
@@ -385,7 +389,10 @@ export default function SettingsScreen() {
           <View
             style={[
               styles.themeOptionRow,
-              { backgroundColor: colors.surfaceMuted },
+              {
+                backgroundColor: colors.surfaceMuted,
+                borderColor: colors.buttonBorder,
+              },
             ]}
           >
             {THEME_OPTIONS.map((option) => {
@@ -427,7 +434,10 @@ export default function SettingsScreen() {
           <View
             style={[
               styles.themeOptionRow,
-              { backgroundColor: colors.surfaceMuted },
+              {
+                backgroundColor: colors.surfaceMuted,
+                borderColor: colors.buttonBorder,
+              },
             ]}
           >
             {(["stack", "list"] as const).map((option) => {
@@ -468,6 +478,7 @@ export default function SettingsScreen() {
             mutedColor={colors.textMuted}
             accentColor={colors.accent}
             isDark={isDark}
+            borderColor={colors.buttonBorder}
           />
         </View>
 
@@ -484,6 +495,7 @@ export default function SettingsScreen() {
             mutedColor={colors.textMuted}
             accentColor={colors.accent}
             isDark={isDark}
+            borderColor={colors.buttonBorder}
           />
           <Pressable
             onPress={sendTestNotification}
@@ -491,7 +503,7 @@ export default function SettingsScreen() {
               styles.testBtn,
               {
                 backgroundColor: colors.surfaceMuted,
-                borderColor: colors.border,
+                borderColor: colors.buttonBorder,
               },
             ]}
           >
@@ -551,7 +563,7 @@ export default function SettingsScreen() {
                   styles.testBtn,
                   {
                     backgroundColor: colors.surfaceMuted,
-                    borderColor: colors.border,
+                    borderColor: colors.buttonBorder,
                   },
                 ]}
               >
@@ -568,7 +580,7 @@ export default function SettingsScreen() {
                     styles.testBtn,
                     {
                       backgroundColor: colors.surfaceMuted,
-                      borderColor: colors.border,
+                      borderColor: colors.buttonBorder,
                     },
                   ]}
                 >
@@ -585,7 +597,7 @@ export default function SettingsScreen() {
                   styles.testBtn,
                   {
                     backgroundColor: colors.surfaceMuted,
-                    borderColor: colors.border,
+                    borderColor: colors.buttonBorder,
                   },
                 ]}
               >
@@ -685,7 +697,7 @@ export default function SettingsScreen() {
               styles.testBtn,
               {
                 backgroundColor: colors.surfaceMuted,
-                borderColor: colors.border,
+                borderColor: colors.buttonBorder,
               },
             ]}
           >
@@ -696,7 +708,13 @@ export default function SettingsScreen() {
           {canManageMonthlySubscription(customerInfo) ? (
             <Pressable
               onPress={() => void handleManageSubscription()}
-              style={[styles.testBtn, { backgroundColor: colors.surfaceMuted }]}
+              style={[
+                styles.testBtn,
+                {
+                  backgroundColor: colors.surfaceMuted,
+                  borderColor: colors.buttonBorder,
+                },
+              ]}
             >
               <Text style={[styles.testBtnText, { color: colors.text }]}>
                 Cancel Monthly Subscription
@@ -705,7 +723,13 @@ export default function SettingsScreen() {
           ) : null}
           <Pressable
             onPress={handleRestorePurchases}
-            style={[styles.testBtn, { backgroundColor: colors.surfaceMuted }]}
+            style={[
+              styles.testBtn,
+              {
+                backgroundColor: colors.surfaceMuted,
+                borderColor: colors.buttonBorder,
+              },
+            ]}
           >
             <Text style={[styles.testBtnText, { color: colors.text }]}>
               Restore Purchases
@@ -723,7 +747,13 @@ export default function SettingsScreen() {
           </Text>
           <Pressable
             onPress={replayOnboarding}
-            style={[styles.testBtn, { backgroundColor: colors.surfaceMuted }]}
+            style={[
+              styles.testBtn,
+              {
+                backgroundColor: colors.surfaceMuted,
+                borderColor: colors.buttonBorder,
+              },
+            ]}
           >
             <Text style={[styles.testBtnText, { color: colors.text }]}>
               View onboarding again
@@ -741,7 +771,13 @@ export default function SettingsScreen() {
           </Text>
           <Pressable
             onPress={() => openSupportModal("dev")}
-            style={[styles.testBtn, { backgroundColor: colors.surfaceMuted }]}
+            style={[
+              styles.testBtn,
+              {
+                backgroundColor: colors.surfaceMuted,
+                borderColor: colors.buttonBorder,
+              },
+            ]}
           >
             <Text style={[styles.testBtnText, { color: colors.text }]}>
               🧪 Trigger Support Modal
@@ -798,6 +834,7 @@ const styles = StyleSheet.create({
   },
   themeOptionRow: {
     borderRadius: 24,
+    borderWidth: 1,
     padding: 6,
     flexDirection: "row",
     gap: 6,
@@ -868,6 +905,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     gap: 16,
+  },
+  switchWrap: {
+    borderWidth: 1,
+    borderRadius: 999,
+    padding: 2,
   },
   toggleTextBlock: {
     flex: 1,

@@ -135,13 +135,6 @@ export default function RootLayout() {
                 }}
               />
               <Stack.Screen
-                name="add-card"
-                options={{
-                  presentation: "transparentModal",
-                  animation: "none",
-                }}
-              />
-              <Stack.Screen
                 name="card-detail"
                 options={{
                   headerShown: false,

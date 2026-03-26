@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 
 import { CardItem } from "@/components/CardItem";
@@ -5,6 +6,7 @@ import type { WalletCard } from "@/types/card";
 
 type CardListProps = {
   cards: WalletCard[];
+  header?: ReactNode;
   onCardPress?: (id: string) => void;
   onCardLongPress?: (id: string) => void;
   bottomSpacing?: number;
@@ -12,6 +14,7 @@ type CardListProps = {
 
 export function CardList({
   cards,
+  header,
   onCardPress,
   onCardLongPress,
   bottomSpacing = 120,
@@ -22,6 +25,7 @@ export function CardList({
       contentContainerStyle={[styles.content, { paddingBottom: bottomSpacing }]}
       showsVerticalScrollIndicator={false}
     >
+      {header ? <View style={styles.header}>{header}</View> : null}
       {cards.map((card) => (
         <Pressable
           key={card.id}
@@ -45,6 +49,9 @@ const styles = StyleSheet.create({
     paddingTop: 0,
     paddingHorizontal: 25,
     gap: 16,
+  },
+  header: {
+    width: "100%",
   },
   item: {
     width: "100%",

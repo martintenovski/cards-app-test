@@ -6,6 +6,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  useColorScheme,
   View,
   useWindowDimensions,
   type ListRenderItemInfo,
@@ -17,6 +18,7 @@ import { useRouter } from "expo-router";
 
 import { AppPreviewShield } from "@/components/AppPreviewShield";
 import { useCardStore } from "@/store/useCardStore";
+import { APP_THEME, resolveTheme } from "@/utils/theme";
 
 const ONBOARDING_STEPS = [
   {
@@ -39,6 +41,11 @@ const ONBOARDING_STEPS = [
     title: "Customize the app to fit how you organize things",
     body: "Tune colors, themes, layout preferences, and security options so Pocket ID feels personal, stays easy to scan, and matches the way you like to manage important cards.",
   },
+  {
+    illustration: require("@/assets/onboarding/demo.png"),
+    title: "Preview the wallet with demo cards before you import your own",
+    body: "If your wallet starts empty, Pocket ID shows a few temporary demo cards under Add your first card so you can see the layout right away. They are removed automatically after you add a card or sync your saved cards with Google.",
+  },
 ] as const;
 
 const COLORS = {
@@ -47,21 +54,24 @@ const COLORS = {
   body: "rgba(45, 43, 46, 0.6)",
   dot: "#D7D6DB",
   dotActive: "#2D2B2E",
-  skip: "rgba(45, 43, 46, 0.4)",
-  actionBlue: "#1A6BC8",
-  actionBlueText: "#FFFFFF",
 } as const;
+
+const ONBOARDING_BUTTON_COLORS = APP_THEME.light;
 
 export default function OnboardingScreen() {
   const router = useRouter();
+  const deviceScheme = useColorScheme();
   const listRef = useRef<FlatList<(typeof ONBOARDING_STEPS)[number]> | null>(
     null,
   );
   const [stepIndex, setStepIndex] = useState(0);
   const { width, height } = useWindowDimensions();
+  const themePreference = useCardStore((state) => state.themePreference);
   const setHasSeenOnboarding = useCardStore(
     (state) => state.setHasSeenOnboarding,
   );
+  const resolvedTheme = resolveTheme(themePreference, deviceScheme);
+  const colors = APP_THEME[resolvedTheme];
 
   const isCompact = width < 390 || height < 820;
   const isVeryCompact = width < 360 || height < 740;
@@ -215,9 +225,23 @@ export default function OnboardingScreen() {
             accessibilityLabel="Skip onboarding"
             hitSlop={10}
             onPress={finishOnboarding}
-            style={styles.footerAction}
+            style={[
+              styles.footerAction,
+              styles.secondaryAction,
+              {
+                backgroundColor: ONBOARDING_BUTTON_COLORS.surfaceMuted,
+                borderColor: ONBOARDING_BUTTON_COLORS.buttonBorder,
+              },
+            ]}
           >
-            <Text style={styles.skipText}>Skip</Text>
+            <Text
+              style={[
+                styles.skipText,
+                { color: ONBOARDING_BUTTON_COLORS.text },
+              ]}
+            >
+              Skip
+            </Text>
           </Pressable>
 
           <View style={styles.paginationRow}>
@@ -244,9 +268,18 @@ export default function OnboardingScreen() {
             }
             hitSlop={10}
             onPress={handleNext}
-            style={[styles.footerAction, styles.primaryAction]}
+            style={[
+              styles.footerAction,
+              styles.primaryAction,
+              { backgroundColor: ONBOARDING_BUTTON_COLORS.accent },
+            ]}
           >
-            <Text style={styles.nextText}>
+            <Text
+              style={[
+                styles.nextText,
+                { color: ONBOARDING_BUTTON_COLORS.accentText },
+              ]}
+            >
               {stepIndex === ONBOARDING_STEPS.length - 1 ? "Done" : "Next"}
             </Text>
           </Pressable>
@@ -319,27 +352,28 @@ const styles = StyleSheet.create({
   footerAction: {
     minWidth: 100,
     minHeight: 52,
-    justifyContent: "center",
-  },
-  primaryAction: {
-    backgroundColor: COLORS.actionBlue,
-    paddingHorizontal: 16,
     borderRadius: 20,
+    paddingHorizontal: 16,
     alignItems: "center",
     justifyContent: "center",
   },
+  secondaryAction: {
+    borderWidth: 1,
+  },
+  primaryAction: {
+    shadowOpacity: 0,
+  },
   skipText: {
-    fontFamily: "ReadexPro-Regular",
-    fontSize: 18,
-    lineHeight: 28,
-    color: COLORS.skip,
+    fontFamily: "ReadexPro-Medium",
+    fontSize: 15,
+    textAlign: "center",
+    width: "100%",
   },
   nextText: {
     fontFamily: "ReadexPro-Medium",
     fontSize: 15,
-    lineHeight: 22,
-    color: COLORS.actionBlueText,
     textAlign: "center",
+    width: "100%",
   },
   paginationRow: {
     flex: 1,

@@ -21,6 +21,7 @@ import { CardList } from "@/components/CardList";
 import { CardQuickView } from "@/components/CardQuickView";
 import { CardStack } from "@/components/CardStack";
 import { TopMenu } from "@/components/TopMenu";
+import { DEMO_CARDS } from "@/constants/demoCards";
 import { useCardStore } from "@/store/useCardStore";
 import {
   FILTER_LABELS,
@@ -45,6 +46,7 @@ export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
   const homeFilter = useCardStore((state) => state.homeFilter);
   const themePreference = useCardStore((state) => state.themePreference);
   const setHomeFilter = useCardStore((state) => state.setHomeFilter);
+  const openAddCardSheet = useCardStore((state) => state.openAddCardSheet);
   const cycleCardFwd = useCardStore((state) => state.cycleCardFwd);
   const cycleCardBwd = useCardStore((state) => state.cycleCardBwd);
   const resolvedTheme = resolveTheme(themePreference, deviceScheme);
@@ -73,14 +75,21 @@ export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
     () => getCardsByFilter(cards, activeFilter),
     [activeFilter, cards],
   );
+  const filteredDemoCards = useMemo(
+    () =>
+      activeFilter === "everything"
+        ? DEMO_CARDS
+        : getCardsByFilter(DEMO_CARDS, activeFilter),
+    [activeFilter],
+  );
 
   const handleSelectFilter = (filter: HomeFilter) => {
     setHomeFilter(filter);
     // Filter in place — no navigation
   };
 
-  const handleCardLongPress = (id: string) => {
-    const card = filteredCards.find((c) => c.id === id);
+  const openQuickViewForCard = (availableCards: WalletCard[], id: string) => {
+    const card = availableCards.find((candidate) => candidate.id === id);
     if (!card) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     setQuickViewCard(card);
@@ -159,44 +168,85 @@ export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
         ]}
       >
         {cards.length === 0 ? (
-          <Pressable
-            style={[
-              styles.mockCard,
-              {
-                marginHorizontal: isCompact ? 20 : 25,
-                height: isCompact ? 212 : 252,
-                borderRadius: isCompact ? 24 : 30,
-                borderColor: colors.border,
-                backgroundColor: colors.surface,
-              },
-            ]}
-            onPress={() => router.push("/add-card")}
-          >
-            <Feather
-              name="credit-card"
-              size={isCompact ? 38 : 44}
-              color={colors.textSoft}
-            />
-            <Text
-              style={[
-                styles.mockCardText,
-                { color: colors.textMuted, fontSize: isCompact ? 17 : 18 },
-              ]}
-            >
-              Add your first card
-            </Text>
-            <Text
-              style={[
-                styles.mockCardSub,
-                {
-                  color: colors.textSoft,
-                  fontSize: isCompact ? 12 : 13,
-                },
-              ]}
-            >
-              Tap here to get started
-            </Text>
-          </Pressable>
+          <CardList
+            cards={filteredDemoCards}
+            bottomSpacing={132}
+            onCardPress={(id) =>
+              router.push({ pathname: "/card-detail", params: { id } })
+            }
+            onCardLongPress={(id) =>
+              openQuickViewForCard(filteredDemoCards, id)
+            }
+            header={
+              <View style={styles.demoHeaderStack}>
+                <Pressable
+                  style={[
+                    styles.mockCard,
+                    {
+                      height: isCompact ? 212 : 252,
+                      borderRadius: isCompact ? 24 : 30,
+                      borderColor: colors.border,
+                      backgroundColor: colors.surface,
+                    },
+                  ]}
+                  onPress={openAddCardSheet}
+                >
+                  <Feather
+                    name="credit-card"
+                    size={isCompact ? 38 : 44}
+                    color={colors.textSoft}
+                  />
+                  <Text
+                    style={[
+                      styles.mockCardText,
+                      {
+                        color: colors.textMuted,
+                        fontSize: isCompact ? 17 : 18,
+                      },
+                    ]}
+                  >
+                    Add your first card
+                  </Text>
+                  <Text
+                    style={[
+                      styles.mockCardSub,
+                      {
+                        color: colors.textSoft,
+                        fontSize: isCompact ? 12 : 13,
+                      },
+                    ]}
+                  >
+                    Tap here to get started
+                  </Text>
+                </Pressable>
+
+                <View
+                  style={[
+                    styles.demoNotice,
+                    {
+                      backgroundColor: colors.surface,
+                      borderColor: colors.border,
+                      borderRadius: isCompact ? 20 : 24,
+                      paddingHorizontal: isCompact ? 16 : 18,
+                      paddingVertical: isCompact ? 14 : 16,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[styles.demoNoticeTitle, { color: colors.text }]}
+                  >
+                    Demo cards
+                  </Text>
+                  <Text
+                    style={[styles.demoNoticeBody, { color: colors.textMuted }]}
+                  >
+                    Don't worry, these disappear once you add a card or sync
+                    your cards.
+                  </Text>
+                </View>
+              </View>
+            }
+          />
         ) : filteredCards.length === 0 ? (
           <View
             style={[
@@ -226,7 +276,7 @@ export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
               onCardPress={(id) =>
                 router.push({ pathname: "/card-detail", params: { id } })
               }
-              onCardLongPress={handleCardLongPress}
+              onCardLongPress={(id) => openQuickViewForCard(filteredCards, id)}
             />
           </View>
         ) : (
@@ -236,7 +286,7 @@ export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
             onCardPress={(id) =>
               router.push({ pathname: "/card-detail", params: { id } })
             }
-            onCardLongPress={handleCardLongPress}
+            onCardLongPress={(id) => openQuickViewForCard(filteredCards, id)}
           />
         )}
       </View>
@@ -319,7 +369,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   mockCard: {
-    marginHorizontal: 25,
     height: 252,
     borderRadius: 30,
     borderWidth: 2,
@@ -339,5 +388,22 @@ const styles = StyleSheet.create({
     fontFamily: "ReadexPro-Regular",
     fontSize: 13,
     color: "rgba(29,29,29,0.3)",
+  },
+  demoHeaderStack: {
+    width: "100%",
+    gap: 16,
+  },
+  demoNotice: {
+    borderWidth: 1,
+  },
+  demoNoticeTitle: {
+    fontFamily: "ReadexPro-Bold",
+    fontSize: 18,
+  },
+  demoNoticeBody: {
+    fontFamily: "ReadexPro-Regular",
+    fontSize: 14,
+    lineHeight: 20,
+    marginTop: 6,
   },
 });

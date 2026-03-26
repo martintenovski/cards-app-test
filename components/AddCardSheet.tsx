@@ -191,7 +191,7 @@ export function AddCardSheet({ isOpen, onClose }: AddCardSheetProps) {
                   styles.importCard,
                   {
                     backgroundColor: colors.surfaceMuted,
-                    borderColor: colors.border,
+                    borderColor: colors.buttonBorder,
                   },
                 ]}
               >

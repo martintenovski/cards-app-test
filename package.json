@@ -7,6 +7,9 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
+    "build:ios:local:production": "NODE_ENV=production eas build --platform ios --local --profile production",
+    "build:android:local:production": "NODE_ENV=production eas build --platform android --local --profile production",
+    "verify:config:production": "NODE_ENV=production npx expo config --type public",
     "typecheck": "tsc --noEmit",
     "doctor": "npx expo-doctor",
     "check": "npm run typecheck && npm run doctor"
@@ -49,6 +52,7 @@
     "expo-secure-store": "~15.0.8",
     "expo-splash-screen": "~31.0.13",
     "expo-status-bar": "~3.0.9",
+    "expo-system-ui": "~6.0.9",
     "expo-web-browser": "~15.0.10",
     "nativewind": "^4.1.23",
     "react": "19.1.0",

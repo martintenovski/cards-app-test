@@ -55,8 +55,7 @@ The home screen displays cards in either:
 Cards can be filtered by category from the top menu.
 
 The app is tuned for compact devices as well, with responsive dashboard,
-preview, add-card, profile, and tab bar layouts for narrower or shorter
-screens.
+preview, profile, and tab bar layouts for narrower or shorter screens.
 
 ### Add / edit card flow
 
@@ -119,7 +118,7 @@ The card detail screen can export one card as a **Pocket ID file**.
   a **Share now** step for apps like Gmail, Drive, WhatsApp, Messenger, or Viber
 - On **iOS**, the app prepares the file and then offers the same **Share now**
   confirmation before opening the native share sheet
-- The add-card flow now includes an **Import shared card** entry point
+- The add-card sheet now includes an **Import shared card** entry point
 - The import screen can open a shared Pocket ID file directly from Files,
   Gmail, Google Drive, Downloads, or similar apps
 

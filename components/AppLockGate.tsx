@@ -450,7 +450,7 @@ export function AppLockGate({ children }: AppLockGateProps) {
                     styles.secondaryButton,
                     {
                       backgroundColor: colors.surfaceMuted,
-                      borderColor: colors.border,
+                      borderColor: colors.buttonBorder,
                     },
                   ]}
                 >
@@ -570,7 +570,7 @@ export function AppLockGate({ children }: AppLockGateProps) {
                   styles.secondaryAction,
                   {
                     backgroundColor: colors.surfaceMuted,
-                    borderColor: colors.border,
+                    borderColor: colors.buttonBorder,
                   },
                 ]}
               >
@@ -591,7 +591,7 @@ export function AppLockGate({ children }: AppLockGateProps) {
               styles.secondaryAction,
               {
                 backgroundColor: colors.surfaceMuted,
-                borderColor: colors.border,
+                borderColor: colors.buttonBorder,
               },
             ]}
           >
