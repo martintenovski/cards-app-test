@@ -1,6 +1,6 @@
 # Pocket ID
 
-A wallet-style Expo app for managing bank cards, personal documents, club cards, insurance cards, vehicle documents, and access badges with a polished card UI, local persistence, biometric app lock, expiry reminders, and an ML Kit-powered scanning flow.
+A wallet-style Expo app for managing bank cards, personal documents, club cards, insurance cards, vehicle documents, and access badges with a polished card UI, local persistence, biometric app lock, and expiry reminders.
 
 ## Highlights
 
@@ -12,7 +12,6 @@ A wallet-style Expo app for managing bank cards, personal documents, club cards,
 - Expiry badges for bank cards and personal documents
 - Local push notifications 1 month, 2 weeks, and 2 days before expiry
 - Local persistence with Zustand so saved cards survive app restarts
-- Card scanner flow with camera capture + on-device OCR extraction + confirmation before saving
 - Google sign-in with optional encrypted Supabase cloud sync
 - Single-card Pocket ID file export/import for moving one card between devices
 - Responsive layout polish for smaller and older Android/iOS devices
@@ -28,18 +27,17 @@ A wallet-style Expo app for managing bank cards, personal documents, club cards,
 - **Expo Router**
 - **Zustand** for app state and persistence
 - **NativeWind** + **gluestack-ui**
-- **@react-native-ml-kit/text-recognition** for on-device OCR
 - **react-native-reanimated** and **react-native-gesture-handler** for motion and gestures
 
 ## Project structure
 
 ```text
 app/                  Expo Router screens and navigation
-components/           Wallet UI, forms, sheets, previews, scanner screen
+components/           Wallet UI, forms, sheets, and previews
 constants/            Shared constants such as card gradients
 types/                Card data models and helper utilities
 store/                Zustand store for cards and view/filter state
-utils/                OCR parsing helpers
+utils/                App utilities
 assets/               App icons and splash assets
 ```
 
@@ -122,28 +120,6 @@ The card detail screen can export one card as a **Pocket ID file**.
 - The import screen can open a shared Pocket ID file directly from Files,
   Gmail, Google Drive, Downloads, or similar apps
 
-### Scanner flow
-
-The scanner flow:
-
-1. opens the camera
-2. captures a card image
-3. runs on-device text recognition with ML Kit
-4. shows the detected fields for review
-5. shows a confirmation screen so the user can edit the detected values before saving
-
-## Important scanner limitation
-
-The scanner uses the native camera module and native ML Kit text recognition.
-
-### What works where
-
-- **Expo Go**: general UI preview and non-scanner flows
-- **Native development build**: full app including camera scanner
-- **Web**: wallet UI works, scanner is intentionally unavailable
-
-If you open the scanner in Expo Go, the app shows a fallback message instead of crashing.
-
 ## Getting started
 
 ### Prerequisites
@@ -191,30 +167,6 @@ npm run ios
 ```
 
 > Local iOS native builds require **macOS + Xcode**. On Windows, you cannot produce a local native iOS build directly.
-
-## Native scanner setup notes
-
-Because the scanner depends on native modules, use a native development build when testing it on device.
-
-Relevant packages already included in this project:
-
-- `expo-camera`
-- `@react-native-ml-kit/text-recognition`
-- `expo-dev-client`
-
-Dependency audit notes:
-
-- `expo-camera` and `@react-native-ml-kit/text-recognition` are still required by the live scanner flow in `app/card-scanner.tsx` and `utils/selectiveScanner.ts`
-- `expo-dev-client` is intentionally kept because the scanner cannot run inside Expo Go and needs a native development build for day-to-day testing
-- `react-native-purchases-ui` and several unused dev-only packages were removed from the manifest during cleanup
-- `expo-build-properties` and `babel-plugin-transform-import-meta` are config-time dependencies used by `app.json` and `babel.config.js`, so static dependency scanners may incorrectly report them as unused
-
-### Camera permissions
-
-Camera permissions are already configured in `app.json`:
-
-- **iOS**: `NSCameraUsageDescription`
-- **Android**: `android.permission.CAMERA`
 
 ## Build profiles
 

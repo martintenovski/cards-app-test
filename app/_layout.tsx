@@ -163,14 +163,6 @@ export default function RootLayout() {
                   animation: "fade_from_bottom",
                 }}
               />
-              <Stack.Screen
-                name="card-scanner"
-                options={{
-                  headerShown: false,
-                  presentation: "modal",
-                  animation: "slide_from_bottom",
-                }}
-              />
             </Stack>
           </AppLockGate>
         </SafeAreaProvider>

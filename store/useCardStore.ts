@@ -20,17 +20,6 @@ import {
 } from "@/types/card";
 import { GRADIENTS } from "@/constants/gradients";
 import type { ResolvedTheme, ThemePreference } from "@/utils/theme";
-import type {
-  FieldScanTarget,
-  ScannableFieldName,
-} from "@/utils/selectiveScanner";
-
-type FieldScanResult = {
-  requestId: string;
-  field: ScannableFieldName;
-  target: FieldScanTarget;
-  value: string;
-};
 
 const storage: StateStorage =
   Platform.OS === "web"
@@ -64,7 +53,6 @@ interface CardStoreState {
   addCardSheetOpen: boolean;
   hasHydrated: boolean;
   lastModifiedAt: string;
-  lastFieldScanResult: FieldScanResult | null;
   setViewMode: (viewMode: WalletViewMode) => void;
   toggleViewMode: () => void;
   setHomeFilter: (filter: HomeFilter) => void;
@@ -75,8 +63,6 @@ interface CardStoreState {
   setHasCompletedAppLockSetup: (hasCompleted: boolean) => void;
   setHasPromptedForAppLock: (hasPrompted: boolean) => void;
   setExpiryNotificationsEnabled: (enabled: boolean) => void;
-  setLastFieldScanResult: (result: FieldScanResult) => void;
-  clearLastFieldScanResult: () => void;
   openAddCardSheet: () => void;
   closeAddCardSheet: () => void;
   addCard: (values: CardFormValues, palette: CardPalette) => void;
@@ -109,7 +95,6 @@ export const useCardStore = create<CardStoreState>()(
       expiryNotificationsEnabled: true,
       hasHydrated: false,
       lastModifiedAt: new Date().toISOString(),
-      lastFieldScanResult: null,
       addCardSheetOpen: false,
       openAddCardSheet: () => set({ addCardSheetOpen: true }),
       closeAddCardSheet: () => set({ addCardSheetOpen: false }),
@@ -145,8 +130,6 @@ export const useCardStore = create<CardStoreState>()(
                 ? "light"
                 : "dark",
         })),
-      setLastFieldScanResult: (result) => set({ lastFieldScanResult: result }),
-      clearLastFieldScanResult: () => set({ lastFieldScanResult: null }),
       addCard: (values, palette) =>
         set((state) => {
           // Guarantee every new card has a gradient, even if caller omitted one

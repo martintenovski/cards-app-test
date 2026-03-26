@@ -42,7 +42,6 @@
       "buildNumber": "20",
       "bundleIdentifier": "com.tenovski.cardsapp",
       "infoPlist": {
-        "NSCameraUsageDescription": "Camera is required to scan identity documents and bank cards",
         "NSUserNotificationsUsageDescription": "Pocket ID uses notifications to remind you before cards and documents expire.",
         "ITSAppUsesNonExemptEncryption": false
       }
@@ -63,10 +62,7 @@
       "versionCode": 18,
       "predictiveBackGestureEnabled": false,
       "package": "com.tenovski.cardsapp",
-      "permissions": [
-        "android.permission.CAMERA",
-        "android.permission.POST_NOTIFICATIONS"
-      ]
+      "permissions": ["android.permission.POST_NOTIFICATIONS"]
     },
     "androidStatusBar": {
       "backgroundColor": "#1C1E21",
