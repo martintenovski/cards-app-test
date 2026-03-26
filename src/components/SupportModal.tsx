@@ -5,6 +5,7 @@ import {
   ActivityIndicator,
   Dimensions,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -90,6 +91,7 @@ export function SupportModal({
   onClose,
   onPurchaseSuccess,
 }: SupportModalProps) {
+  const storeName = Platform.OS === "android" ? "Google Play" : "App Store";
   const themePreference = useCardStore((state) => state.themePreference);
   const deviceScheme = useColorScheme();
   const resolvedTheme = resolveTheme(themePreference, deviceScheme);
@@ -140,7 +142,9 @@ export function SupportModal({
 
         if (!nextPackages.length) {
           setErrorMessage(
-            "Support products are not available yet. Check your RevenueCat offering named support and try again.",
+            Platform.OS === "android"
+              ? "Support products are not available right now. Make sure Google Play is available on this device and that your RevenueCat support offering is linked to active Play Console products."
+              : "Support products are not available yet. Check your RevenueCat offering named support and try again.",
           );
           setPackages([]);
           return;
@@ -201,7 +205,7 @@ export function SupportModal({
       setErrorMessage(
         error instanceof Error
           ? error.message
-          : "Pocket ID could not open the App Store subscription page right now.",
+          : `Pocket ID could not open the ${storeName} subscription page right now.`,
       );
     }
   };
@@ -212,8 +216,8 @@ export function SupportModal({
     if (!canPurchaseSupportProduct(customerInfo, productId)) {
       setErrorMessage(
         productId === "supporter_lifetime"
-          ? "This lifetime support unlock is already owned on this App Store account."
-          : "This support option is already active on this App Store account.",
+          ? `This lifetime support unlock is already owned on this ${storeName} account.`
+          : `This support option is already active on this ${storeName} account.`,
       );
       return;
     }

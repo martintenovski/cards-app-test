@@ -112,7 +112,7 @@ export default function CloudPassphraseScreen() {
       return "Use the same updated passphrase on your other devices before you expect them to decrypt newly synced cards.";
     }
 
-    return "This passphrase never goes to Supabase. It stays on this device and is used to encrypt your card vault before upload.";
+    return "This passphrase never goes to Supabase. It stays on this device and is used to encrypt your card vault before upload. If you already have saved cards waiting in cloud sync, you must enter the exact same passphrase that was used before so Pocket ID can decrypt them.";
   }, [hasExistingPassphrase]);
 
   const handleSave = async () => {
@@ -198,6 +198,10 @@ export default function CloudPassphraseScreen() {
           <Text style={[styles.cardHint, { color: colors.textSoft }]}>
             Use at least {MIN_SYNC_PASSPHRASE_LENGTH} characters. A longer
             phrase is much safer than a short clever one.
+          </Text>
+          <Text style={[styles.cardHint, { color: colors.textSoft }]}>
+            Already synced cards from another device? Use the same sync
+            passphrase there too, or this device will not be able to read them.
           </Text>
         </View>
 

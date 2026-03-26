@@ -155,9 +155,6 @@ export default function ProfileScreen() {
   const cloudVaultChangeToken = useCloudVaultStore(
     (state) => state.changeToken,
   );
-  const openSettingsSection = useCloudVaultStore(
-    (state) => state.openSettingsSection,
-  );
   const requestSync = useCloudVaultStore((state) => state.requestSync);
   const openSupportModal = useSupportModalStore((state) => state.open);
   const { customerInfo } = useCustomerInfo({ autoInitialize: isFocused });
@@ -275,9 +272,8 @@ export default function ProfileScreen() {
     }
   };
 
-  const handleOpenCloudSyncSettings = () => {
-    openSettingsSection("cloud-sync");
-    router.push("/(tabs)/settings");
+  const handleOpenCloudPassphrase = () => {
+    router.push("/cloud-passphrase");
   };
 
   return (
@@ -504,7 +500,8 @@ export default function ProfileScreen() {
                 {authUser.displayName ?? authUser.email ?? "Pocket ID user"}
               </Text>
               {cloudVaultStatus === "missing" ? (
-                <View
+                <Pressable
+                  onPress={handleOpenCloudPassphrase}
                   style={[
                     styles.vaultStatusCard,
                     {
@@ -513,18 +510,16 @@ export default function ProfileScreen() {
                     },
                   ]}
                 >
-                  <Pressable onPress={handleOpenCloudSyncSettings}>
-                    <Text
-                      style={[
-                        styles.vaultStatusTitle,
-                        styles.vaultStatusWarning,
-                        { color: warningColor },
-                      ]}
-                    >
-                      Encrypted cloud vault is not set up yet
-                    </Text>
-                  </Pressable>
-                </View>
+                  <Text
+                    style={[
+                      styles.vaultStatusTitle,
+                      styles.vaultStatusWarning,
+                      { color: warningColor },
+                    ]}
+                  >
+                    Sync disabled. Tap to set up.
+                  </Text>
+                </Pressable>
               ) : null}
               <View style={styles.accountActions}>
                 <Pressable

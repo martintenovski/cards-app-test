@@ -2,6 +2,7 @@ import Constants from "expo-constants";
 import { useEffect, useState } from "react";
 import { Linking, Platform } from "react-native";
 import Purchases, {
+  PURCHASES_ERROR_CODE,
   type CustomerInfo,
   type CustomerInfoUpdateListener,
   type LogHandler,
@@ -54,7 +55,15 @@ let customerInfoCache: CustomerInfo | null = null;
 let hasLoadedCustomerInfo = false;
 let listenerRegistered = false;
 let customLogHandlerInstalled = false;
+let hasLoggedAndroidBillingUnavailable = false;
 const subscribers = new Set<(customerInfo: CustomerInfo | null) => void>();
+
+type PurchasesErrorLike = {
+  code?: string;
+  message?: string;
+  underlyingErrorMessage?: string;
+  userCancelled?: boolean | null;
+};
 
 function getApiKey() {
   if (Platform.OS === "ios") {
@@ -74,6 +83,42 @@ function broadcastCustomerInfo(customerInfo: CustomerInfo | null) {
   subscribers.forEach((listener) => listener(customerInfo));
 }
 
+function getStoreName() {
+  return Platform.OS === "android" ? "Google Play" : "App Store";
+}
+
+function getAppIdentifierLabel() {
+  return Platform.OS === "android" ? "Package name" : "Bundle identifier";
+}
+
+function isPurchasesErrorLike(error: unknown): error is PurchasesErrorLike {
+  return typeof error === "object" && error !== null;
+}
+
+function isAndroidBillingUnavailableError(error: unknown) {
+  if (Platform.OS !== "android" || !isPurchasesErrorLike(error)) {
+    return false;
+  }
+
+  const combinedMessage = [error.message, error.underlyingErrorMessage]
+    .filter((value): value is string => typeof value === "string")
+    .join("\n");
+
+  return (
+    error.code === PURCHASES_ERROR_CODE.PURCHASE_NOT_ALLOWED_ERROR &&
+    /BILLING_UNAVAILABLE|billing(?: service)? unavailable|billing is not available/i.test(
+      combinedMessage,
+    )
+  );
+}
+
+function getAndroidBillingUnavailableMessage() {
+  return [
+    "Google Play Billing is unavailable on this device right now.",
+    "Use a physical Android device or a Play Store-enabled emulator, sign in to Google Play, and confirm the app plus products are active in RevenueCat and Google Play Console.",
+  ].join(" ");
+}
+
 function getBundleIdentifier() {
   if (Platform.OS === "ios") {
     return (
@@ -90,15 +135,31 @@ function getBundleIdentifier() {
 
 function logRevenueCatConfigurationHints(error?: unknown) {
   const productIds = PRODUCT_ORDER.join(", ");
-  const message = [
+  const messageLines = [
     "[RevenueCat] Support products could not be loaded.",
-    `Bundle identifier: ${getBundleIdentifier()}`,
+    `${getAppIdentifierLabel()}: ${getBundleIdentifier()}`,
     `Offering identifier: ${SUPPORT_OFFERING_ID}`,
     `Expected product identifiers: ${productIds}`,
-    "This build is configured to fetch live App Store Connect sandbox products, not a local Xcode StoreKit configuration.",
-    "Ad hoc / EAS internal builds and Xcode runs without a StoreKit config must fetch real sandbox products from App Store Connect.",
-    "Verify the same product identifiers exist in App Store Connect, are attached in the RevenueCat support offering, and that Apple agreements, tax, and banking are complete.",
-  ].join("\n");
+  ];
+
+  if (Platform.OS === "android") {
+    if (isAndroidBillingUnavailableError(error)) {
+      messageLines.push(getAndroidBillingUnavailableMessage());
+    } else {
+      messageLines.push(
+        "This Android build fetches live Google Play products, not a local StoreKit configuration.",
+        "Verify the same product identifiers exist in Google Play Console, are attached in the RevenueCat support offering, and that the Play Console app, testers, and billing setup are all ready.",
+      );
+    }
+  } else {
+    messageLines.push(
+      "This build is configured to fetch live App Store Connect sandbox products, not a local Xcode StoreKit configuration.",
+      "Ad hoc / EAS internal builds and Xcode runs without a StoreKit config must fetch real sandbox products from App Store Connect.",
+      "Verify the same product identifiers exist in App Store Connect, are attached in the RevenueCat support offering, and that Apple agreements, tax, and banking are complete.",
+    );
+  }
+
+  const message = messageLines.join("\n");
 
   console.warn(message);
 
@@ -140,9 +201,23 @@ function installRevenueCatLogHandler() {
     const isCancelledPurchaseLog =
       level === Purchases.LOG_LEVEL.ERROR &&
       message.includes("Purchase was cancelled.");
+    const isAndroidBillingUnavailableLog =
+      Platform.OS === "android" &&
+      level === Purchases.LOG_LEVEL.ERROR &&
+      /BILLING_UNAVAILABLE|billing(?: service)? unavailable|billing is not available|device or user is not allowed to make the purchase/i.test(
+        message,
+      );
 
     if (isCancelledPurchaseLog) {
       console.info(formattedMessage);
+      return;
+    }
+
+    if (isAndroidBillingUnavailableLog) {
+      if (!hasLoggedAndroidBillingUnavailable) {
+        hasLoggedAndroidBillingUnavailable = true;
+        console.warn(`[RevenueCat] ${getAndroidBillingUnavailableMessage()}`);
+      }
       return;
     }
 
@@ -268,6 +343,11 @@ export async function getSupportOffering(): Promise<PurchasesOffering | null> {
     return offering;
   } catch (error) {
     logRevenueCatConfigurationHints(error);
+
+    if (isAndroidBillingUnavailableError(error)) {
+      return null;
+    }
+
     throw error;
   }
 }
@@ -296,9 +376,17 @@ export async function getSupportPackages(): Promise<PurchasesPackage[]> {
 }
 
 export async function purchaseSupportPackage(aPackage: PurchasesPackage) {
-  const result = await Purchases.purchasePackage(aPackage);
-  broadcastCustomerInfo(result.customerInfo);
-  return result.customerInfo;
+  try {
+    const result = await Purchases.purchasePackage(aPackage);
+    broadcastCustomerInfo(result.customerInfo);
+    return result.customerInfo;
+  } catch (error) {
+    if (isAndroidBillingUnavailableError(error)) {
+      throw new Error(getAndroidBillingUnavailableMessage());
+    }
+
+    throw error;
+  }
 }
 
 export async function restoreSupportPurchases() {
@@ -556,17 +644,18 @@ export async function openMonthlySubscriptionManagement(
   customerInfo: CustomerInfo | null | undefined,
 ) {
   const managementURL = customerInfo?.managementURL;
+  const storeName = getStoreName();
 
   if (!managementURL) {
     throw new Error(
-      "Pocket ID could not find an App Store subscription management link for this account.",
+      `Pocket ID could not find a ${storeName} subscription management link for this account.`,
     );
   }
 
   const canOpen = await Linking.canOpenURL(managementURL);
   if (!canOpen) {
     throw new Error(
-      "Pocket ID could not open the App Store subscription management page.",
+      `Pocket ID could not open the ${storeName} subscription management page.`,
     );
   }
 

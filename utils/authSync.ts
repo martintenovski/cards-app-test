@@ -139,10 +139,30 @@ function configureNativeGoogleSignInOnce(
   hasConfiguredNativeGoogleSignIn = true;
 }
 
+function isDeveloperConfigurationGoogleSignInError(error: unknown) {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  return /developer_error|code\s*:?\s*10|developer console is not set up correctly/i.test(
+    error.message,
+  );
+}
+
+function getDeveloperConfigurationGoogleSignInErrorMessage() {
+  return Platform.OS === "android"
+    ? "Google Sign-In is misconfigured for this Android build. For Play internal testing or production, make sure the Play App Signing SHA-1 for this package is added to the same Google project as your Android OAuth client, and that EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID points to a Web OAuth client from that project."
+    : "Google Sign-In is misconfigured for this build. Check that your Google OAuth client IDs match this app and environment.";
+}
+
 function toFriendlyGoogleSignInError(
   nativeGoogleSignIn: NativeGoogleSignInPackage,
   error: unknown,
 ) {
+  if (isDeveloperConfigurationGoogleSignInError(error)) {
+    return new Error(getDeveloperConfigurationGoogleSignInErrorMessage());
+  }
+
   if (nativeGoogleSignIn.isErrorWithCode(error)) {
     switch (error.code) {
       case nativeGoogleSignIn.statusCodes.SIGN_IN_CANCELLED:
