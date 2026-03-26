@@ -5,6 +5,7 @@ import { makeRedirectUri } from "expo-auth-session";
 import * as QueryParams from "expo-auth-session/build/QueryParams";
 import type { Session, User } from "@supabase/supabase-js";
 import { NativeModules, Platform, TurboModuleRegistry } from "react-native";
+import * as Crypto from "expo-crypto";
 
 import {
   fetchWalletSnapshot,
@@ -210,7 +211,18 @@ async function signInWithNativeGoogle(options?: { selectAccount?: boolean }) {
       await nativeGoogleSignIn.GoogleSignin.signOut().catch(() => null);
     }
 
-    const response = await nativeGoogleSignIn.GoogleSignin.signIn();
+    // Generate a nonce so both Google's id_token and Supabase share the same value.
+    // On iOS, Google Sign-In embeds a SHA-256 hash of the nonce in the id_token;
+    // Supabase verifies this by re-hashing the raw nonce we provide.
+    const rawNonce = Crypto.randomUUID();
+    const hashedNonce = await Crypto.digestStringAsync(
+      Crypto.CryptoDigestAlgorithm.SHA256,
+      rawNonce,
+    );
+
+    const response = await nativeGoogleSignIn.GoogleSignin.signIn({
+      nonce: hashedNonce,
+    });
 
     if (nativeGoogleSignIn.isCancelledResponse(response)) {
       return null;
@@ -233,6 +245,7 @@ async function signInWithNativeGoogle(options?: { selectAccount?: boolean }) {
     const { data, error } = await supabase!.auth.signInWithIdToken({
       provider: "google",
       token: idToken,
+      nonce: rawNonce,
     });
 
     if (error) {

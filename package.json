@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "main": "expo-router/entry",
   "scripts": {
+    "postinstall": "patch-package",
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
@@ -70,6 +71,7 @@
   "devDependencies": {
     "@types/react": "~19.1.10",
     "babel-plugin-module-resolver": "^5.0.0",
+    "patch-package": "^8.0.1",
     "tailwindcss": "^3.4.17",
     "typescript": "~5.9.2"
   },
