@@ -24,9 +24,9 @@ import { useFonts } from "expo-font";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
-import { LogBox, useColorScheme } from "react-native";
+import { Image, LogBox, Text, useColorScheme, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { SafeAreaProvider } from "react-native-safe-area-context";
+import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
 import { useCardStore } from "@/store/useCardStore";
 import { APP_THEME, resolveTheme } from "@/utils/theme";
@@ -98,11 +98,27 @@ export default function RootLayout() {
 
   if (!fontsLoaded || !hasHydrated) {
     return (
-      <GestureHandlerRootView
-        style={{ flex: 1, backgroundColor: colors.background }}
-      >
+      <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#1C1E21" }}>
         <SafeAreaProvider>
-          <StatusBar style={resolvedTheme === "dark" ? "light" : "dark"} />
+          <SafeAreaView style={{ flex: 1, backgroundColor: "#1C1E21" }}>
+            <StatusBar style="light" />
+            {/* Logo centred – matches the native iOS/Android splash exactly */}
+            <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+              <Image
+                // eslint-disable-next-line @typescript-eslint/no-require-imports
+                source={require("../assets/ios-logo.png")}
+                style={{ width: 88, height: 88, borderRadius: 20 }}
+                resizeMode="contain"
+              />
+            </View>
+            {/* "by tenovski" footer – mirrors the native iOS storyboard labels */}
+            <View style={{ alignItems: "center", paddingBottom: 40 }}>
+              <Text style={{ color: "#8E8E93", fontSize: 13, lineHeight: 18 }}>by</Text>
+              <Text style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "bold", lineHeight: 18 }}>
+                tenovski
+              </Text>
+            </View>
+          </SafeAreaView>
         </SafeAreaProvider>
       </GestureHandlerRootView>
     );

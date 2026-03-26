@@ -34,7 +34,8 @@
         }
       ],
       "@react-native-community/datetimepicker",
-      "expo-web-browser"
+      "expo-web-browser",
+      "./plugins/withCustomSplash"
     ],
     "ios": {
       "icon": "./assets/ios-logo.png",
