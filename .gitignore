@@ -44,3 +44,6 @@ yarn.lock
 
 # local build artifacts
 /build
+*.ipa
+*.aab
+*.xcarchive

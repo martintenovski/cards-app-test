@@ -21,7 +21,7 @@ function buildStoryboard(logoAsset = "SplashScreenLogo") {
   // #1C1E21  →  r=28/255≈0.110  g=30/255≈0.118  b=33/255≈0.129
   // #8E8E93  →  r=142/255≈0.557 g=142/255≈0.557 b=147/255≈0.576
   return `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="21701" targetRuntime="AppleCocoa" propertyAccessControl="none" useAutolayout="YES" launchScreen="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="01J-lp-oVM">
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="21701" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" launchScreen="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="01J-lp-oVM">
     <device id="retina6_12" orientation="portrait" appearance="light"/>
     <dependencies>
         <deployment identifier="iOS"/>
@@ -45,16 +45,8 @@ function buildStoryboard(logoAsset = "SplashScreenLogo") {
                                 contentMode="scaleAspectFit"
                                 image="${logoAsset}"
                                 translatesAutoresizingMaskIntoConstraints="NO"
-                                id="HGe-GZ-ODE">
-                                <userDefinedRuntimeAttributes>
-                                    <userDefinedRuntimeAttribute type="number" keyPath="layer.cornerRadius">
-                                        <real key="value" value="20"/>
-                                    </userDefinedRuntimeAttribute>
-                                    <userDefinedRuntimeAttribute type="boolean" keyPath="layer.masksToBounds">
-                                        <boolean key="value" value="YES"/>
-                                    </userDefinedRuntimeAttribute>
-                                </userDefinedRuntimeAttributes>
-                            </imageView>
+                                id="HGe-GZ-ODE"/>
+
 
                             <!-- "by" label – small, iOS secondary-label grey -->
                             <label
