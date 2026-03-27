@@ -60,12 +60,10 @@
         "backgroundImage": "./assets/droid-icon-background.png",
         "monochromeImage": "./assets/droid-monochrome.png"
       },
-      "versionCode": 23,
+      "versionCode": 32,
       "predictiveBackGestureEnabled": false,
       "package": "com.tenovski.cardsapp",
-      "permissions": [
-        "android.permission.POST_NOTIFICATIONS"
-      ]
+      "permissions": ["android.permission.POST_NOTIFICATIONS"]
     },
     "androidStatusBar": {
       "backgroundColor": "#1C1E21",
