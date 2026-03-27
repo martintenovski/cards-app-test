@@ -113,6 +113,7 @@ export function AppLockGate({ children }: AppLockGateProps) {
   const themePreference = useCardStore((state) => state.themePreference);
   const hasSeenOnboarding = useCardStore((state) => state.hasSeenOnboarding);
   const appLockEnabled = useCardStore((state) => state.appLockEnabled);
+  const lockScreenEnabled = useCardStore((state) => state.lockScreenEnabled);
   const setAppLockEnabled = useCardStore((state) => state.setAppLockEnabled);
   const hasCompletedAppLockSetup = useCardStore(
     (state) => state.hasCompletedAppLockSetup,
@@ -409,7 +410,7 @@ export function AppLockGate({ children }: AppLockGateProps) {
     };
   }, []);
 
-  const previewShield = isPreviewHidden ? (
+  const previewShield = isPreviewHidden && lockScreenEnabled ? (
     <View
       pointerEvents="none"
       style={[styles.previewShield, { backgroundColor: colors.background }]}
