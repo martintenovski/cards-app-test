@@ -1,12 +1,12 @@
-import { useRef, useState } from "react";
+﻿import { useRef, useState, useEffect } from "react";
 import {
+  Animated,
+  Easing,
   FlatList,
   Image,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
-  useColorScheme,
   View,
   useWindowDimensions,
   type ListRenderItemInfo,
@@ -15,71 +15,157 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import { Feather } from "@expo/vector-icons";
 
 import { AppPreviewShield } from "@/components/AppPreviewShield";
 import { useCardStore } from "@/store/useCardStore";
-import { APP_THEME, resolveTheme } from "@/utils/theme";
 
 const ONBOARDING_STEPS = [
   {
     illustration: require("@/assets/onboarding/cloud.png"),
-    title: "Keep your wallet local or sync it across your devices",
-    body: "Pocket ID works beautifully on one device, but it can also keep your cards in the cloud so the same wallet is ready when you switch phones, add a tablet, or come back later.",
+    title: "Local or synced — your choice",
+    body: "Works great offline. Sign in to keep your wallet ready across all your devices.",
+    bg: "#FFF4B8",
+    blobs: [
+      { xFrac: -0.18, yFrac: 0.04,  size: 190, color: "#FFDF4D" },
+      { xFrac: 0.72,  yFrac: 0.62,  size: 160, color: "#FFE040" },
+      { xFrac: 0.60,  yFrac: -0.05, size:  90, color: "#FFE870" },
+      { xFrac: 0.78,  yFrac: 0.30,  size:  50, color: "#FFF0A8" },
+      { xFrac: -0.06, yFrac: 0.40,  size:  65, color: "#FFEC9A" },
+      { xFrac: 0.30,  yFrac: 0.72,  size:  45, color: "#FFDF70" },
+    ],
   },
   {
     illustration: require("@/assets/onboarding/encrypt.png"),
-    title: "Your information is encrypted before it is stored",
-    body: "Sensitive card details are protected on-device first, so synced data stays encrypted in transit and at rest instead of being uploaded as plain readable information.",
+    title: "Encrypted before upload",
+    body: "Cards are locked on-device first. The cloud never sees your plain data.",
+    bg: "#BDD8FF",
+    blobs: [
+      { xFrac: 0.68,  yFrac: 0.05,  size: 185, color: "#7BB8FF" },
+      { xFrac: -0.14, yFrac: 0.55,  size: 155, color: "#82BBFF" },
+      { xFrac: -0.08, yFrac: 0.08,  size:  80, color: "#93C8FF" },
+      { xFrac: 0.55,  yFrac: 0.70,  size:  55, color: "#AACFFF" },
+      { xFrac: 0.84,  yFrac: 0.42,  size:  60, color: "#A0CCFF" },
+      { xFrac: 0.22,  yFrac: -0.04, size:  40, color: "#BED9FF" },
+    ],
   },
   {
     illustration: require("@/assets/onboarding/share.png"),
-    title: "Share cards quickly when someone else needs them",
-    body: "Send a card in a few taps, import shared details without retyping, and move information between people or devices with a flow that stays simple and fast.",
+    title: "Share in a few taps",
+    body: "Send a card or import one from someone else — no retyping needed.",
+    bg: "#FFB8D8",
+    blobs: [
+      { xFrac: 0.75,  yFrac: -0.06, size: 175, color: "#FF75B2" },
+      { xFrac: -0.16, yFrac: 0.60,  size: 145, color: "#FF6DAB" },
+      { xFrac: -0.10, yFrac: 0.12,  size:  75, color: "#FF91C5" },
+      { xFrac: 0.60,  yFrac: 0.65,  size:  48, color: "#FFBCD8" },
+      { xFrac: 0.82,  yFrac: 0.35,  size:  68, color: "#FFB0D2" },
+      { xFrac: 0.35,  yFrac: 0.78,  size:  42, color: "#FF85BC" },
+    ],
   },
   {
     illustration: require("@/assets/onboarding/customize.png"),
-    title: "Customize the app to fit how you organize things",
-    body: "Tune colors, themes, layout preferences, and security options so Pocket ID feels personal, stays easy to scan, and matches the way you like to manage important cards.",
+    title: "Make it yours",
+    body: "Pick colors, themes, and layout options so the app fits how you think.",
+    bg: "#D8C8FF",
+    blobs: [
+      { xFrac: -0.20, yFrac: 0.02,  size: 180, color: "#B49CFF" },
+      { xFrac: 0.65,  yFrac: 0.58,  size: 170, color: "#AD95FF" },
+      { xFrac: 0.70,  yFrac: -0.04, size:  85, color: "#C2AEFF" },
+      { xFrac: -0.05, yFrac: 0.45,  size:  50, color: "#DACEFF" },
+      { xFrac: 0.80,  yFrac: 0.22,  size:  58, color: "#CEBEFF" },
+      { xFrac: 0.20,  yFrac: 0.68,  size:  44, color: "#BFB0FF" },
+    ],
   },
   {
     illustration: require("@/assets/onboarding/demo.png"),
-    title: "Preview the wallet with demo cards before you import your own",
-    body: "If your wallet starts empty, Pocket ID shows a few temporary demo cards under Add your first card so you can see the layout right away. They are removed automatically after you add a card or sync your saved cards with Google.",
+    title: "Explore before you start",
+    body: "Demo cards show the layout right away and disappear once you add your own.",
+    bg: "#B8F0DC",
+    blobs: [
+      { xFrac: 0.70,  yFrac: 0.08,  size: 178, color: "#64DEB8" },
+      { xFrac: -0.15, yFrac: 0.50,  size: 150, color: "#60D8B0" },
+      { xFrac: -0.10, yFrac: 0.04,  size:  72, color: "#7DEAD0" },
+      { xFrac: 0.78,  yFrac: 0.62,  size:  60, color: "#A0EDD2" },
+      { xFrac: 0.50,  yFrac: -0.05, size:  52, color: "#96EAC8" },
+      { xFrac: 0.10,  yFrac: 0.75,  size:  46, color: "#70E4C0" },
+    ],
   },
 ] as const;
 
-const COLORS = {
-  background: "#FFFFFF",
-  title: "#2D2B2E",
-  body: "rgba(45, 43, 46, 0.6)",
-  dot: "#D7D6DB",
-  dotActive: "#2D2B2E",
-} as const;
-
-const ONBOARDING_BUTTON_COLORS = APP_THEME.light;
-
 export default function OnboardingScreen() {
   const router = useRouter();
-  const deviceScheme = useColorScheme();
   const listRef = useRef<FlatList<(typeof ONBOARDING_STEPS)[number]> | null>(
     null,
   );
   const [stepIndex, setStepIndex] = useState(0);
+  const [fromBg, setFromBg] = useState<string>(ONBOARDING_STEPS[0].bg);
   const { width, height } = useWindowDimensions();
-  const themePreference = useCardStore((state) => state.themePreference);
   const setHasSeenOnboarding = useCardStore(
     (state) => state.setHasSeenOnboarding,
   );
-  const resolvedTheme = resolveTheme(themePreference, deviceScheme);
-  const colors = APP_THEME[resolvedTheme];
 
   const isCompact = width < 390 || height < 820;
   const isVeryCompact = width < 360 || height < 740;
   const slideWidth = width;
-  const imageHeight = isVeryCompact ? 170 : isCompact ? 210 : 250;
-  const imageWidth = Math.min(width - (isCompact ? 92 : 110), 300);
-  const titleFontSize = isVeryCompact ? 22 : isCompact ? 24 : 27;
-  const bodyFontSize = isVeryCompact ? 12.5 : 13.5;
+  const imageSize = isVeryCompact ? 200 : isCompact ? 240 : 280;
+  const titleFontSize = isVeryCompact ? 20 : isCompact ? 22 : 24;
+  const bodyFontSize = isVeryCompact ? 13 : 14;
+
+  const currentBg = ONBOARDING_STEPS[stepIndex].bg;
+
+  const blobAnim = useRef(new Animated.Value(1)).current;
+  const contentAnim = useRef(new Animated.Value(1)).current;
+  const bgFade = useRef(new Animated.Value(1)).current;
+  const buttonScale = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    blobAnim.setValue(0);
+    contentAnim.setValue(0);
+    bgFade.setValue(0);
+    Animated.parallel([
+      Animated.timing(bgFade, {
+        toValue: 1,
+        duration: 1000,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+      }),
+      Animated.spring(blobAnim, {
+        toValue: 1,
+        damping: 22,
+        stiffness: 140,
+        mass: 1,
+        useNativeDriver: true,
+      }),
+      Animated.spring(contentAnim, {
+        toValue: 1,
+        damping: 18,
+        stiffness: 200,
+        mass: 1,
+        useNativeDriver: true,
+      }),
+    ]).start(({ finished }) => {
+      if (finished) setFromBg(currentBg);
+    });
+  }, [stepIndex]);
+
+  const handleButtonPressIn = () => {
+    Animated.spring(buttonScale, {
+      toValue: 0.88,
+      damping: 15,
+      stiffness: 350,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handleButtonPressOut = () => {
+    Animated.spring(buttonScale, {
+      toValue: 1,
+      damping: 10,
+      stiffness: 300,
+      useNativeDriver: true,
+    }).start();
+  };
 
   const finishOnboarding = () => {
     setHasSeenOnboarding(true);
@@ -92,7 +178,10 @@ export default function OnboardingScreen() {
       Math.min(index, ONBOARDING_STEPS.length - 1),
     );
     listRef.current?.scrollToIndex({ index: boundedIndex, animated });
-    setStepIndex(boundedIndex);
+    if (!animated) {
+      setStepIndex(boundedIndex);
+    }
+    // When animated, onScroll will update stepIndex naturally as the scroll plays
   };
 
   const handleNext = () => {
@@ -100,11 +189,14 @@ export default function OnboardingScreen() {
       finishOnboarding();
       return;
     }
-
     scrollToStep(stepIndex + 1, true);
   };
 
-  const handleMomentumEnd = (
+  const handleBack = () => {
+    scrollToStep(stepIndex - 1, true);
+  };
+
+  const handleScroll = (
     event: NativeSyntheticEvent<NativeScrollEvent>,
   ) => {
     const nextIndex = Math.round(
@@ -119,76 +211,79 @@ export default function OnboardingScreen() {
     item,
   }: ListRenderItemInfo<(typeof ONBOARDING_STEPS)[number]>) => (
     <View
-      style={[
-        styles.slide,
-        {
-          width: slideWidth,
-          paddingHorizontal: isCompact ? 24 : 32,
-          paddingTop: isVeryCompact ? 8 : 20,
-        },
-      ]}
+      style={[styles.slide, { width: slideWidth }]}
     >
-      <ScrollView
-        style={styles.slideScroll}
-        contentContainerStyle={[
-          styles.slideScrollContent,
-          {
-            paddingBottom: isVeryCompact ? 16 : 24,
-            paddingTop: isVeryCompact ? 2 : 8,
-          },
-        ]}
-        showsVerticalScrollIndicator={false}
-        bounces={false}
-      >
-        <View
-          style={[
-            styles.illustrationWrap,
-            {
-              height: imageHeight,
-              marginTop: isVeryCompact ? 6 : 16,
-            },
-          ]}
-        >
-          <Image
-            source={item.illustration}
-            resizeMode="contain"
-            style={{ width: imageWidth, height: imageHeight }}
-          />
-        </View>
-
-        <View style={styles.copyWrap}>
-          <Text
-            style={[
-              styles.title,
-              {
-                fontSize: titleFontSize,
-                lineHeight: Math.round(titleFontSize * 1.16),
-                marginTop: isVeryCompact ? 14 : 22,
-              },
-            ]}
-          >
-            {item.title}
-          </Text>
-          <Text
-            style={[
-              styles.body,
-              {
-                fontSize: bodyFontSize,
-                lineHeight: isVeryCompact ? 19 : 21,
-                marginTop: isVeryCompact ? 10 : 14,
-              },
-            ]}
-          >
-            {item.body}
-          </Text>
-        </View>
-      </ScrollView>
+      <Image
+        source={item.illustration}
+        resizeMode="contain"
+        style={{ width: imageSize, height: imageSize }}
+      />
     </View>
   );
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={["top", "bottom"]}>
+    <View style={styles.root}>
+      {/* Full-screen base color (old color, behind everything) */}
+      <View style={[StyleSheet.absoluteFillObject, { backgroundColor: fromBg }]} />
+      {/* Full-screen overlay (new color, fades in — covers status bar & home indicator too) */}
+      <Animated.View
+        style={[StyleSheet.absoluteFillObject, { backgroundColor: currentBg, opacity: bgFade }]}
+        pointerEvents="none"
+      />
+      <SafeAreaView
+        style={styles.safeArea}
+        edges={["top", "bottom"]}
+      >
       <View style={styles.screen}>
+        {/* Decorative background blobs */}
+        <Animated.View style={[StyleSheet.absoluteFillObject, { opacity: blobAnim, transform: [{ scale: blobAnim.interpolate({ inputRange: [0, 1], outputRange: [1.07, 1] }) }] }]} pointerEvents="none">
+          {ONBOARDING_STEPS[stepIndex].blobs.map((blob, i) => (
+            <View
+              key={i}
+              style={{
+                position: "absolute",
+                left: blob.xFrac * width,
+                top: blob.yFrac * height,
+                width: blob.size,
+                height: blob.size,
+                borderRadius: blob.size / 2,
+                backgroundColor: blob.color,
+                opacity: 0.28,
+              }}
+            />
+          ))}
+        </Animated.View>
+
+        <View
+          style={[styles.topBar, { paddingHorizontal: isCompact ? 20 : 28 }]}
+        >
+          {stepIndex > 0 ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Go back"
+              hitSlop={12}
+              onPress={handleBack}
+              style={styles.topBarButton}
+            >
+              <Feather name="chevron-left" size={22} color="#1A1A2E" />
+            </Pressable>
+          ) : (
+            <Text style={styles.welcomeText}>Welcome! :)</Text>
+          )}
+          {stepIndex > 0 && stepIndex < ONBOARDING_STEPS.length - 1 ? (
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Skip onboarding"
+              hitSlop={12}
+              onPress={finishOnboarding}
+            >
+              <Text style={styles.skipText}>Skip</Text>
+            </Pressable>
+          ) : (
+            <View style={styles.skipPlaceholder} />
+          )}
+        </View>
+
         <View style={styles.carouselWrap}>
           <FlatList
             ref={listRef}
@@ -198,7 +293,8 @@ export default function OnboardingScreen() {
             pagingEnabled
             bounces={false}
             showsHorizontalScrollIndicator={false}
-            onMomentumScrollEnd={handleMomentumEnd}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
             renderItem={renderSlide}
             style={styles.carousel}
             contentContainerStyle={styles.carouselContent}
@@ -212,37 +308,57 @@ export default function OnboardingScreen() {
 
         <View
           style={[
-            styles.footer,
+            styles.bottomPanel,
             {
               paddingHorizontal: isCompact ? 24 : 32,
-              paddingTop: 12,
-              paddingBottom: isCompact ? 10 : 14,
+              paddingBottom: isCompact ? 20 : 28,
             },
           ]}
         >
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Skip onboarding"
-            hitSlop={10}
-            onPress={finishOnboarding}
-            style={[
-              styles.footerAction,
-              styles.secondaryAction,
-              {
-                backgroundColor: ONBOARDING_BUTTON_COLORS.surfaceMuted,
-                borderColor: ONBOARDING_BUTTON_COLORS.buttonBorder,
-              },
-            ]}
+          <Animated.View
+            style={{
+              opacity: contentAnim,
+              transform: [
+                {
+                  translateY: contentAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [22, 0],
+                  }),
+                },
+                {
+                  scale: contentAnim.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0.96, 1],
+                  }),
+                },
+              ],
+              alignItems: "center",
+            }}
           >
             <Text
               style={[
-                styles.skipText,
-                { color: ONBOARDING_BUTTON_COLORS.text },
+                styles.title,
+                {
+                  fontSize: titleFontSize,
+                  lineHeight: Math.round(titleFontSize * 1.2),
+                },
               ]}
             >
-              Skip
+              {ONBOARDING_STEPS[stepIndex].title}
             </Text>
-          </Pressable>
+            <Text
+              style={[
+                styles.body,
+                {
+                  fontSize: bodyFontSize,
+                  lineHeight: bodyFontSize * 1.6,
+                  marginTop: isVeryCompact ? 8 : 12,
+                },
+              ]}
+            >
+              {ONBOARDING_STEPS[stepIndex].body}
+            </Text>
+          </Animated.View>
 
           <View style={styles.paginationRow}>
             {ONBOARDING_STEPS.map((step, index) => (
@@ -250,55 +366,81 @@ export default function OnboardingScreen() {
                 key={step.title}
                 style={[
                   styles.dot,
-                  {
-                    backgroundColor:
-                      index === stepIndex ? COLORS.dotActive : COLORS.dot,
-                  },
+                  index === stepIndex ? styles.dotActive : styles.dotInactive,
                 ]}
               />
             ))}
           </View>
 
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={
-              stepIndex === ONBOARDING_STEPS.length - 1
-                ? "Finish onboarding"
-                : "Next onboarding screen"
-            }
-            hitSlop={10}
-            onPress={handleNext}
-            style={[
-              styles.footerAction,
-              styles.primaryAction,
-              { backgroundColor: ONBOARDING_BUTTON_COLORS.accent },
-            ]}
-          >
-            <Text
-              style={[
-                styles.nextText,
-                { color: ONBOARDING_BUTTON_COLORS.accentText },
-              ]}
+          <Animated.View style={{ transform: [{ scale: buttonScale }] }}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={
+                stepIndex === ONBOARDING_STEPS.length - 1
+                  ? "Finish onboarding"
+                  : "Next onboarding screen"
+              }
+              onPress={handleNext}
+              onPressIn={handleButtonPressIn}
+              onPressOut={handleButtonPressOut}
+              style={styles.continueButton}
             >
-              {stepIndex === ONBOARDING_STEPS.length - 1 ? "Done" : "Next"}
-            </Text>
-          </Pressable>
+              <Feather
+                name={
+                  stepIndex === ONBOARDING_STEPS.length - 1
+                    ? "check"
+                    : "arrow-right"
+                }
+                size={24}
+                color="#FFFFFF"
+              />
+            </Pressable>
+          </Animated.View>
         </View>
 
         <AppPreviewShield />
       </View>
     </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
   safeArea: {
     flex: 1,
-    backgroundColor: COLORS.background,
+    backgroundColor: "transparent",
   },
   screen: {
     flex: 1,
-    backgroundColor: COLORS.background,
+  },
+  topBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    height: 52,
+  },
+  topBarButton: {
+    width: 36,
+    height: 36,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  skipText: {
+    fontFamily: "ReadexPro-Medium",
+    fontSize: 15,
+    color: "#1A1A2E",
+  },
+  skipPlaceholder: {
+    width: 36,
+    height: 24,
+  },
+  welcomeText: {
+    fontFamily: "ReadexPro-Medium",
+    fontSize: 15,
+    color: "#1A1A2E",
   },
   carouselWrap: {
     flex: 1,
@@ -312,79 +454,57 @@ const styles = StyleSheet.create({
   slide: {
     flex: 1,
     alignItems: "center",
-  },
-  slideScroll: {
-    flex: 1,
-    alignSelf: "stretch",
-  },
-  slideScrollContent: {
-    flexGrow: 1,
-    alignItems: "center",
-  },
-  illustrationWrap: {
-    width: "100%",
-    alignItems: "center",
     justifyContent: "center",
   },
-  copyWrap: {
-    width: "100%",
-    maxWidth: 296,
+  bottomPanel: {
     alignItems: "center",
+    paddingTop: 24,
   },
   title: {
     fontFamily: "OpenSans-Bold",
-    color: COLORS.title,
+    color: "#1A1A2E",
     textAlign: "center",
-    letterSpacing: -0.8,
+    letterSpacing: -0.5,
+    maxWidth: 320,
   },
   body: {
     fontFamily: "ReadexPro-Regular",
-    color: COLORS.body,
+    color: "rgba(26, 26, 46, 0.6)",
     textAlign: "center",
-    letterSpacing: -0.2,
-  },
-  footer: {
-    minHeight: 76,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  footerAction: {
-    minWidth: 100,
-    minHeight: 52,
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  secondaryAction: {
-    borderWidth: 1,
-  },
-  primaryAction: {
-    shadowOpacity: 0,
-  },
-  skipText: {
-    fontFamily: "ReadexPro-Medium",
-    fontSize: 15,
-    textAlign: "center",
-    width: "100%",
-  },
-  nextText: {
-    fontFamily: "ReadexPro-Medium",
-    fontSize: 15,
-    textAlign: "center",
-    width: "100%",
+    letterSpacing: -0.1,
+    maxWidth: 320,
   },
   paginationRow: {
-    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: 8,
+    marginTop: 20,
+    marginBottom: 20,
   },
   dot: {
-    width: 8,
     height: 8,
     borderRadius: 999,
+  },
+  dotActive: {
+    width: 24,
+    backgroundColor: "#1A1A2E",
+  },
+  dotInactive: {
+    width: 8,
+    backgroundColor: "rgba(26, 26, 46, 0.2)",
+  },
+  continueButton: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: "#1A1A2E",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.18,
+    shadowRadius: 8,
+    elevation: 5,
   },
 });
