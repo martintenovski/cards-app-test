@@ -32,6 +32,7 @@ import { recordSupportModalDismissed } from "@/src/hooks/useAutoSupportModal";
 import {
   canPurchaseSupportProduct,
   canManageMonthlySubscription,
+  getSupportLoadErrorMessage,
   getSupportPackages,
   getSupportProductPurchaseCount,
   openMonthlySubscriptionManagement,
@@ -143,7 +144,7 @@ export function SupportModal({
         if (!nextPackages.length) {
           setErrorMessage(
             Platform.OS === "android"
-              ? "Support products are not available right now. Make sure Google Play is available on this device and that your RevenueCat support offering is linked to active Play Console products."
+              ? "Support products are not available right now. Use a Google Play-enabled device or emulator, make sure the Play build was installed from the internal testing track with a tester account, and confirm the RevenueCat support offering is linked to active Play Console products."
               : "Support products are not available yet. Check your RevenueCat offering named support and try again.",
           );
           setPackages([]);
@@ -152,14 +153,12 @@ export function SupportModal({
 
         setPackages(nextPackages);
       })
-      .catch(() => {
+      .catch((error) => {
         if (cancelled) {
           return;
         }
 
-        setErrorMessage(
-          "Pocket ID could not load support options right now. Please try again in a moment.",
-        );
+        setErrorMessage(getSupportLoadErrorMessage(error));
         setPackages([]);
       })
       .finally(() => {

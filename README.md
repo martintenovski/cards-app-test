@@ -196,6 +196,8 @@ For local development, add the following to `.env.local`:
 
 - `EXPO_PUBLIC_SUPABASE_URL`
 - `EXPO_PUBLIC_SUPABASE_ANON_KEY`
+- `EXPO_PUBLIC_REVENUECAT_IOS_API_KEY`
+- `EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY`
 - `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID`
 - `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID`
 - `EXPO_PUBLIC_GOOGLE_IOS_URL_SCHEME`
@@ -206,8 +208,25 @@ before starting the build. Remote builds do not receive your ignored local
 `.env.local` file automatically.
 
 If these values are missing or still set to the example placeholders, the app
-will treat Supabase as not configured and Google/Supabase cloud sync will stay
-disabled in that build.
+will treat the affected service as not configured in that build. In practice:
+
+- missing Supabase / Google values disable cloud sign-in and sync
+- missing RevenueCat values disable the support purchase flow
+
+### RevenueCat / Google Play testing notes
+
+For Android support purchases to appear in RevenueCat on internal testing builds:
+
+- keep the Android package name as `com.tenovski.cardsapp`
+- create the matching products in **Google Play Console** and mark them active
+- attach those exact product IDs to the RevenueCat offering with identifier `support`
+- install the build from the **Play internal testing track**, not by side-loading an APK
+- sign in to **Google Play** on the device with a tester or license-tester account
+- prefer a **physical Android device**; if you use an emulator, it must be a **Google Play-enabled** system image
+
+If products work locally but not in a Play-distributed build, the issue is usually
+Play billing availability on the test device/account or a mismatch between the
+Play Console products and the RevenueCat `support` offering.
 
 ### Native Google Sign-In setup
 

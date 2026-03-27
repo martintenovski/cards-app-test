@@ -65,6 +65,13 @@ type PurchasesErrorLike = {
   userCancelled?: boolean | null;
 };
 
+type PurchasesErrorDetails = {
+  code: string | null;
+  message: string | null;
+  underlyingErrorMessage: string | null;
+  combinedMessage: string;
+};
+
 function getApiKey() {
   if (Platform.OS === "ios") {
     return iosApiKey;
@@ -95,14 +102,38 @@ function isPurchasesErrorLike(error: unknown): error is PurchasesErrorLike {
   return typeof error === "object" && error !== null;
 }
 
+function getPurchasesErrorDetails(error: unknown): PurchasesErrorDetails {
+  if (!isPurchasesErrorLike(error)) {
+    return {
+      code: null,
+      message: null,
+      underlyingErrorMessage: null,
+      combinedMessage: "",
+    };
+  }
+
+  const message = typeof error.message === "string" ? error.message : null;
+  const underlyingErrorMessage =
+    typeof error.underlyingErrorMessage === "string"
+      ? error.underlyingErrorMessage
+      : null;
+
+  return {
+    code: typeof error.code === "string" ? error.code : null,
+    message,
+    underlyingErrorMessage,
+    combinedMessage: [message, underlyingErrorMessage]
+      .filter((value): value is string => Boolean(value))
+      .join("\n"),
+  };
+}
+
 function isAndroidBillingUnavailableError(error: unknown) {
   if (Platform.OS !== "android" || !isPurchasesErrorLike(error)) {
     return false;
   }
 
-  const combinedMessage = [error.message, error.underlyingErrorMessage]
-    .filter((value): value is string => typeof value === "string")
-    .join("\n");
+  const { combinedMessage } = getPurchasesErrorDetails(error);
 
   return (
     error.code === PURCHASES_ERROR_CODE.PURCHASE_NOT_ALLOWED_ERROR &&
@@ -115,8 +146,22 @@ function isAndroidBillingUnavailableError(error: unknown) {
 function getAndroidBillingUnavailableMessage() {
   return [
     "Google Play Billing is unavailable on this device right now.",
-    "Use a physical Android device or a Play Store-enabled emulator, sign in to Google Play, and confirm the app plus products are active in RevenueCat and Google Play Console.",
+    "Use a physical Android device or a Google Play-enabled emulator, sign in to Google Play with a license tester or internal-test account, install the Play-distributed build, and confirm the app plus products are active in RevenueCat and Google Play Console.",
   ].join(" ");
+}
+
+function isLikelyNetworkError(error: unknown) {
+  const { combinedMessage } = getPurchasesErrorDetails(error);
+  return /network|timed?\s*out|unable to connect|could not connect|dns|internet/i.test(
+    combinedMessage,
+  );
+}
+
+function isLikelyRevenueCatConfigurationError(error: unknown) {
+  const { combinedMessage } = getPurchasesErrorDetails(error);
+  return /issue with your configuration|no products|none of the products|offerings?|product identifiers?|there is an issue/i.test(
+    combinedMessage,
+  );
 }
 
 function getBundleIdentifier() {
@@ -163,9 +208,52 @@ function logRevenueCatConfigurationHints(error?: unknown) {
 
   console.warn(message);
 
-  if (error instanceof Error) {
-    console.warn(`[RevenueCat] Underlying offerings error: ${error.message}`);
+  if (error) {
+    const { code, message: errorMessage, underlyingErrorMessage } =
+      getPurchasesErrorDetails(error);
+
+    console.warn(
+      `[RevenueCat] Underlying offerings error${code ? ` (${code})` : ""}: ${
+        errorMessage ?? "Unknown error"
+      }`,
+    );
+
+    if (underlyingErrorMessage) {
+      console.warn(`[RevenueCat] Underlying store error: ${underlyingErrorMessage}`);
+    }
   }
+}
+
+export function getSupportLoadErrorMessage(error: unknown) {
+  if (Platform.OS === "android") {
+    if (isAndroidBillingUnavailableError(error)) {
+      return getAndroidBillingUnavailableMessage();
+    }
+
+    if (isLikelyRevenueCatConfigurationError(error)) {
+      return `Pocket ID reached RevenueCat, but the support offering is not ready for Google Play package ${getBundleIdentifier()}. Confirm the support offering contains the live product IDs ${PRODUCT_ORDER.join(
+        ", ",
+      )}, that those products are active in Play Console, and that this build was installed from the Play internal track using a tester account.`;
+    }
+
+    if (isLikelyNetworkError(error)) {
+      return "Pocket ID could not reach RevenueCat or Google Play right now. Check the device connection, open Google Play once to confirm the tester account is signed in, and try again.";
+    }
+
+    return `Pocket ID could not load Google Play support options for package ${getBundleIdentifier()} right now. Make sure this Play build is installed from the internal testing track on a Google Play-enabled device, and that the RevenueCat offering is linked to active Play Console products.`;
+  }
+
+  if (isLikelyNetworkError(error)) {
+    return "Pocket ID could not reach the App Store or RevenueCat right now. Check the device connection and try again.";
+  }
+
+  if (isLikelyRevenueCatConfigurationError(error)) {
+    return `Pocket ID reached RevenueCat, but the support offering is not ready for bundle identifier ${getBundleIdentifier()}. Confirm the support offering contains the expected live product IDs ${PRODUCT_ORDER.join(
+      ", ",
+    )}.`;
+  }
+
+  return "Pocket ID could not load support options right now. Please try again in a moment.";
 }
 
 function logSupportPackageStatus(offering: PurchasesOffering) {
