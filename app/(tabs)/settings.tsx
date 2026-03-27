@@ -1,6 +1,7 @@
 import { Feather } from "@expo/vector-icons";
 import { useIsFocused } from "@react-navigation/native";
 import { useEffect, useRef, useState } from "react";
+import * as LocalAuthentication from "expo-local-authentication";
 import * as Linking from "expo-linking";
 import { openURL } from "expo-linking";
 import * as Notifications from "expo-notifications";
@@ -84,6 +85,7 @@ function SettingToggle({
   accentColor,
   isDark,
   borderColor,
+  disabled,
 }: {
   label: string;
   description: string;
@@ -94,14 +96,15 @@ function SettingToggle({
   accentColor: string;
   isDark: boolean;
   borderColor: string;
+  disabled?: boolean;
 }) {
-  const falseTrack = isDark ? "#353535" : "rgba(127,127,127,0.35)";
-  const falseThumb = isDark ? "#7A7A7A" : "#FFFFFF";
+  const falseTrack = isDark ? "#555555" : "rgba(127,127,127,0.35)";
+  const falseThumb = isDark ? "#ABABAB" : "#FFFFFF";
   const trueTrack = isDark ? "#505050" : accentColor;
   const trueThumb = isDark ? "#D6D6D6" : "#FFFFFF";
 
   return (
-    <View style={styles.toggleRow}>
+    <View style={[styles.toggleRow, disabled && { opacity: 0.45 }]}>
       <View style={styles.toggleTextBlock}>
         <Text style={[styles.rowLabel, { color: textColor }]}>{label}</Text>
         <Text style={[styles.rowDescription, { color: mutedColor }]}>
@@ -111,7 +114,8 @@ function SettingToggle({
       <View style={[styles.switchWrap]}>
         <Switch
           value={value}
-          onValueChange={onChange}
+          onValueChange={disabled ? undefined : onChange}
+          disabled={disabled}
           trackColor={{ false: falseTrack, true: trueTrack }}
           thumbColor={value ? trueThumb : falseThumb}
           ios_backgroundColor={falseTrack}
@@ -152,6 +156,10 @@ export default function SettingsScreen() {
   );
   const setScreenshotBlockingEnabled = useCardStore(
     (state) => state.setScreenshotBlockingEnabled,
+  );
+  const lockScreenEnabled = useCardStore((state) => state.lockScreenEnabled);
+  const setLockScreenEnabled = useCardStore(
+    (state) => state.setLockScreenEnabled,
   );
   const replaceCards = useCardStore((state) => state.replaceCards);
   const expiryNotificationsEnabled = useCardStore(
@@ -200,6 +208,9 @@ export default function SettingsScreen() {
   const [cloudVaultStatus, setCloudVaultStatus] = useState<
     "loading" | "missing" | "ready"
   >("loading");
+  const [biometricStatus, setBiometricStatus] = useState<
+    "supported" | "no-hardware" | "not-enrolled"
+  >("supported");
   const supportSummary = getSupporterSummary(customerInfo);
   const shouldShowCloudSyncGuide =
     Boolean(authUser) && cloudVaultStatus === "missing";
@@ -210,6 +221,22 @@ export default function SettingsScreen() {
       setViewMode("list");
     }
   }, [canUseAnimatedStack, setViewMode, viewMode]);
+
+  useEffect(() => {
+    let cancelled = false;
+    LocalAuthentication.hasHardwareAsync().then((hasHardware) => {
+      if (cancelled) return;
+      if (!hasHardware) {
+        setBiometricStatus("no-hardware");
+        return;
+      }
+      LocalAuthentication.isEnrolledAsync().then((isEnrolled) => {
+        if (cancelled) return;
+        setBiometricStatus(isEnrolled ? "supported" : "not-enrolled");
+      });
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     if (!isFocused) {
@@ -270,6 +297,25 @@ export default function SettingsScreen() {
 
   const handleCloudSyncSectionLayout = (event: LayoutChangeEvent) => {
     setCloudSyncSectionY(event.nativeEvent.layout.y);
+  };
+
+  const handleLockScreenChange = (nextValue: boolean) => {
+    if (!nextValue) {
+      Alert.alert(
+        "Disable Lock Screen?",
+        "This will allow the app content to be visible in the recent apps screen and when the app is backgrounded. Your cards and documents may be exposed.",
+        [
+          { text: "Cancel", style: "cancel" },
+          {
+            text: "Disable",
+            style: "destructive",
+            onPress: () => setLockScreenEnabled(false),
+          },
+        ],
+      );
+    } else {
+      setLockScreenEnabled(true);
+    }
   };
 
   const sendTestNotification = async () => {
@@ -590,12 +636,34 @@ export default function SettingsScreen() {
             accentColor={colors.accent}
             isDark={isDark}
             borderColor={colors.buttonBorder}
+            disabled={biometricStatus !== "supported"}
           />
+          {biometricStatus === "no-hardware" || biometricStatus === "not-enrolled" ? (
+            <View style={styles.warningBadge}>
+              <Feather name="alert-triangle" size={13} color="#92400E" style={{ marginTop: 1 }} />
+              <Text style={styles.warningBadgeText}>
+                {biometricStatus === "no-hardware"
+                  ? "Your device doesn\u2019t support biometric authentication."
+                  : "No biometrics are set up on this device. Add Face ID or a fingerprint in your device settings to enable this."}
+              </Text>
+            </View>
+          ) : null}
           <SettingToggle
             label="Block Screenshots"
             description="Prevent screenshots and screen recordings while Pocket ID is open."
             value={screenshotBlockingEnabled}
             onChange={setScreenshotBlockingEnabled}
+            textColor={colors.text}
+            mutedColor={colors.textMuted}
+            accentColor={colors.accent}
+            isDark={isDark}
+            borderColor={colors.buttonBorder}
+          />
+          <SettingToggle
+            label="Lock Screen"
+            description="Hide app content on the recent apps screen and when the app is backgrounded."
+            value={lockScreenEnabled}
+            onChange={handleLockScreenChange}
             textColor={colors.text}
             mutedColor={colors.textMuted}
             accentColor={colors.accent}
@@ -1243,6 +1311,25 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
     marginTop: 10,
+  },
+  warningBadge: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 6,
+    marginTop: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    backgroundColor: "#FEF3C7",
+    borderWidth: 1,
+    borderColor: "#F59E0B",
+  },
+  warningBadgeText: {
+    flex: 1,
+    fontFamily: "ReadexPro-Regular",
+    fontSize: 12,
+    lineHeight: 17,
+    color: "#92400E",
   },
   testBtn: {
     marginTop: 14,

@@ -1058,7 +1058,7 @@ export function getCardSideContent(
         topLabel: card.title,
         topValue: card.issuedBy || card.issuer || "Issuer",
         middleLabel: "CARDHOLDER",
-        middleValue: card.name || "Cardholder",
+        middleValue: (card.name || "Cardholder").replace(/\s*\n\s*/g, " "),
         bottomLeftLabel: personalFront.bottomLeftLabel,
         bottomLeftValue: personalFront.bottomLeftValue,
         bottomRightLabel: personalFront.bottomRightLabel,

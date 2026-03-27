@@ -130,18 +130,11 @@ const DENSITIES = [
 ];
 
 // ─── Styles.xml patch ─────────────────────────────────────────────────────────
-const BRANDING_ITEM = '    <item name="windowSplashScreenBrandingImage">@drawable/splash_branding</item>';
+// NOTE: windowSplashScreenBrandingImage is not defined by expo-splash-screen
+// and is not part of the Android compat SplashScreen attrs — omitting it.
 
 function patchStylesXml(stylesPath) {
-  if (!fs.existsSync(stylesPath)) return;
-  let xml = fs.readFileSync(stylesPath, 'utf-8');
-  if (xml.includes('windowSplashScreenBrandingImage')) return; // already present
-  xml = xml.replace(
-    /<item name="postSplashScreenTheme">/,
-    `${BRANDING_ITEM}\n    <item name="postSplashScreenTheme">`,
-  );
-  fs.writeFileSync(stylesPath, xml, 'utf-8');
-  console.log('[withAndroidSplashBranding] patched styles.xml');
+  // Nothing to patch — branding image attr not supported in this SDK version.
 }
 
 // ─── Config plugin ────────────────────────────────────────────────────────────

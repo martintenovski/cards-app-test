@@ -514,7 +514,7 @@ export default function ProfileScreen() {
                   <Text
                     style={[styles.cloudGuideTitle, { color: colors.text }]}
                   >
-                    Set up Google sync in 3 short steps
+                    Set up Google sync in 2 short steps
                   </Text>
                   <Text
                     style={[styles.cloudGuideBody, { color: colors.textMuted }]}
@@ -529,19 +529,12 @@ export default function ProfileScreen() {
                         style={[
                           styles.cloudGuideStepBadge,
                           {
-                            backgroundColor: colors.accent,
-                            borderColor: colors.accent,
+                            backgroundColor: "#0050A3",
+                            borderColor: "#0050A3",
                           },
                         ]}
                       >
-                        <Text
-                          style={[
-                            styles.cloudGuideStepBadgeText,
-                            { color: colors.accentText },
-                          ]}
-                        >
-                          1
-                        </Text>
+                        <Feather name="check" size={15} color="#FFFFFF" />
                       </View>
                       <View style={styles.cloudGuideStepContent}>
                         <Text
@@ -633,14 +626,7 @@ export default function ProfileScreen() {
                           },
                         ]}
                       >
-                        <Text
-                          style={[
-                            styles.cloudGuideStepBadgeText,
-                            { color: colors.text },
-                          ]}
-                        >
-                          3
-                        </Text>
+                        <Feather name="help-circle" size={15} color={colors.textMuted} />
                       </View>
                       <View style={styles.cloudGuideStepContent}>
                         <Text
@@ -973,7 +959,7 @@ const styles = StyleSheet.create({
   },
   accountActions: {
     width: "100%",
-    marginTop: 8,
+    marginTop: 12,
     gap: 12,
   },
   authButtonSecondary: {
@@ -1004,7 +990,7 @@ const styles = StyleSheet.create({
   cloudGuideCard: {
     borderWidth: 1,
     borderRadius: 24,
-    marginTop: 18,
+    marginTop: 12,
     padding: 18,
   },
   cloudGuideTitle: {
@@ -1061,7 +1047,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
-    alignSelf: "flex-start",
+    alignSelf: "stretch",
     marginTop: 10,
   },
   cloudGuideActionText: {

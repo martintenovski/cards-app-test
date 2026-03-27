@@ -54,7 +54,7 @@ export const DEMO_CARDS: WalletCard[] = [
     category: "personal",
     title: "Identity Card",
     issuer: "City Registry",
-    name: "John\nDoe",
+    name: "John Doe",
     primaryValue: "JD-240198-7781",
     secondaryValue: "ID-993821",
     palette: {
@@ -81,7 +81,7 @@ export const DEMO_CARDS: WalletCard[] = [
     category: "personal",
     title: "Driving License",
     issuer: "State DMV",
-    name: "John\nDoe",
+    name: "John Doe",
     primaryValue: "D-4402-9918",
     secondaryValue: "CLASS C",
     palette: {
