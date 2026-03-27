@@ -252,6 +252,7 @@ export const useCardStore = create<CardStoreState>()(
         hasPromptedForAppLock: state.hasPromptedForAppLock,
         expiryNotificationsEnabled: state.expiryNotificationsEnabled,
         screenshotBlockingEnabled: state.screenshotBlockingEnabled,
+        lockScreenEnabled: state.lockScreenEnabled,
         lastModifiedAt: state.lastModifiedAt,
       }),
     },

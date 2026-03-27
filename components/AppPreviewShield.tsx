@@ -7,6 +7,7 @@ import { APP_THEME, resolveTheme } from "@/utils/theme";
 
 export function AppPreviewShield() {
   const themePreference = useCardStore((state) => state.themePreference);
+  const lockScreenEnabled = useCardStore((state) => state.lockScreenEnabled);
   const deviceScheme = useColorScheme();
   const resolvedTheme = resolveTheme(themePreference, deviceScheme);
   const colors = APP_THEME[resolvedTheme];
@@ -38,7 +39,7 @@ export function AppPreviewShield() {
     };
   }, []);
 
-  if (!isPreviewHidden) {
+  if (!isPreviewHidden || !lockScreenEnabled) {
     return null;
   }
 
