@@ -38,7 +38,6 @@ import {
   deleteStoredSyncPassphrase,
   hasStoredSyncPassphrase,
 } from "@/utils/cloudVault";
-import { signOut } from "@/utils/authSync";
 import { getCardExpiryDate } from "@/utils/expiry";
 import type { ThemePreference } from "@/utils/theme";
 import { APP_THEME, resolveTheme } from "@/utils/theme";
@@ -166,6 +165,10 @@ export default function SettingsScreen() {
   );
   const requestSync = useCloudVaultStore((state) => state.requestSync);
   const syncStatus = useCloudVaultStore((state) => state.syncStatus);
+  const setSyncState = useCloudVaultStore((state) => state.setSyncState);
+  const suppressNextAutoSync = useCloudVaultStore(
+    (state) => state.suppressNextAutoSync,
+  );
   const cards = useCardStore((state) => state.cards);
   const openSupportModal = useSupportModalStore((state) => state.open);
   const { customerInfo, refreshCustomerInfo } = useCustomerInfo({
@@ -369,9 +372,14 @@ export default function SettingsScreen() {
           onPress: async () => {
             try {
               setAuthBusy("delete-data");
+              setSyncState("idle");
               await deleteWalletSnapshot(authUser.id);
+              suppressNextAutoSync();
               replaceCards([]);
-              await signOut();
+              Alert.alert(
+                "Data deleted",
+                "Pocket ID removed your synced wallet data and cleared the saved cards on this device.",
+              );
             } catch {
               Alert.alert(
                 "Could not delete data",

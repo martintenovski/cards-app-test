@@ -263,6 +263,16 @@ export function getSupportLoadErrorMessage(error: unknown) {
         .join("\n\n");
     }
 
+    if (code === PURCHASES_ERROR_CODE.INVALID_CREDENTIALS_ERROR) {
+      return [
+        "RevenueCat rejected the Android public SDK key in this build. In RevenueCat, open the Google Play app for Pocket ID and copy its Public SDK key (it should start with goog_). Make sure this build is not using an iOS key, a secret API key, or a key from another RevenueCat app/project.",
+        `If you are building locally, verify the Mac build is reading the intended EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY value and that .env.local is overriding .env. Rebuild after updating the key.`,
+        debugSuffix,
+      ]
+        .filter(Boolean)
+        .join("\n\n");
+    }
+
     if (code === PURCHASES_ERROR_CODE.PRODUCT_NOT_AVAILABLE_FOR_PURCHASE_ERROR) {
       return [
         `Google Play found the app, but one or more support products are not available for package ${getBundleIdentifier()}. This usually means the tester account does not have access yet, the products are still inactive, or the Play Console / RevenueCat product IDs do not match exactly.`,

@@ -66,8 +66,8 @@ function getRuntimeEnvValues() {
   const envLocalValues = parseEnvFile(path.join(__dirname, ".env.local"));
   const envValues = parseEnvFile(path.join(__dirname, ".env"));
   const mergedValues = {
-    ...envLocalValues,
     ...envValues,
+    ...envLocalValues,
   };
 
   for (const [key, value] of Object.entries(process.env)) {
@@ -88,7 +88,7 @@ function readProjectEnvValue(key) {
     return directValue;
   }
 
-  for (const fileName of [".env", ".env.local"]) {
+  for (const fileName of [".env.local", ".env"]) {
     const filePath = path.join(__dirname, fileName);
     if (!fs.existsSync(filePath)) {
       continue;

@@ -66,9 +66,15 @@ export function CloudSyncManager() {
   const syncRequestToken = useCloudVaultStore(
     (state) => state.syncRequestToken,
   );
+  const suppressedAutoSyncCount = useCloudVaultStore(
+    (state) => state.suppressedAutoSyncCount,
+  );
   const syncStatus = useCloudVaultStore((state) => state.syncStatus);
   const syncMessage = useCloudVaultStore((state) => state.syncMessage);
   const setSyncState = useCloudVaultStore((state) => state.setSyncState);
+  const consumeSuppressedAutoSync = useCloudVaultStore(
+    (state) => state.consumeSuppressedAutoSync,
+  );
   const deviceScheme = useColorScheme();
   const colors = APP_THEME[resolveTheme("system", deviceScheme)];
   const reconcileInFlight = useRef(false);
@@ -250,6 +256,13 @@ export function CloudSyncManager() {
       return undefined;
     }
 
+    if (suppressedAutoSyncCount > 0) {
+      lastObservedModifiedAt.current = lastModifiedAt;
+      consumeSuppressedAutoSync();
+      setSyncState("idle");
+      return undefined;
+    }
+
     const currentUser = user;
     lastObservedModifiedAt.current = lastModifiedAt;
 
@@ -291,7 +304,9 @@ export function CloudSyncManager() {
     cards,
     hasHydrated,
     lastModifiedAt,
+    consumeSuppressedAutoSync,
     setSyncState,
+    suppressedAutoSyncCount,
     syncStatus,
     user,
   ]);

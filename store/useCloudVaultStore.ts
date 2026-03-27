@@ -3,11 +3,14 @@ import { create } from "zustand";
 type CloudVaultStoreState = {
   changeToken: number;
   syncRequestToken: number;
+  suppressedAutoSyncCount: number;
   pendingSettingsSection: "cloud-sync" | null;
   syncStatus: "idle" | "syncing" | "success" | "error";
   syncMessage: string | null;
   bumpChangeToken: () => void;
   requestSync: (message?: string) => void;
+  suppressNextAutoSync: () => void;
+  consumeSuppressedAutoSync: () => void;
   openSettingsSection: (section: "cloud-sync") => void;
   clearPendingSettingsSection: () => void;
   setSyncState: (
@@ -31,6 +34,18 @@ export const useCloudVaultStore = create<CloudVaultStoreState>((set) => ({
       syncRequestToken: state.syncRequestToken + 1,
       syncStatus: "syncing",
       syncMessage: message ?? "Fetching your latest cards…",
+    })),
+  suppressedAutoSyncCount: 0,
+  suppressNextAutoSync: () =>
+    set((state) => ({
+      suppressedAutoSyncCount: state.suppressedAutoSyncCount + 1,
+    })),
+  consumeSuppressedAutoSync: () =>
+    set((state) => ({
+      suppressedAutoSyncCount:
+        state.suppressedAutoSyncCount > 0
+          ? state.suppressedAutoSyncCount - 1
+          : 0,
     })),
   openSettingsSection: (pendingSettingsSection) =>
     set({ pendingSettingsSection }),
