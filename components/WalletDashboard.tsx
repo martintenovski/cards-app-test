@@ -325,15 +325,38 @@ export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
           </View>
         ) : viewMode === "stack" ? (
           <View style={styles.stackStage}>
-            <CardStack
-              cards={filteredCards}
-              onCycleFwd={cycleCardFwd}
-              onCycleBwd={cycleCardBwd}
-              onCardPress={(id) =>
-                router.push({ pathname: "/card-detail", params: { id } })
-              }
-              onCardLongPress={(id) => openQuickViewForCard(filteredCards, id)}
-            />
+            {filteredCards.length >= 4 ? (
+              <CardStack
+                cards={filteredCards}
+                onCycleFwd={cycleCardFwd}
+                onCycleBwd={cycleCardBwd}
+                onCardPress={(id) =>
+                  router.push({ pathname: "/card-detail", params: { id } })
+                }
+                onCardLongPress={(id) => openQuickViewForCard(filteredCards, id)}
+              />
+            ) : (
+              <>
+                <CardList
+                  cards={filteredCards}
+                  bottomSpacing={132}
+                  onCardPress={(id) =>
+                    router.push({ pathname: "/card-detail", params: { id } })
+                  }
+                  onCardLongPress={(id) =>
+                    openQuickViewForCard(filteredCards, id)
+                  }
+                  refreshing={refreshing}
+                  onRefresh={handleRefresh}
+                  funMessage={funMessage}
+                />
+                <View style={[styles.stackDisabledNotice, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                  <Text style={[styles.stackDisabledText, { color: colors.textMuted }]}>
+                    Animated stack unlocks with 4 or more cards.
+                  </Text>
+                </View>
+              </>
+            )}
           </View>
         ) : (
           <CardList
@@ -408,6 +431,20 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     paddingBottom: 0,
+  },
+  stackDisabledNotice: {
+    marginHorizontal: 20,
+    marginTop: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    alignItems: "center",
+  },
+  stackDisabledText: {
+    fontFamily: "ReadexPro-Regular",
+    fontSize: 13,
+    textAlign: "center",
   },
   emptyBox: {
     marginHorizontal: 25,

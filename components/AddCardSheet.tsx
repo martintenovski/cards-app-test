@@ -172,7 +172,7 @@ export function AddCardSheet({ isOpen, onClose }: AddCardSheetProps) {
                 { color: colors.text, fontSize: isCompact ? 20 : 22 },
               ]}
             >
-              Add New Card
+              Add new
             </Text>
             <Pressable onPress={onClose} hitSlop={12} style={styles.closeBtn}>
               <Feather name="x" size={22} color={colors.textMuted} />

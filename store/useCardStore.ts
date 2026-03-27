@@ -50,6 +50,7 @@ interface CardStoreState {
   hasCompletedAppLockSetup: boolean;
   hasPromptedForAppLock: boolean;
   expiryNotificationsEnabled: boolean;
+  screenshotBlockingEnabled: boolean;
   addCardSheetOpen: boolean;
   hasHydrated: boolean;
   lastModifiedAt: string;
@@ -63,6 +64,7 @@ interface CardStoreState {
   setHasCompletedAppLockSetup: (hasCompleted: boolean) => void;
   setHasPromptedForAppLock: (hasPrompted: boolean) => void;
   setExpiryNotificationsEnabled: (enabled: boolean) => void;
+  setScreenshotBlockingEnabled: (enabled: boolean) => void;
   openAddCardSheet: () => void;
   closeAddCardSheet: () => void;
   addCard: (values: CardFormValues, palette: CardPalette) => void;
@@ -93,6 +95,7 @@ export const useCardStore = create<CardStoreState>()(
       hasCompletedAppLockSetup: false,
       hasPromptedForAppLock: false,
       expiryNotificationsEnabled: true,
+      screenshotBlockingEnabled: false,
       hasHydrated: false,
       lastModifiedAt: new Date().toISOString(),
       addCardSheetOpen: false,
@@ -119,6 +122,8 @@ export const useCardStore = create<CardStoreState>()(
         set({ hasPromptedForAppLock }),
       setExpiryNotificationsEnabled: (expiryNotificationsEnabled) =>
         set({ expiryNotificationsEnabled }),
+      setScreenshotBlockingEnabled: (screenshotBlockingEnabled) =>
+        set({ screenshotBlockingEnabled }),
       toggleThemePreference: (resolvedTheme) =>
         set((state) => ({
           themePreference:
@@ -241,6 +246,7 @@ export const useCardStore = create<CardStoreState>()(
         hasCompletedAppLockSetup: state.hasCompletedAppLockSetup,
         hasPromptedForAppLock: state.hasPromptedForAppLock,
         expiryNotificationsEnabled: state.expiryNotificationsEnabled,
+        screenshotBlockingEnabled: state.screenshotBlockingEnabled,
         lastModifiedAt: state.lastModifiedAt,
       }),
     },

@@ -17,7 +17,7 @@ import { APP_THEME, resolveTheme } from "@/utils/theme";
 
 const AUTO_AUTH_DELAY_MS = 180;
 const DEFAULT_UNLOCK_MESSAGE =
-  "Use Face ID, Touch ID, or your device passcode to unlock this wallet.";
+  "Use your biometrics or device passcode to unlock this wallet.";
 const RESUME_UNLOCK_MESSAGE = "Unlocking Pocket ID after returning to the app.";
 const WAITING_FOR_PROMPT_MESSAGE = "Waiting for biometric prompt...";
 
@@ -184,6 +184,31 @@ export function AppLockGate({ children }: AppLockGateProps) {
     setMessage(DEFAULT_UNLOCK_MESSAGE);
 
     try {
+      // On Android, pass disableDeviceFallback: false so the OS handles the
+      // PIN/pattern fallback natively in a single prompt. On iOS we attempt
+      // biometric-only first and then fall back manually if needed.
+      if (Platform.OS === "android") {
+        const result = await LocalAuthentication.authenticateAsync({
+          promptMessage: "Unlock Pocket ID",
+          cancelLabel: "Cancel",
+          disableDeviceFallback: false,
+        });
+
+        if (result.success) {
+          backgroundedSinceUnlockRef.current = false;
+          setIsUnlocked(true);
+          setHasAuthFailed(false);
+          setHasCompletedAppLockSetup(true);
+          setMessage(DEFAULT_UNLOCK_MESSAGE);
+          return;
+        }
+
+        setIsUnlocked(false);
+        setHasAuthFailed(true);
+        setMessage(getAuthErrorMessage(result.error));
+        return;
+      }
+
       const biometricResult = await LocalAuthentication.authenticateAsync({
         promptMessage: "Unlock Pocket ID",
         cancelLabel: "Cancel",
@@ -191,6 +216,7 @@ export function AppLockGate({ children }: AppLockGateProps) {
       });
 
       if (biometricResult.success) {
+        backgroundedSinceUnlockRef.current = false;
         setIsUnlocked(true);
         setHasAuthFailed(false);
         setHasCompletedAppLockSetup(true);
@@ -209,6 +235,7 @@ export function AppLockGate({ children }: AppLockGateProps) {
         });
 
         if (fallbackResult.success) {
+          backgroundedSinceUnlockRef.current = false;
           setIsUnlocked(true);
           setHasAuthFailed(false);
           setHasCompletedAppLockSetup(true);
@@ -318,7 +345,8 @@ export function AppLockGate({ children }: AppLockGateProps) {
         nextState === "active" &&
         isSupported &&
         appLockEnabled &&
-        backgroundedSinceUnlockRef.current
+        backgroundedSinceUnlockRef.current &&
+        !authPromptActiveRef.current
       ) {
         backgroundedSinceUnlockRef.current = false;
         setIsUnlocked(false);

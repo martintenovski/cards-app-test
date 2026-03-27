@@ -127,7 +127,7 @@ export function AppTabBar({ state, navigation }: BottomTabBarProps) {
   const isCompact = width < 390;
   const isVeryCompact = width < 360;
   const showSideLabels = !isVeryCompact;
-  const addButtonLabel = isVeryCompact ? "" : isCompact ? "Add" : "New Card";
+  const addButtonLabel = isVeryCompact ? "" : "Add new";
   const shouldUseLiquidGlass = Platform.OS === "ios" && glassEffect !== null;
   const iosBottomClearance = Math.max(
     insets.bottom - (insets.bottom >= 24 ? 12 : 6),
@@ -209,7 +209,7 @@ export function AppTabBar({ state, navigation }: BottomTabBarProps) {
 
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Add new card"
+          accessibilityLabel="Add new"
           style={[
             styles.addButton,
             isCompact && styles.addButtonCompact,

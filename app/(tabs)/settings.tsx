@@ -140,6 +140,12 @@ export default function SettingsScreen() {
   const setViewMode = useCardStore((state) => state.setViewMode);
   const appLockEnabled = useCardStore((state) => state.appLockEnabled);
   const setAppLockEnabled = useCardStore((state) => state.setAppLockEnabled);
+  const screenshotBlockingEnabled = useCardStore(
+    (state) => state.screenshotBlockingEnabled,
+  );
+  const setScreenshotBlockingEnabled = useCardStore(
+    (state) => state.setScreenshotBlockingEnabled,
+  );
   const replaceCards = useCardStore((state) => state.replaceCards);
   const expiryNotificationsEnabled = useCardStore(
     (state) => state.expiryNotificationsEnabled,
@@ -188,6 +194,7 @@ export default function SettingsScreen() {
     "loading" | "missing" | "ready"
   >("loading");
   const supportSummary = getSupporterSummary(customerInfo);
+  const shouldShowCloudSyncGuide = Boolean(authUser) && cloudVaultStatus === "missing";
 
   useEffect(() => {
     if (!isFocused) {
@@ -507,9 +514,20 @@ export default function SettingsScreen() {
           </Text>
           <SettingToggle
             label="Biometric Lock"
-            description="Require Face ID, Touch ID, or the device passcode fallback when Pocket ID is locked."
+            description="Require biometrics or the device passcode fallback when Pocket ID is locked."
             value={appLockEnabled}
             onChange={setAppLockEnabled}
+            textColor={colors.text}
+            mutedColor={colors.textMuted}
+            accentColor={colors.accent}
+            isDark={isDark}
+            borderColor={colors.buttonBorder}
+          />
+          <SettingToggle
+            label="Block Screenshots"
+            description="Prevent screenshots and screen recordings while Pocket ID is open."
+            value={screenshotBlockingEnabled}
+            onChange={setScreenshotBlockingEnabled}
             textColor={colors.text}
             mutedColor={colors.textMuted}
             accentColor={colors.accent}
@@ -563,49 +581,211 @@ export default function SettingsScreen() {
             </Text>
           ) : (
             <>
-              <View
-                style={[
-                  styles.cloudStatusCard,
-                  {
-                    backgroundColor: colors.surfaceMuted,
-                    borderColor:
-                      cloudVaultStatus === "ready"
-                        ? colors.accent
-                        : colors.border,
-                  },
-                ]}
-              >
-                <Text style={[styles.cloudStatusTitle, { color: colors.text }]}>
-                  {cloudVaultStatus === "ready"
-                    ? "Encrypted cloud vault is enabled"
-                    : cloudVaultStatus === "loading"
-                      ? "Checking encrypted cloud vault…"
-                      : "Encrypted cloud vault is not set up yet"}
-                </Text>
-                <Text
-                  style={[styles.cloudStatusBody, { color: colors.textMuted }]}
+              {shouldShowCloudSyncGuide ? (
+                <View
+                  style={[
+                    styles.cloudGuideCard,
+                    {
+                      backgroundColor: colors.surfaceMuted,
+                      borderColor: colors.border,
+                    },
+                  ]}
                 >
-                  {cloudVaultStatus === "ready"
-                    ? "Your cards are encrypted on this device before upload, so the database stores ciphertext instead of readable card details."
-                    : "Set or use a sync passphrase to encrypt cards before uploading or pulling your saved cards. Until then, cloud sync stays paused on this device to avoid sending readable card data."}
-                </Text>
-              </View>
-              <Pressable
-                onPress={handleOpenCloudPassphrase}
-                style={[
-                  styles.testBtn,
-                  {
-                    backgroundColor: colors.surfaceMuted,
-                    borderColor: colors.buttonBorder,
-                  },
-                ]}
-              >
-                <Text style={[styles.testBtnText, { color: colors.text }]}>
-                  {cloudVaultStatus === "ready"
-                    ? "Update Sync Passphrase"
-                    : "Set Sync Passphrase"}
-                </Text>
-              </Pressable>
+                  <Text style={[styles.cloudGuideTitle, { color: colors.text }]}> 
+                    Set up Google sync in 3 short steps
+                  </Text>
+                  <Text
+                    style={[styles.cloudGuideBody, { color: colors.textMuted }]}
+                  >
+                    You already finished the first part by signing in with Google.
+                  </Text>
+
+                  <View style={styles.cloudGuideSteps}>
+                    <View style={styles.cloudGuideStepRow}>
+                      <View
+                        style={[
+                          styles.cloudGuideStepBadge,
+                          { backgroundColor: colors.accent },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.cloudGuideStepBadgeText,
+                            { color: colors.accentText },
+                          ]}
+                        >
+                          1
+                        </Text>
+                      </View>
+                      <View style={styles.cloudGuideStepContent}>
+                        <Text
+                          style={[styles.cloudGuideStepTitle, { color: colors.text }]}
+                        >
+                          Sign in with Google
+                        </Text>
+                        <Text
+                          style={[
+                            styles.cloudGuideStepBody,
+                            { color: colors.textMuted },
+                          ]}
+                        >
+                          Done. Your account is now connected and ready for secure sync.
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.cloudGuideStepRow}>
+                      <View
+                        style={[
+                          styles.cloudGuideStepBadge,
+                          { backgroundColor: colors.surface, borderColor: colors.border },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.cloudGuideStepBadgeText,
+                            { color: colors.text },
+                          ]}
+                        >
+                          2
+                        </Text>
+                      </View>
+                      <View style={styles.cloudGuideStepContent}>
+                        <Text
+                          style={[styles.cloudGuideStepTitle, { color: colors.text }]}
+                        >
+                          Create your sync passphrase
+                        </Text>
+                        <Text
+                          style={[
+                            styles.cloudGuideStepBody,
+                            { color: colors.textMuted },
+                          ]}
+                        >
+                          This passphrase encrypts your vault before anything is uploaded.
+                        </Text>
+                        <Pressable
+                          onPress={handleOpenCloudPassphrase}
+                          style={[
+                            styles.cloudGuideAction,
+                            {
+                              backgroundColor: colors.accent,
+                              borderColor: colors.accent,
+                            },
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.cloudGuideActionText,
+                              { color: colors.accentText },
+                            ]}
+                          >
+                            Set Sync Passphrase
+                          </Text>
+                        </Pressable>
+                      </View>
+                    </View>
+
+                    <View style={styles.cloudGuideStepRow}>
+                      <View
+                        style={[
+                          styles.cloudGuideStepBadge,
+                          { backgroundColor: colors.surface, borderColor: colors.border },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.cloudGuideStepBadgeText,
+                            { color: colors.text },
+                          ]}
+                        >
+                          3
+                        </Text>
+                      </View>
+                      <View style={styles.cloudGuideStepContent}>
+                        <Text
+                          style={[styles.cloudGuideStepTitle, { color: colors.text }]}
+                        >
+                          Read how it works
+                        </Text>
+                        <Text
+                          style={[
+                            styles.cloudGuideStepBody,
+                            { color: colors.textMuted },
+                          ]}
+                        >
+                          See what Google, Supabase, and encryption each do in the flow.
+                        </Text>
+                        <Pressable
+                          onPress={() => setCloudInfoVisible(true)}
+                          style={[
+                            styles.cloudGuideAction,
+                            {
+                              backgroundColor: colors.surface,
+                              borderColor: colors.buttonBorder,
+                            },
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.cloudGuideActionText,
+                              { color: colors.text },
+                            ]}
+                          >
+                            Read More
+                          </Text>
+                        </Pressable>
+                      </View>
+                    </View>
+                  </View>
+                </View>
+              ) : (
+                <>
+                  <View
+                    style={[
+                      styles.cloudStatusCard,
+                      {
+                        backgroundColor: colors.surfaceMuted,
+                        borderColor:
+                          cloudVaultStatus === "ready"
+                            ? colors.accent
+                            : colors.border,
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.cloudStatusTitle, { color: colors.text }]}> 
+                      {cloudVaultStatus === "ready"
+                        ? "Encrypted cloud vault is enabled"
+                        : cloudVaultStatus === "loading"
+                          ? "Checking encrypted cloud vault…"
+                          : "Encrypted cloud vault is not set up yet"}
+                    </Text>
+                    <Text
+                      style={[styles.cloudStatusBody, { color: colors.textMuted }]}
+                    >
+                      {cloudVaultStatus === "ready"
+                        ? "Your cards are encrypted on this device before upload, so the database stores ciphertext instead of readable card details."
+                        : "Set or use a sync passphrase to encrypt cards before uploading or pulling your saved cards. Until then, cloud sync stays paused on this device to avoid sending readable card data."}
+                    </Text>
+                  </View>
+                  <Pressable
+                    onPress={handleOpenCloudPassphrase}
+                    style={[
+                      styles.testBtn,
+                      {
+                        backgroundColor: colors.surfaceMuted,
+                        borderColor: colors.buttonBorder,
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.testBtnText, { color: colors.text }]}> 
+                      {cloudVaultStatus === "ready"
+                        ? "Update Sync Passphrase"
+                        : "Set Sync Passphrase"}
+                    </Text>
+                  </Pressable>
+                </>
+              )}
               {cloudVaultStatus === "ready" ? (
                 <Pressable
                   onPress={handleForgetPassphrase}
@@ -624,39 +804,43 @@ export default function SettingsScreen() {
                   </Text>
                 </Pressable>
               ) : null}
-              <Pressable
-                onPress={handleFetchLatestData}
-                style={[
-                  styles.testBtn,
-                  {
-                    backgroundColor: colors.surfaceMuted,
-                    borderColor: colors.buttonBorder,
-                  },
-                ]}
-              >
-                <Text style={[styles.testBtnText, { color: colors.text }]}>
-                  {syncStatus === "syncing"
-                    ? "Syncing Cloud Data…"
-                    : "Sync Cloud Data"}
-                </Text>
-              </Pressable>
-              <Pressable
-                onPress={handleDeleteData}
-                style={[
-                  styles.testBtn,
-                  styles.dangerButton,
-                  {
-                    backgroundColor: colors.dangerSoft,
-                    borderColor: colors.danger,
-                  },
-                ]}
-              >
-                <Text style={[styles.testBtnText, { color: colors.danger }]}>
-                  {authBusy === "delete-data"
-                    ? "Deleting data…"
-                    : "Delete My Data"}
-                </Text>
-              </Pressable>
+              {!shouldShowCloudSyncGuide ? (
+                <>
+                  <Pressable
+                    onPress={handleFetchLatestData}
+                    style={[
+                      styles.testBtn,
+                      {
+                        backgroundColor: colors.surfaceMuted,
+                        borderColor: colors.buttonBorder,
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.testBtnText, { color: colors.text }]}> 
+                      {syncStatus === "syncing"
+                        ? "Syncing Cloud Data…"
+                        : "Sync Cloud Data"}
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={handleDeleteData}
+                    style={[
+                      styles.testBtn,
+                      styles.dangerButton,
+                      {
+                        backgroundColor: colors.dangerSoft,
+                        borderColor: colors.danger,
+                      },
+                    ]}
+                  >
+                    <Text style={[styles.testBtnText, { color: colors.danger }]}> 
+                      {authBusy === "delete-data"
+                        ? "Deleting data…"
+                        : "Delete My Data"}
+                    </Text>
+                  </Pressable>
+                </>
+              ) : null}
             </>
           )}
         </View>
@@ -954,6 +1138,73 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     marginTop: 18,
     padding: 16,
+  },
+  cloudGuideCard: {
+    borderWidth: 1,
+    borderRadius: 24,
+    marginTop: 18,
+    padding: 18,
+  },
+  cloudGuideTitle: {
+    fontFamily: "ReadexPro-Bold",
+    fontSize: 17,
+    lineHeight: 23,
+  },
+  cloudGuideBody: {
+    fontFamily: "ReadexPro-Regular",
+    fontSize: 14,
+    lineHeight: 21,
+    marginTop: 6,
+  },
+  cloudGuideSteps: {
+    gap: 14,
+    marginTop: 16,
+  },
+  cloudGuideStepRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+  },
+  cloudGuideStepBadge: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+  },
+  cloudGuideStepBadgeText: {
+    fontFamily: "ReadexPro-Bold",
+    fontSize: 13,
+  },
+  cloudGuideStepContent: {
+    flex: 1,
+    paddingTop: 2,
+  },
+  cloudGuideStepTitle: {
+    fontFamily: "ReadexPro-Bold",
+    fontSize: 15,
+    lineHeight: 20,
+  },
+  cloudGuideStepBody: {
+    fontFamily: "ReadexPro-Regular",
+    fontSize: 13,
+    lineHeight: 20,
+    marginTop: 4,
+  },
+  cloudGuideAction: {
+    minHeight: 44,
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    alignSelf: "flex-start",
+    marginTop: 10,
+  },
+  cloudGuideActionText: {
+    fontFamily: "ReadexPro-Medium",
+    fontSize: 14,
   },
   cloudStatusTitle: {
     fontFamily: "ReadexPro-Bold",

@@ -20,6 +20,7 @@ import { ExpiryNotificationManager } from "@/components/ExpiryNotificationManage
 import { GluestackUIProvider } from "@/components/ui/gluestack-ui-provider";
 import { SupportModalManager } from "@/src/components/SupportModalManager";
 import * as Notifications from "expo-notifications";
+import * as ScreenCapture from "expo-screen-capture";
 import { useFonts } from "expo-font";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
@@ -45,6 +46,9 @@ export default function RootLayout() {
   const hasHydrated = useCardStore((state) => state.hasHydrated);
   const hasSeenOnboarding = useCardStore((state) => state.hasSeenOnboarding);
   const themePreference = useCardStore((state) => state.themePreference);
+  const screenshotBlockingEnabled = useCardStore(
+    (state) => state.screenshotBlockingEnabled,
+  );
   const resolvedTheme = resolveTheme(themePreference, deviceScheme);
   const colors = APP_THEME[resolvedTheme];
   const [fontsLoaded] = useFonts({
@@ -73,6 +77,15 @@ export default function RootLayout() {
       router.replace("/");
     }
   }, [fontsLoaded, hasHydrated, hasSeenOnboarding, router, segments]);
+
+  // Enable or disable screenshot/screen-recording blocking based on user setting
+  useEffect(() => {
+    if (screenshotBlockingEnabled) {
+      void ScreenCapture.preventScreenCaptureAsync();
+    } else {
+      void ScreenCapture.allowScreenCaptureAsync();
+    }
+  }, [screenshotBlockingEnabled]);
 
   // Navigate to card-detail when a notification is tapped
   useEffect(() => {

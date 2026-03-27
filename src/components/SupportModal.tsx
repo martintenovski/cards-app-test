@@ -302,135 +302,270 @@ export function SupportModal({
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.packageList}
       >
-        {packages.map((aPackage) => {
-          const product = aPackage.product;
-          const packageDescription =
-            product.description || fallbackDescription(product.identifier);
-          const isPurchasing = purchasingIdentifier === product.identifier;
-          const purchaseCount = getSupportProductPurchaseCount(
-            customerInfo,
-            product.identifier,
+        {(() => {
+          const monthlyPackage = packages.find(
+            (candidate) => candidate.product.identifier === "supporter_monthly",
           );
-          const shouldShowPurchaseCountBadge =
-            purchaseCount > 0 &&
-            product.identifier !== "supporter_lifetime" &&
-            product.identifier !== "supporter_monthly";
-          const canPurchase = canPurchaseSupportProduct(
-            customerInfo,
-            product.identifier,
+          const oneTimePackages = packages.filter(
+            (candidate) => candidate.product.identifier !== "supporter_monthly",
           );
-          const buttonDisabled = Boolean(purchasingIdentifier) || !canPurchase;
-          const buttonLabel = !canPurchase
-            ? product.identifier === "supporter_lifetime"
-              ? "Owned"
-              : "Active"
-            : isPurchasing
-              ? "Buying…"
-              : "Buy";
 
           return (
-            <View
-              key={product.identifier}
-              style={[
-                styles.packageCard,
-                {
-                  backgroundColor: colors.surfaceMuted,
-                  borderColor: colors.border,
-                },
-              ]}
-            >
-              <View style={styles.packageTextWrap}>
-                <View style={styles.packageTitleRow}>
-                  <Text style={[styles.packageTitle, { color: colors.text }]}>
-                    {product.title}
+            <>
+              {monthlyPackage ? (
+                <View style={styles.sectionWrap}>
+                  <Text style={[styles.sectionEyebrow, { color: colors.textSoft }]}> 
+                    Monthly support
                   </Text>
-                  {shouldShowPurchaseCountBadge ? (
-                    <View
-                      style={[
-                        styles.purchaseCountBadge,
-                        {
-                          backgroundColor: colors.surface,
-                          borderColor: colors.border,
-                        },
-                      ]}
-                    >
-                      <Text
+                  <LinearGradient
+                    colors={["#FFD66B", "#FF9A62", "#F46BA9"]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={styles.featuredCard}
+                  >
+                    <View style={styles.featuredCardTopRow}>
+                      <View style={styles.featuredBadge}>
+                        <Feather name="heart" size={13} color="#3A1B00" />
+                        <Text style={styles.featuredBadgeText}>Best for ongoing support</Text>
+                      </View>
+                      <View style={styles.featuredPill}>
+                        <Text style={styles.featuredPillText}>Recurring</Text>
+                      </View>
+                    </View>
+
+                    <Text style={styles.featuredTitle}>
+                      {monthlyPackage.product.title}
+                    </Text>
+                    <Text style={styles.featuredBody}>
+                      {monthlyPackage.product.description ||
+                        fallbackDescription(monthlyPackage.product.identifier)}
+                    </Text>
+
+                    <View style={styles.featuredHighlights}>
+                      <View style={styles.featuredHighlightRow}>
+                        <Feather name="zap" size={15} color="#3A1B00" />
+                        <Text style={styles.featuredHighlightText}>
+                          Small recurring support that keeps updates sustainable.
+                        </Text>
+                      </View>
+                      <View style={styles.featuredHighlightRow}>
+                        <Feather name="refresh-cw" size={15} color="#3A1B00" />
+                        <Text style={styles.featuredHighlightText}>
+                          Manage or cancel later from your store subscription settings.
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.featuredFooter}>
+                      <View style={styles.featuredPriceWrap}>
+                        <Text style={styles.featuredPrice}>
+                          {monthlyPackage.product.priceString}
+                        </Text>
+                        <Text style={styles.featuredPriceCaption}>
+                          billed by {storeName}
+                        </Text>
+                      </View>
+
+                      {(() => {
+                        const product = monthlyPackage.product;
+                        const isPurchasing =
+                          purchasingIdentifier === product.identifier;
+                        const canPurchase = canPurchaseSupportProduct(
+                          customerInfo,
+                          product.identifier,
+                        );
+                        const buttonDisabled =
+                          Boolean(purchasingIdentifier) || !canPurchase;
+                        const buttonLabel = !canPurchase
+                          ? "Active"
+                          : isPurchasing
+                            ? "Starting…"
+                            : "Start monthly";
+
+                        return (
+                          <Pressable
+                            accessibilityRole="button"
+                            disabled={buttonDisabled}
+                            onPress={() => void handlePurchase(monthlyPackage)}
+                            style={[
+                              styles.featuredButton,
+                              !canPurchase && styles.featuredButtonDisabled,
+                              purchasingIdentifier && !isPurchasing
+                                ? styles.dimmedAction
+                                : null,
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.featuredButtonText,
+                                !canPurchase && styles.featuredButtonTextDisabled,
+                              ]}
+                            >
+                              {buttonLabel}
+                            </Text>
+                          </Pressable>
+                        );
+                      })()}
+                    </View>
+
+                    {!canPurchaseSupportProduct(
+                      customerInfo,
+                      monthlyPackage.product.identifier,
+                    ) && canManageMonthlySubscription(customerInfo) ? (
+                      <Pressable
+                        accessibilityRole="button"
+                        onPress={() => void handleManageSubscription()}
+                        style={styles.featuredSecondaryButton}
+                      >
+                        <Text style={styles.featuredSecondaryButtonText}>
+                          Manage subscription
+                        </Text>
+                      </Pressable>
+                    ) : null}
+                  </LinearGradient>
+                </View>
+              ) : null}
+
+              {oneTimePackages.length ? (
+                <View style={styles.sectionWrap}>
+                  <Text style={[styles.sectionEyebrow, { color: colors.textSoft }]}> 
+                    One-time support
+                  </Text>
+                  {oneTimePackages.map((aPackage) => {
+                    const product = aPackage.product;
+                    const packageDescription =
+                      product.description || fallbackDescription(product.identifier);
+                    const isPurchasing =
+                      purchasingIdentifier === product.identifier;
+                    const purchaseCount = getSupportProductPurchaseCount(
+                      customerInfo,
+                      product.identifier,
+                    );
+                    const shouldShowPurchaseCountBadge =
+                      purchaseCount > 0 &&
+                      product.identifier !== "supporter_lifetime";
+                    const canPurchase = canPurchaseSupportProduct(
+                      customerInfo,
+                      product.identifier,
+                    );
+                    const buttonDisabled =
+                      Boolean(purchasingIdentifier) || !canPurchase;
+                    const buttonLabel = !canPurchase
+                      ? product.identifier === "supporter_lifetime"
+                        ? "Owned"
+                        : "Added"
+                      : isPurchasing
+                        ? "Buying…"
+                        : product.identifier === "supporter_lifetime"
+                          ? "Unlock forever"
+                          : "Support once";
+
+                    return (
+                      <View
+                        key={product.identifier}
                         style={[
-                          styles.purchaseCountBadgeText,
-                          { color: colors.textMuted },
+                          styles.packageCard,
+                          {
+                            backgroundColor: colors.surfaceMuted,
+                            borderColor: colors.border,
+                          },
                         ]}
                       >
-                        x{purchaseCount}
-                      </Text>
-                    </View>
-                  ) : null}
+                        <View style={styles.packageMetaRow}>
+                          <View
+                            style={[
+                              styles.packageKindBadge,
+                              {
+                                backgroundColor: colors.surface,
+                                borderColor: colors.border,
+                              },
+                            ]}
+                          >
+                            <Text
+                              style={[
+                                styles.packageKindBadgeText,
+                                { color: colors.textMuted },
+                              ]}
+                            >
+                              {product.identifier === "supporter_lifetime"
+                                ? "Lifetime"
+                                : "One-time"}
+                            </Text>
+                          </View>
+                          {shouldShowPurchaseCountBadge ? (
+                            <View
+                              style={[
+                                styles.purchaseCountBadge,
+                                {
+                                  backgroundColor: colors.surface,
+                                  borderColor: colors.border,
+                                },
+                              ]}
+                            >
+                              <Text
+                                style={[
+                                  styles.purchaseCountBadgeText,
+                                  { color: colors.textMuted },
+                                ]}
+                              >
+                                x{purchaseCount}
+                              </Text>
+                            </View>
+                          ) : null}
+                        </View>
+
+                        <View style={styles.packageTextWrap}>
+                          <View style={styles.packageTitleRow}>
+                            <Text style={[styles.packageTitle, { color: colors.text }]}> 
+                              {product.title}
+                            </Text>
+                            <Text style={[styles.packagePrice, { color: colors.text }]}> 
+                              {product.priceString}
+                            </Text>
+                          </View>
+                          <Text style={[styles.packageBody, { color: colors.textMuted }]}> 
+                            {packageDescription}
+                          </Text>
+                        </View>
+                        <Pressable
+                          accessibilityRole="button"
+                          disabled={buttonDisabled}
+                          onPress={() => void handlePurchase(aPackage)}
+                          style={[
+                            styles.buyButton,
+                            {
+                              backgroundColor: canPurchase
+                                ? colors.accent
+                                : colors.surface,
+                              borderColor: canPurchase
+                                ? colors.accent
+                                : colors.buttonBorder,
+                              borderWidth: 1,
+                              opacity: purchasingIdentifier && !isPurchasing ? 0.55 : 1,
+                            },
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.buyButtonText,
+                              {
+                                color: canPurchase
+                                  ? colors.accentText
+                                  : colors.textMuted,
+                              },
+                            ]}
+                          >
+                            {buttonLabel}
+                          </Text>
+                        </Pressable>
+                      </View>
+                    );
+                  })}
                 </View>
-                <Text style={[styles.packageBody, { color: colors.textMuted }]}>
-                  {packageDescription}
-                </Text>
-                <Text style={[styles.packagePrice, { color: colors.text }]}>
-                  {product.priceString}
-                </Text>
-              </View>
-              <Pressable
-                accessibilityRole="button"
-                disabled={buttonDisabled}
-                onPress={() => void handlePurchase(aPackage)}
-                style={[
-                  styles.buyButton,
-                  {
-                    backgroundColor: canPurchase
-                      ? colors.accent
-                      : colors.surface,
-                    borderColor: canPurchase
-                      ? colors.accent
-                      : colors.buttonBorder,
-                    borderWidth: 1,
-                    opacity: purchasingIdentifier && !isPurchasing ? 0.55 : 1,
-                  },
-                ]}
-              >
-                <Text
-                  style={[
-                    styles.buyButtonText,
-                    {
-                      color: canPurchase ? colors.accentText : colors.textMuted,
-                    },
-                  ]}
-                >
-                  {buttonLabel}
-                </Text>
-              </Pressable>
-              {!canPurchase &&
-              product.identifier === "supporter_monthly" &&
-              canManageMonthlySubscription(customerInfo) ? (
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={() => void handleManageSubscription()}
-                  style={[
-                    styles.buyButton,
-                    styles.secondaryAction,
-                    {
-                      backgroundColor: colors.surface,
-                      borderColor: colors.buttonBorder,
-                      borderWidth: 1,
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.buyButtonText,
-                      styles.secondaryActionText,
-                      { color: colors.text },
-                    ]}
-                  >
-                    Cancel Monthly Subscription
-                  </Text>
-                </Pressable>
               ) : null}
-            </View>
+            </>
           );
-        })}
+        })()}
       </ScrollView>
     );
   }, [
@@ -589,18 +724,164 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 16,
   },
+  sectionWrap: {
+    gap: 10,
+  },
+  sectionEyebrow: {
+    fontFamily: "ReadexPro-Medium",
+    fontSize: 12,
+    letterSpacing: 0.8,
+    textTransform: "uppercase",
+    marginBottom: 2,
+  },
+  featuredCard: {
+    borderRadius: 28,
+    padding: 18,
+    gap: 14,
+    overflow: "hidden",
+  },
+  featuredCardTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+  },
+  featuredBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(255,255,255,0.74)",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  featuredBadgeText: {
+    fontFamily: "ReadexPro-Bold",
+    fontSize: 11,
+    color: "#3A1B00",
+  },
+  featuredPill: {
+    backgroundColor: "rgba(58,27,0,0.10)",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+  },
+  featuredPillText: {
+    fontFamily: "ReadexPro-Bold",
+    fontSize: 11,
+    color: "#3A1B00",
+  },
+  featuredTitle: {
+    fontFamily: "ReadexPro-Bold",
+    fontSize: 24,
+    lineHeight: 30,
+    color: "#231100",
+  },
+  featuredBody: {
+    fontFamily: "ReadexPro-Regular",
+    fontSize: 14,
+    lineHeight: 21,
+    color: "rgba(35,17,0,0.80)",
+  },
+  featuredHighlights: {
+    gap: 8,
+  },
+  featuredHighlightRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 8,
+  },
+  featuredHighlightText: {
+    flex: 1,
+    fontFamily: "ReadexPro-Medium",
+    fontSize: 13,
+    lineHeight: 18,
+    color: "rgba(35,17,0,0.85)",
+  },
+  featuredFooter: {
+    flexDirection: "row",
+    alignItems: "flex-end",
+    justifyContent: "space-between",
+    gap: 14,
+  },
+  featuredPriceWrap: {
+    flex: 1,
+    gap: 3,
+  },
+  featuredPrice: {
+    fontFamily: "ReadexPro-Bold",
+    fontSize: 27,
+    lineHeight: 32,
+    color: "#231100",
+  },
+  featuredPriceCaption: {
+    fontFamily: "ReadexPro-Regular",
+    fontSize: 12,
+    color: "rgba(35,17,0,0.72)",
+  },
+  featuredButton: {
+    minHeight: 52,
+    borderRadius: 18,
+    paddingHorizontal: 18,
+    backgroundColor: "#FFFFFF",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  featuredButtonDisabled: {
+    backgroundColor: "rgba(255,255,255,0.65)",
+  },
+  featuredButtonText: {
+    fontFamily: "ReadexPro-Bold",
+    fontSize: 15,
+    color: "#231100",
+  },
+  featuredButtonTextDisabled: {
+    color: "rgba(35,17,0,0.62)",
+  },
+  featuredSecondaryButton: {
+    marginTop: 2,
+    minHeight: 46,
+    borderRadius: 16,
+    backgroundColor: "rgba(255,255,255,0.24)",
+    borderWidth: 1,
+    borderColor: "rgba(58,27,0,0.12)",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 16,
+  },
+  featuredSecondaryButtonText: {
+    fontFamily: "ReadexPro-Bold",
+    fontSize: 14,
+    color: "#231100",
+  },
   packageCard: {
     borderWidth: 1,
     borderRadius: 22,
     padding: 16,
     gap: 16,
   },
+  packageMetaRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 10,
+  },
   packageTextWrap: {
     gap: 8,
   },
+  packageKindBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 999,
+    borderWidth: 1,
+  },
+  packageKindBadgeText: {
+    fontFamily: "ReadexPro-Bold",
+    fontSize: 11,
+  },
   packageTitleRow: {
     flexDirection: "row",
-    alignItems: "center",
+    alignItems: "flex-start",
     justifyContent: "space-between",
     gap: 12,
   },
@@ -652,5 +933,8 @@ const styles = StyleSheet.create({
   secondaryActionText: {
     textAlign: "center",
     width: "100%",
+  },
+  dimmedAction: {
+    opacity: 0.55,
   },
 });
