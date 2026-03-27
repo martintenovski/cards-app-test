@@ -63,10 +63,14 @@ type PurchasesErrorLike = {
   message?: string;
   underlyingErrorMessage?: string;
   userCancelled?: boolean | null;
+  userInfo?: {
+    readableErrorCode?: string;
+  } | null;
 };
 
 type PurchasesErrorDetails = {
   code: string | null;
+  readableErrorCode: string | null;
   message: string | null;
   underlyingErrorMessage: string | null;
   combinedMessage: string;
@@ -106,6 +110,7 @@ function getPurchasesErrorDetails(error: unknown): PurchasesErrorDetails {
   if (!isPurchasesErrorLike(error)) {
     return {
       code: null,
+      readableErrorCode: null,
       message: null,
       underlyingErrorMessage: null,
       combinedMessage: "",
@@ -120,6 +125,10 @@ function getPurchasesErrorDetails(error: unknown): PurchasesErrorDetails {
 
   return {
     code: typeof error.code === "string" ? error.code : null,
+    readableErrorCode:
+      typeof error.userInfo?.readableErrorCode === "string"
+        ? error.userInfo.readableErrorCode
+        : null,
     message,
     underlyingErrorMessage,
     combinedMessage: [message, underlyingErrorMessage]
@@ -225,35 +234,120 @@ function logRevenueCatConfigurationHints(error?: unknown) {
 }
 
 export function getSupportLoadErrorMessage(error: unknown) {
+  const { code, readableErrorCode, message, underlyingErrorMessage } =
+    getPurchasesErrorDetails(error);
+  const debugSuffix = [
+    readableErrorCode ? `RevenueCat code: ${readableErrorCode}` : null,
+    code ? `SDK code: ${code}` : null,
+    message ? `Message: ${message}` : null,
+    underlyingErrorMessage ? `Store detail: ${underlyingErrorMessage}` : null,
+  ]
+    .filter((value): value is string => Boolean(value))
+    .join("\n");
+
   if (Platform.OS === "android") {
     if (isAndroidBillingUnavailableError(error)) {
-      return getAndroidBillingUnavailableMessage();
+      return [getAndroidBillingUnavailableMessage(), debugSuffix]
+        .filter(Boolean)
+        .join("\n\n");
+    }
+
+    if (code === PURCHASES_ERROR_CODE.CONFIGURATION_ERROR) {
+      return [
+        `Pocket ID reached RevenueCat, but the support offering is not ready for Google Play package ${getBundleIdentifier()}. Confirm the offering identifier is \"${SUPPORT_OFFERING_ID}\", that it contains the exact product IDs ${PRODUCT_ORDER.join(
+          ", ",
+        )}, and that those Play Console products are active.`,
+        debugSuffix,
+      ]
+        .filter(Boolean)
+        .join("\n\n");
+    }
+
+    if (code === PURCHASES_ERROR_CODE.PRODUCT_NOT_AVAILABLE_FOR_PURCHASE_ERROR) {
+      return [
+        `Google Play found the app, but one or more support products are not available for package ${getBundleIdentifier()}. This usually means the tester account does not have access yet, the products are still inactive, or the Play Console / RevenueCat product IDs do not match exactly.`,
+        debugSuffix,
+      ]
+        .filter(Boolean)
+        .join("\n\n");
+    }
+
+    if (
+      code === PURCHASES_ERROR_CODE.NETWORK_ERROR ||
+      code === PURCHASES_ERROR_CODE.OFFLINE_CONNECTION_ERROR ||
+      code === PURCHASES_ERROR_CODE.PRODUCT_REQUEST_TIMED_OUT_ERROR
+    ) {
+      return [
+        "Pocket ID could not reach RevenueCat or Google Play right now. Check the device connection, open Google Play once to confirm the tester account is signed in, and try again.",
+        debugSuffix,
+      ]
+        .filter(Boolean)
+        .join("\n\n");
+    }
+
+    if (code === PURCHASES_ERROR_CODE.STORE_PROBLEM_ERROR) {
+      return [
+        `Google Play reported a store problem while loading support options for package ${getBundleIdentifier()}. This is often caused by testing on an emulator without full Play billing support or by a Play account/tester mismatch.`,
+        debugSuffix,
+      ]
+        .filter(Boolean)
+        .join("\n\n");
     }
 
     if (isLikelyRevenueCatConfigurationError(error)) {
-      return `Pocket ID reached RevenueCat, but the support offering is not ready for Google Play package ${getBundleIdentifier()}. Confirm the support offering contains the live product IDs ${PRODUCT_ORDER.join(
-        ", ",
-      )}, that those products are active in Play Console, and that this build was installed from the Play internal track using a tester account.`;
+      return [
+        `Pocket ID reached RevenueCat, but the support offering is not ready for Google Play package ${getBundleIdentifier()}. Confirm the support offering contains the live product IDs ${PRODUCT_ORDER.join(
+          ", ",
+        )}, that those products are active in Play Console, and that this build was installed from the Play internal track using a tester account.`,
+        debugSuffix,
+      ]
+        .filter(Boolean)
+        .join("\n\n");
     }
 
     if (isLikelyNetworkError(error)) {
-      return "Pocket ID could not reach RevenueCat or Google Play right now. Check the device connection, open Google Play once to confirm the tester account is signed in, and try again.";
+      return [
+        "Pocket ID could not reach RevenueCat or Google Play right now. Check the device connection, open Google Play once to confirm the tester account is signed in, and try again.",
+        debugSuffix,
+      ]
+        .filter(Boolean)
+        .join("\n\n");
     }
 
-    return `Pocket ID could not load Google Play support options for package ${getBundleIdentifier()} right now. Make sure this Play build is installed from the internal testing track on a Google Play-enabled device, and that the RevenueCat offering is linked to active Play Console products.`;
+    return [
+      `Pocket ID could not load Google Play support options for package ${getBundleIdentifier()} right now. Make sure this Play build is installed from the internal testing track on a Google Play-enabled device, and that the RevenueCat offering is linked to active Play Console products.`,
+      debugSuffix,
+    ]
+      .filter(Boolean)
+      .join("\n\n");
   }
 
   if (isLikelyNetworkError(error)) {
-    return "Pocket ID could not reach the App Store or RevenueCat right now. Check the device connection and try again.";
+    return [
+      "Pocket ID could not reach the App Store or RevenueCat right now. Check the device connection and try again.",
+      debugSuffix,
+    ]
+      .filter(Boolean)
+      .join("\n\n");
   }
 
   if (isLikelyRevenueCatConfigurationError(error)) {
-    return `Pocket ID reached RevenueCat, but the support offering is not ready for bundle identifier ${getBundleIdentifier()}. Confirm the support offering contains the expected live product IDs ${PRODUCT_ORDER.join(
-      ", ",
-    )}.`;
+    return [
+      `Pocket ID reached RevenueCat, but the support offering is not ready for bundle identifier ${getBundleIdentifier()}. Confirm the support offering contains the expected live product IDs ${PRODUCT_ORDER.join(
+        ", ",
+      )}.`,
+      debugSuffix,
+    ]
+      .filter(Boolean)
+      .join("\n\n");
   }
 
-  return "Pocket ID could not load support options right now. Please try again in a moment.";
+  return [
+    "Pocket ID could not load support options right now. Please try again in a moment.",
+    debugSuffix,
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 }
 
 function logSupportPackageStatus(offering: PurchasesOffering) {
