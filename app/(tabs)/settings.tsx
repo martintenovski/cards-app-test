@@ -38,6 +38,7 @@ import {
   deleteStoredSyncPassphrase,
   hasStoredSyncPassphrase,
 } from "@/utils/cloudVault";
+import { signOut } from "@/utils/authSync";
 import { getCardExpiryDate } from "@/utils/expiry";
 import type { ThemePreference } from "@/utils/theme";
 import { APP_THEME, resolveTheme } from "@/utils/theme";
@@ -46,7 +47,13 @@ const THEME_OPTIONS: ThemePreference[] = ["system", "light", "dark"];
 const FLOATING_TAB_SCROLL_BUFFER = 132;
 const GITHUB_REPO_URL = "https://github.com/PowerCube0/pocket-id";
 
-function GitHubIcon({ size = 20, color = "#000" }: { size?: number; color?: string }) {
+function GitHubIcon({
+  size = 20,
+  color = "#000",
+}: {
+  size?: number;
+  color?: string;
+}) {
   // Path from the official GitHub mark SVG (viewBox 0 0 16 16)
   return (
     <Svg viewBox="0 0 16 16" width={size} height={size}>
@@ -187,14 +194,22 @@ export default function SettingsScreen() {
   const scrollViewRef = useRef<ScrollView | null>(null);
   const [cloudSyncSectionY, setCloudSyncSectionY] = useState(0);
   const [authBusy, setAuthBusy] = useState<
-    "delete-data" | "forget-passphrase" | null
+    "delete-account" | "delete-data" | "forget-passphrase" | null
   >(null);
   const [cloudInfoVisible, setCloudInfoVisible] = useState(false);
   const [cloudVaultStatus, setCloudVaultStatus] = useState<
     "loading" | "missing" | "ready"
   >("loading");
   const supportSummary = getSupporterSummary(customerInfo);
-  const shouldShowCloudSyncGuide = Boolean(authUser) && cloudVaultStatus === "missing";
+  const shouldShowCloudSyncGuide =
+    Boolean(authUser) && cloudVaultStatus === "missing";
+  const canUseAnimatedStack = cards.length >= 4;
+
+  useEffect(() => {
+    if (!canUseAnimatedStack && viewMode === "stack") {
+      setViewMode("list");
+    }
+  }, [canUseAnimatedStack, setViewMode, viewMode]);
 
   useEffect(() => {
     if (!isFocused) {
@@ -401,6 +416,45 @@ export default function SettingsScreen() {
     );
   };
 
+  const handleDeleteAccount = () => {
+    if (!authUser) return;
+
+    Alert.alert(
+      "Delete account from this app?",
+      "This removes your synced wallet data, forgets your sync passphrase on this device, signs you out of Google, and resets Pocket ID to a first-time state on this device. This cannot be undone.",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete Account",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setAuthBusy("delete-account");
+              setSyncState("idle");
+              await deleteWalletSnapshot(authUser.id);
+              await deleteStoredSyncPassphrase(authUser.id).catch(() => null);
+              suppressNextAutoSync();
+              replaceCards([]);
+              bumpCloudVaultChangeToken();
+              setAppLockEnabled(false);
+              setHasSeenOnboarding(false);
+              await signOut();
+            } catch (error) {
+              Alert.alert(
+                "Could not delete account",
+                error instanceof Error
+                  ? error.message
+                  : "Pocket ID couldn't remove this account right now. Please try again.",
+              );
+            } finally {
+              setAuthBusy(null);
+            }
+          },
+        },
+      ],
+    );
+  };
+
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: colors.background }]}>
       <ScrollView
@@ -485,13 +539,22 @@ export default function SettingsScreen() {
           >
             {(["stack", "list"] as const).map((option) => {
               const active = viewMode === option;
+              const disabled = option === "stack" && !canUseAnimatedStack;
               return (
                 <Pressable
                   key={option}
-                  onPress={() => setViewMode(option)}
+                  disabled={disabled}
+                  onPress={() => {
+                    if (!disabled) {
+                      setViewMode(option);
+                    }
+                  }}
                   style={[
                     styles.themeOption,
-                    { backgroundColor: active ? colors.accent : "transparent" },
+                    {
+                      backgroundColor: active ? colors.accent : "transparent",
+                      opacity: disabled ? 0.5 : 1,
+                    },
                   ]}
                 >
                   <Text
@@ -506,6 +569,11 @@ export default function SettingsScreen() {
               );
             })}
           </View>
+          {!canUseAnimatedStack ? (
+            <Text style={[styles.cardViewHint, { color: colors.textSoft }]}>
+              Animated stack unlocks with 4 or more saved cards.
+            </Text>
+          ) : null}
         </View>
 
         <View style={[styles.section, { backgroundColor: colors.surface }]}>
@@ -591,13 +659,16 @@ export default function SettingsScreen() {
                     },
                   ]}
                 >
-                  <Text style={[styles.cloudGuideTitle, { color: colors.text }]}> 
+                  <Text
+                    style={[styles.cloudGuideTitle, { color: colors.text }]}
+                  >
                     Set up Google sync in 3 short steps
                   </Text>
                   <Text
                     style={[styles.cloudGuideBody, { color: colors.textMuted }]}
                   >
-                    You already finished the first part by signing in with Google.
+                    You already finished the first part by signing in with
+                    Google.
                   </Text>
 
                   <View style={styles.cloudGuideSteps}>
@@ -619,7 +690,10 @@ export default function SettingsScreen() {
                       </View>
                       <View style={styles.cloudGuideStepContent}>
                         <Text
-                          style={[styles.cloudGuideStepTitle, { color: colors.text }]}
+                          style={[
+                            styles.cloudGuideStepTitle,
+                            { color: colors.text },
+                          ]}
                         >
                           Sign in with Google
                         </Text>
@@ -629,7 +703,8 @@ export default function SettingsScreen() {
                             { color: colors.textMuted },
                           ]}
                         >
-                          Done. Your account is now connected and ready for secure sync.
+                          Done. Your account is now connected and ready for
+                          secure sync.
                         </Text>
                       </View>
                     </View>
@@ -638,7 +713,10 @@ export default function SettingsScreen() {
                       <View
                         style={[
                           styles.cloudGuideStepBadge,
-                          { backgroundColor: colors.surface, borderColor: colors.border },
+                          {
+                            backgroundColor: colors.surface,
+                            borderColor: colors.border,
+                          },
                         ]}
                       >
                         <Text
@@ -652,7 +730,10 @@ export default function SettingsScreen() {
                       </View>
                       <View style={styles.cloudGuideStepContent}>
                         <Text
-                          style={[styles.cloudGuideStepTitle, { color: colors.text }]}
+                          style={[
+                            styles.cloudGuideStepTitle,
+                            { color: colors.text },
+                          ]}
                         >
                           Create your sync passphrase
                         </Text>
@@ -662,7 +743,8 @@ export default function SettingsScreen() {
                             { color: colors.textMuted },
                           ]}
                         >
-                          This passphrase encrypts your vault before anything is uploaded.
+                          This passphrase encrypts your vault before anything is
+                          uploaded.
                         </Text>
                         <Pressable
                           onPress={handleOpenCloudPassphrase}
@@ -690,7 +772,10 @@ export default function SettingsScreen() {
                       <View
                         style={[
                           styles.cloudGuideStepBadge,
-                          { backgroundColor: colors.surface, borderColor: colors.border },
+                          {
+                            backgroundColor: colors.surface,
+                            borderColor: colors.border,
+                          },
                         ]}
                       >
                         <Text
@@ -704,7 +789,10 @@ export default function SettingsScreen() {
                       </View>
                       <View style={styles.cloudGuideStepContent}>
                         <Text
-                          style={[styles.cloudGuideStepTitle, { color: colors.text }]}
+                          style={[
+                            styles.cloudGuideStepTitle,
+                            { color: colors.text },
+                          ]}
                         >
                           Read how it works
                         </Text>
@@ -714,7 +802,8 @@ export default function SettingsScreen() {
                             { color: colors.textMuted },
                           ]}
                         >
-                          See what Google, Supabase, and encryption each do in the flow.
+                          See what Google, Supabase, and encryption each do in
+                          the flow.
                         </Text>
                         <Pressable
                           onPress={() => setCloudInfoVisible(true)}
@@ -753,7 +842,9 @@ export default function SettingsScreen() {
                       },
                     ]}
                   >
-                    <Text style={[styles.cloudStatusTitle, { color: colors.text }]}> 
+                    <Text
+                      style={[styles.cloudStatusTitle, { color: colors.text }]}
+                    >
                       {cloudVaultStatus === "ready"
                         ? "Encrypted cloud vault is enabled"
                         : cloudVaultStatus === "loading"
@@ -761,7 +852,10 @@ export default function SettingsScreen() {
                           : "Encrypted cloud vault is not set up yet"}
                     </Text>
                     <Text
-                      style={[styles.cloudStatusBody, { color: colors.textMuted }]}
+                      style={[
+                        styles.cloudStatusBody,
+                        { color: colors.textMuted },
+                      ]}
                     >
                       {cloudVaultStatus === "ready"
                         ? "Your cards are encrypted on this device before upload, so the database stores ciphertext instead of readable card details."
@@ -778,7 +872,7 @@ export default function SettingsScreen() {
                       },
                     ]}
                   >
-                    <Text style={[styles.testBtnText, { color: colors.text }]}> 
+                    <Text style={[styles.testBtnText, { color: colors.text }]}>
                       {cloudVaultStatus === "ready"
                         ? "Update Sync Passphrase"
                         : "Set Sync Passphrase"}
@@ -816,7 +910,7 @@ export default function SettingsScreen() {
                       },
                     ]}
                   >
-                    <Text style={[styles.testBtnText, { color: colors.text }]}> 
+                    <Text style={[styles.testBtnText, { color: colors.text }]}>
                       {syncStatus === "syncing"
                         ? "Syncing Cloud Data…"
                         : "Sync Cloud Data"}
@@ -833,7 +927,9 @@ export default function SettingsScreen() {
                       },
                     ]}
                   >
-                    <Text style={[styles.testBtnText, { color: colors.danger }]}> 
+                    <Text
+                      style={[styles.testBtnText, { color: colors.danger }]}
+                    >
                       {authBusy === "delete-data"
                         ? "Deleting data…"
                         : "Delete My Data"}
@@ -841,6 +937,47 @@ export default function SettingsScreen() {
                   </Pressable>
                 </>
               ) : null}
+
+              <View
+                style={[
+                  styles.accountDeletionCard,
+                  {
+                    backgroundColor: colors.surfaceMuted,
+                    borderColor: colors.border,
+                  },
+                ]}
+              >
+                <Text
+                  style={[styles.accountDeletionTitle, { color: colors.text }]}
+                >
+                  Account deletion
+                </Text>
+                <Text
+                  style={[
+                    styles.accountDeletionBody,
+                    { color: colors.textMuted },
+                  ]}
+                >
+                  Remove your synced wallet data, forget this Google sign-in on
+                  the device, and start fresh next time.
+                </Text>
+                <Pressable
+                  onPress={handleDeleteAccount}
+                  style={[
+                    styles.testBtn,
+                    {
+                      backgroundColor: colors.surface,
+                      borderColor: colors.buttonBorder,
+                    },
+                  ]}
+                >
+                  <Text style={[styles.testBtnText, { color: colors.text }]}>
+                    {authBusy === "delete-account"
+                      ? "Deleting Account…"
+                      : "Delete Account"}
+                  </Text>
+                </Pressable>
+              </View>
             </>
           )}
         </View>
@@ -1101,6 +1238,12 @@ const styles = StyleSheet.create({
     fontFamily: "ReadexPro-Medium",
     fontSize: 14,
   },
+  cardViewHint: {
+    fontFamily: "ReadexPro-Regular",
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 10,
+  },
   testBtn: {
     marginTop: 14,
     borderRadius: 20,
@@ -1138,6 +1281,22 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     marginTop: 18,
     padding: 16,
+  },
+  accountDeletionCard: {
+    borderWidth: 1,
+    borderRadius: 22,
+    marginTop: 18,
+    padding: 16,
+  },
+  accountDeletionTitle: {
+    fontFamily: "ReadexPro-Bold",
+    fontSize: 15,
+  },
+  accountDeletionBody: {
+    fontFamily: "ReadexPro-Regular",
+    fontSize: 13,
+    lineHeight: 20,
+    marginTop: 8,
   },
   cloudGuideCard: {
     borderWidth: 1,

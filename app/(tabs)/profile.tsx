@@ -194,6 +194,8 @@ export default function ProfileScreen() {
   const supportButtonLabel = hasActiveSupport
     ? "View more support options →"
     : "Support the app →";
+  const shouldShowCloudSyncGuide =
+    Boolean(authUser) && cloudVaultStatus === "missing";
 
   const categoryStats = useMemo(
     () =>
@@ -499,7 +501,189 @@ export default function ProfileScreen() {
               <Text style={[styles.accountValue, { color: colors.textMuted }]}>
                 {authUser.displayName ?? authUser.email ?? "Pocket ID user"}
               </Text>
-              {cloudVaultStatus === "missing" ? (
+              {shouldShowCloudSyncGuide ? (
+                <View
+                  style={[
+                    styles.cloudGuideCard,
+                    {
+                      backgroundColor: colors.surfaceMuted,
+                      borderColor: colors.border,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[styles.cloudGuideTitle, { color: colors.text }]}
+                  >
+                    Set up Google sync in 3 short steps
+                  </Text>
+                  <Text
+                    style={[styles.cloudGuideBody, { color: colors.textMuted }]}
+                  >
+                    You already finished the first part by signing in with
+                    Google.
+                  </Text>
+
+                  <View style={styles.cloudGuideSteps}>
+                    <View style={styles.cloudGuideStepRow}>
+                      <View
+                        style={[
+                          styles.cloudGuideStepBadge,
+                          {
+                            backgroundColor: colors.accent,
+                            borderColor: colors.accent,
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.cloudGuideStepBadgeText,
+                            { color: colors.accentText },
+                          ]}
+                        >
+                          1
+                        </Text>
+                      </View>
+                      <View style={styles.cloudGuideStepContent}>
+                        <Text
+                          style={[
+                            styles.cloudGuideStepTitle,
+                            { color: colors.text },
+                          ]}
+                        >
+                          Sign in with Google
+                        </Text>
+                        <Text
+                          style={[
+                            styles.cloudGuideStepBody,
+                            { color: colors.textMuted },
+                          ]}
+                        >
+                          Done. Your account is connected and ready for secure
+                          sync.
+                        </Text>
+                      </View>
+                    </View>
+
+                    <View style={styles.cloudGuideStepRow}>
+                      <View
+                        style={[
+                          styles.cloudGuideStepBadge,
+                          {
+                            backgroundColor: colors.surface,
+                            borderColor: colors.border,
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.cloudGuideStepBadgeText,
+                            { color: colors.text },
+                          ]}
+                        >
+                          2
+                        </Text>
+                      </View>
+                      <View style={styles.cloudGuideStepContent}>
+                        <Text
+                          style={[
+                            styles.cloudGuideStepTitle,
+                            { color: colors.text },
+                          ]}
+                        >
+                          Create your sync passphrase
+                        </Text>
+                        <Text
+                          style={[
+                            styles.cloudGuideStepBody,
+                            { color: colors.textMuted },
+                          ]}
+                        >
+                          This passphrase encrypts your vault before anything is
+                          uploaded.
+                        </Text>
+                        <Pressable
+                          onPress={handleOpenCloudPassphrase}
+                          style={[
+                            styles.cloudGuideAction,
+                            {
+                              backgroundColor: colors.accent,
+                              borderColor: colors.accent,
+                            },
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.cloudGuideActionText,
+                              { color: colors.accentText },
+                            ]}
+                          >
+                            Set Sync Passphrase
+                          </Text>
+                        </Pressable>
+                      </View>
+                    </View>
+
+                    <View style={styles.cloudGuideStepRow}>
+                      <View
+                        style={[
+                          styles.cloudGuideStepBadge,
+                          {
+                            backgroundColor: colors.surface,
+                            borderColor: colors.border,
+                          },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.cloudGuideStepBadgeText,
+                            { color: colors.text },
+                          ]}
+                        >
+                          3
+                        </Text>
+                      </View>
+                      <View style={styles.cloudGuideStepContent}>
+                        <Text
+                          style={[
+                            styles.cloudGuideStepTitle,
+                            { color: colors.text },
+                          ]}
+                        >
+                          Read how it works
+                        </Text>
+                        <Text
+                          style={[
+                            styles.cloudGuideStepBody,
+                            { color: colors.textMuted },
+                          ]}
+                        >
+                          See what Google, Supabase, and encryption each do in
+                          the flow.
+                        </Text>
+                        <Pressable
+                          onPress={() => setCloudInfoVisible(true)}
+                          style={[
+                            styles.cloudGuideAction,
+                            {
+                              backgroundColor: colors.surface,
+                              borderColor: colors.buttonBorder,
+                            },
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.cloudGuideActionText,
+                              { color: colors.text },
+                            ]}
+                          >
+                            Read More
+                          </Text>
+                        </Pressable>
+                      </View>
+                    </View>
+                  </View>
+                </View>
+              ) : cloudVaultStatus === "missing" ? (
                 <Pressable
                   onPress={handleOpenCloudPassphrase}
                   style={[
@@ -816,6 +1000,73 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     marginTop: 18,
     padding: 16,
+  },
+  cloudGuideCard: {
+    borderWidth: 1,
+    borderRadius: 24,
+    marginTop: 18,
+    padding: 18,
+  },
+  cloudGuideTitle: {
+    fontFamily: "ReadexPro-Bold",
+    fontSize: 17,
+    lineHeight: 23,
+  },
+  cloudGuideBody: {
+    fontFamily: "ReadexPro-Regular",
+    fontSize: 14,
+    lineHeight: 21,
+    marginTop: 6,
+  },
+  cloudGuideSteps: {
+    gap: 14,
+    marginTop: 16,
+  },
+  cloudGuideStepRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 12,
+  },
+  cloudGuideStepBadge: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+  },
+  cloudGuideStepBadgeText: {
+    fontFamily: "ReadexPro-Bold",
+    fontSize: 13,
+  },
+  cloudGuideStepContent: {
+    flex: 1,
+    paddingTop: 2,
+  },
+  cloudGuideStepTitle: {
+    fontFamily: "ReadexPro-Bold",
+    fontSize: 15,
+    lineHeight: 20,
+  },
+  cloudGuideStepBody: {
+    fontFamily: "ReadexPro-Regular",
+    fontSize: 13,
+    lineHeight: 20,
+    marginTop: 4,
+  },
+  cloudGuideAction: {
+    minHeight: 44,
+    borderRadius: 16,
+    paddingHorizontal: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    alignSelf: "flex-start",
+    marginTop: 10,
+  },
+  cloudGuideActionText: {
+    fontFamily: "ReadexPro-Medium",
+    fontSize: 14,
   },
   vaultStatusTitle: {
     fontFamily: "ReadexPro-Bold",

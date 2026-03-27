@@ -11,7 +11,7 @@
  *
  * What we build:
  *   - Dark background #1C1E21
- *   - App logo centred at exactly 88 × 88 pt with corner radius 20
+ *   - App logo centred at exactly 88 × 88 pt
  *   - "by"        label (13 pt regular, iOS secondary grey)  ┐ stacked near
  *   - "tenovski"  label (13 pt bold, white)                  ┘ safe-area bottom
  *
@@ -59,23 +59,14 @@ function buildStoryboard(logoAsset) {
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
 
-                            <!-- App logo: fixed 88 × 88 pt, centred, corner radius 20 -->
+                            <!-- App logo: fixed 88 × 88 pt, centred -->
                             <imageView
                                 clipsSubviews="YES"
                                 userInteractionEnabled="NO"
                                 contentMode="scaleAspectFit"
                                 image="${logoAsset}"
                                 translatesAutoresizingMaskIntoConstraints="NO"
-                                id="HGe-GZ-ODE">
-                                <userDefinedRuntimeAttributes>
-                                    <userDefinedRuntimeAttribute type="number" keyPath="layer.cornerRadius">
-                                        <real key="value" value="20"/>
-                                    </userDefinedRuntimeAttribute>
-                                    <userDefinedRuntimeAttribute type="boolean" keyPath="layer.masksToBounds">
-                                        <boolean key="value" value="YES"/>
-                                    </userDefinedRuntimeAttribute>
-                                </userDefinedRuntimeAttributes>
-                            </imageView>
+                              id="HGe-GZ-ODE"/>
 
                             <!-- "by" label – iOS secondary-label grey, 13 pt regular -->
                             <label

@@ -169,190 +169,193 @@ export default function CloudPassphraseScreen() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 24}
       >
-      <ScrollView
-        contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.headerRow}>
-          <Pressable
-            onPress={() => router.back()}
-            hitSlop={12}
-            style={[
-              styles.backButton,
-              { backgroundColor: colors.surfaceMuted },
-            ]}
-          >
-            <Feather name="arrow-left" size={20} color={colors.text} />
-          </Pressable>
-          <View style={styles.headerTextWrap}>
-            <Text style={[styles.eyebrow, { color: colors.textSoft }]}>
-              Cloud Vault
-            </Text>
-            <Text style={[styles.title, { color: colors.text }]}>
-              Sync passphrase
-            </Text>
-          </View>
-        </View>
-
-        <View style={[styles.card, { backgroundColor: colors.surface }]}>
-          <Text style={[styles.cardTitle, { color: colors.text }]}>
-            End-to-end encrypted sync
-          </Text>
-          <Text style={[styles.cardBody, { color: colors.textMuted }]}>
-            {helperText}
-          </Text>
-          <Text style={[styles.cardHint, { color: colors.textSoft }]}>
-            Use at least {MIN_SYNC_PASSPHRASE_LENGTH} characters. A longer
-            phrase is much safer than a short clever one.
-          </Text>
-          <Text style={[styles.cardHint, { color: colors.textSoft }]}>
-            Already synced cards from another device? Use the same sync
-            passphrase there too, or this device will not be able to read them.
-          </Text>
-        </View>
-
-        <View style={[styles.card, { backgroundColor: colors.surface }]}>
-          {isChecking ? (
-            <View style={styles.loadingRow}>
-              <ActivityIndicator size="small" color={colors.text} />
-              <Text style={[styles.loadingText, { color: colors.textMuted }]}>
-                Checking current cloud vault status…
+        <ScrollView
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.headerRow}>
+            <Pressable
+              onPress={() => router.back()}
+              hitSlop={12}
+              style={[
+                styles.backButton,
+                { backgroundColor: colors.surfaceMuted },
+              ]}
+            >
+              <Feather name="arrow-left" size={20} color={colors.text} />
+            </Pressable>
+            <View style={styles.headerTextWrap}>
+              <Text style={[styles.eyebrow, { color: colors.textSoft }]}>
+                Cloud Vault
+              </Text>
+              <Text style={[styles.title, { color: colors.text }]}>
+                Sync passphrase
               </Text>
             </View>
-          ) : (
-            <>
-              <Text style={[styles.fieldLabel, { color: colors.text }]}>
-                {hasExistingPassphrase ? "New passphrase" : "Passphrase"}
-              </Text>
-              <TextInput
-                value={passphrase}
-                onChangeText={setPassphrase}
-                secureTextEntry
-                autoCapitalize="none"
-                autoCorrect={false}
-                placeholder="Enter a strong sync passphrase"
-                placeholderTextColor={colors.textSoft}
-                style={[
-                  styles.input,
-                  {
-                    backgroundColor: colors.surfaceMuted,
-                    borderColor: colors.border,
-                    color: colors.text,
-                  },
-                ]}
-              />
+          </View>
 
-              <View style={styles.strengthWrap}>
-                <View style={styles.strengthBarRow}>
-                  {[1, 2, 3, 4].map((index) => {
-                    const isActive = passphraseStrength.score >= index;
-                    const fillColor =
-                      passphraseStrength.score <= 1
-                        ? colors.danger
-                        : passphraseStrength.score === 2
-                          ? "#E7A93B"
-                          : colors.accent;
+          <View style={[styles.card, { backgroundColor: colors.surface }]}>
+            <Text style={[styles.cardTitle, { color: colors.text }]}>
+              End-to-end encrypted sync
+            </Text>
+            <Text style={[styles.cardBody, { color: colors.textMuted }]}>
+              {helperText}
+            </Text>
+            <Text style={[styles.cardHint, { color: colors.textSoft }]}>
+              Use at least {MIN_SYNC_PASSPHRASE_LENGTH} characters. A longer
+              phrase is much safer than a short clever one.
+            </Text>
+            <Text style={[styles.cardHint, { color: colors.textSoft }]}>
+              Already synced cards from another device? Use the same sync
+              passphrase there too, or this device will not be able to read
+              them.
+            </Text>
+          </View>
 
-                    return (
-                      <View
-                        key={index}
-                        style={[
-                          styles.strengthBar,
-                          {
-                            backgroundColor: isActive
-                              ? fillColor
-                              : colors.border,
-                          },
-                        ]}
-                      />
-                    );
-                  })}
-                </View>
-                <Text
-                  style={[styles.strengthLabel, { color: colors.textMuted }]}
-                >
-                  Strength:{" "}
-                  <Text style={{ color: colors.text }}>
-                    {passphraseStrength.label}
-                  </Text>
+          <View style={[styles.card, { backgroundColor: colors.surface }]}>
+            {isChecking ? (
+              <View style={styles.loadingRow}>
+                <ActivityIndicator size="small" color={colors.text} />
+                <Text style={[styles.loadingText, { color: colors.textMuted }]}>
+                  Checking current cloud vault status…
                 </Text>
               </View>
-
-              <Text style={[styles.fieldLabel, { color: colors.text }]}>
-                Confirm passphrase
-              </Text>
-              <TextInput
-                value={confirmation}
-                onChangeText={setConfirmation}
-                secureTextEntry
-                autoCapitalize="none"
-                autoCorrect={false}
-                placeholder="Enter it again"
-                placeholderTextColor={colors.textSoft}
-                style={[
-                  styles.input,
-                  {
-                    backgroundColor: colors.surfaceMuted,
-                    borderColor: colors.border,
-                    color: colors.text,
-                  },
-                ]}
-              />
-
-              <View
-                style={[
-                  styles.warningBanner,
-                  {
-                    backgroundColor: colors.dangerSoft,
-                    borderColor: colors.danger,
-                  },
-                ]}
-              >
-                <Feather
-                  name="alert-triangle"
-                  size={18}
-                  color={colors.danger}
+            ) : (
+              <>
+                <Text style={[styles.fieldLabel, { color: colors.text }]}>
+                  {hasExistingPassphrase ? "New passphrase" : "Passphrase"}
+                </Text>
+                <TextInput
+                  value={passphrase}
+                  onChangeText={setPassphrase}
+                  secureTextEntry
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  placeholder="Enter a strong sync passphrase"
+                  placeholderTextColor={colors.textSoft}
+                  style={[
+                    styles.input,
+                    {
+                      backgroundColor: colors.surfaceMuted,
+                      borderColor: colors.border,
+                      color: colors.text,
+                    },
+                  ]}
                 />
-                <View style={styles.warningTextWrap}>
-                  <Text style={[styles.warningTitle, { color: colors.danger }]}>
-                    Keep this passphrase safe
-                  </Text>
+
+                <View style={styles.strengthWrap}>
+                  <View style={styles.strengthBarRow}>
+                    {[1, 2, 3, 4].map((index) => {
+                      const isActive = passphraseStrength.score >= index;
+                      const fillColor =
+                        passphraseStrength.score <= 1
+                          ? colors.danger
+                          : passphraseStrength.score === 2
+                            ? "#E7A93B"
+                            : colors.accent;
+
+                      return (
+                        <View
+                          key={index}
+                          style={[
+                            styles.strengthBar,
+                            {
+                              backgroundColor: isActive
+                                ? fillColor
+                                : colors.border,
+                            },
+                          ]}
+                        />
+                      );
+                    })}
+                  </View>
                   <Text
-                    style={[styles.warningBody, { color: colors.textMuted }]}
+                    style={[styles.strengthLabel, { color: colors.textMuted }]}
                   >
-                    If you forget it, Pocket ID, Google, and Supabase cannot
-                    recover your encrypted synced vault on a new device.
+                    Strength:{" "}
+                    <Text style={{ color: colors.text }}>
+                      {passphraseStrength.label}
+                    </Text>
                   </Text>
                 </View>
-              </View>
 
-              <Pressable
-                onPress={handleSave}
-                style={[
-                  styles.primaryButton,
-                  { backgroundColor: colors.accent },
-                ]}
-              >
-                <Text
+                <Text style={[styles.fieldLabel, { color: colors.text }]}>
+                  Confirm passphrase
+                </Text>
+                <TextInput
+                  value={confirmation}
+                  onChangeText={setConfirmation}
+                  secureTextEntry
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  placeholder="Enter it again"
+                  placeholderTextColor={colors.textSoft}
                   style={[
-                    styles.primaryButtonText,
-                    { color: colors.accentText },
+                    styles.input,
+                    {
+                      backgroundColor: colors.surfaceMuted,
+                      borderColor: colors.border,
+                      color: colors.text,
+                    },
+                  ]}
+                />
+
+                <View
+                  style={[
+                    styles.warningBanner,
+                    {
+                      backgroundColor: colors.dangerSoft,
+                      borderColor: colors.danger,
+                    },
                   ]}
                 >
-                  {isSaving
-                    ? hasExistingPassphrase
-                      ? "Updating…"
-                      : "Saving…"
-                    : hasExistingPassphrase
-                      ? "Update Sync Passphrase"
-                      : "Enable Encrypted Sync"}
-                </Text>
-              </Pressable>
-            </>
-          )}
-        </View>
-      </ScrollView>
+                  <Feather
+                    name="alert-triangle"
+                    size={18}
+                    color={colors.danger}
+                  />
+                  <View style={styles.warningTextWrap}>
+                    <Text
+                      style={[styles.warningTitle, { color: colors.danger }]}
+                    >
+                      Keep this passphrase safe
+                    </Text>
+                    <Text
+                      style={[styles.warningBody, { color: colors.textMuted }]}
+                    >
+                      If you forget it, Pocket ID, Google, and Supabase cannot
+                      recover your encrypted synced vault on a new device.
+                    </Text>
+                  </View>
+                </View>
+
+                <Pressable
+                  onPress={handleSave}
+                  style={[
+                    styles.primaryButton,
+                    { backgroundColor: colors.accent },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.primaryButtonText,
+                      { color: colors.accentText },
+                    ]}
+                  >
+                    {isSaving
+                      ? hasExistingPassphrase
+                        ? "Updating…"
+                        : "Saving…"
+                      : hasExistingPassphrase
+                        ? "Update Sync Passphrase"
+                        : "Enable Encrypted Sync"}
+                  </Text>
+                </Pressable>
+              </>
+            )}
+          </View>
+        </ScrollView>
       </KeyboardAvoidingView>
       <AppPreviewShield />
     </SafeAreaView>

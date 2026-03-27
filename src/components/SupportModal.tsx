@@ -314,7 +314,9 @@ export function SupportModal({
             <>
               {monthlyPackage ? (
                 <View style={styles.sectionWrap}>
-                  <Text style={[styles.sectionEyebrow, { color: colors.textSoft }]}> 
+                  <Text
+                    style={[styles.sectionEyebrow, { color: colors.textSoft }]}
+                  >
                     Monthly support
                   </Text>
                   <LinearGradient
@@ -326,7 +328,9 @@ export function SupportModal({
                     <View style={styles.featuredCardTopRow}>
                       <View style={styles.featuredBadge}>
                         <Feather name="heart" size={13} color="#3A1B00" />
-                        <Text style={styles.featuredBadgeText}>Best for ongoing support</Text>
+                        <Text style={styles.featuredBadgeText}>
+                          Best for ongoing support
+                        </Text>
                       </View>
                       <View style={styles.featuredPill}>
                         <Text style={styles.featuredPillText}>Recurring</Text>
@@ -345,13 +349,15 @@ export function SupportModal({
                       <View style={styles.featuredHighlightRow}>
                         <Feather name="zap" size={15} color="#3A1B00" />
                         <Text style={styles.featuredHighlightText}>
-                          Small recurring support that keeps updates sustainable.
+                          Small recurring support that keeps updates
+                          sustainable.
                         </Text>
                       </View>
                       <View style={styles.featuredHighlightRow}>
                         <Feather name="refresh-cw" size={15} color="#3A1B00" />
                         <Text style={styles.featuredHighlightText}>
-                          Manage or cancel later from your store subscription settings.
+                          Manage or cancel later from your store subscription
+                          settings.
                         </Text>
                       </View>
                     </View>
@@ -398,7 +404,8 @@ export function SupportModal({
                             <Text
                               style={[
                                 styles.featuredButtonText,
-                                !canPurchase && styles.featuredButtonTextDisabled,
+                                !canPurchase &&
+                                  styles.featuredButtonTextDisabled,
                               ]}
                             >
                               {buttonLabel}
@@ -428,13 +435,16 @@ export function SupportModal({
 
               {oneTimePackages.length ? (
                 <View style={styles.sectionWrap}>
-                  <Text style={[styles.sectionEyebrow, { color: colors.textSoft }]}> 
+                  <Text
+                    style={[styles.sectionEyebrow, { color: colors.textSoft }]}
+                  >
                     One-time support
                   </Text>
                   {oneTimePackages.map((aPackage) => {
                     const product = aPackage.product;
                     const packageDescription =
-                      product.description || fallbackDescription(product.identifier);
+                      product.description ||
+                      fallbackDescription(product.identifier);
                     const isPurchasing =
                       purchasingIdentifier === product.identifier;
                     const purchaseCount = getSupportProductPurchaseCount(
@@ -516,14 +526,29 @@ export function SupportModal({
 
                         <View style={styles.packageTextWrap}>
                           <View style={styles.packageTitleRow}>
-                            <Text style={[styles.packageTitle, { color: colors.text }]}> 
+                            <Text
+                              style={[
+                                styles.packageTitle,
+                                { color: colors.text },
+                              ]}
+                            >
                               {product.title}
                             </Text>
-                            <Text style={[styles.packagePrice, { color: colors.text }]}> 
+                            <Text
+                              style={[
+                                styles.packagePrice,
+                                { color: colors.text },
+                              ]}
+                            >
                               {product.priceString}
                             </Text>
                           </View>
-                          <Text style={[styles.packageBody, { color: colors.textMuted }]}> 
+                          <Text
+                            style={[
+                              styles.packageBody,
+                              { color: colors.textMuted },
+                            ]}
+                          >
                             {packageDescription}
                           </Text>
                         </View>
@@ -541,7 +566,10 @@ export function SupportModal({
                                 ? colors.accent
                                 : colors.buttonBorder,
                               borderWidth: 1,
-                              opacity: purchasingIdentifier && !isPurchasing ? 0.55 : 1,
+                              opacity:
+                                purchasingIdentifier && !isPurchasing
+                                  ? 0.55
+                                  : 1,
                             },
                           ]}
                         >

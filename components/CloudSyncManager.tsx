@@ -66,19 +66,24 @@ export function CloudSyncManager() {
   const syncRequestToken = useCloudVaultStore(
     (state) => state.syncRequestToken,
   );
+  const handledSyncRequestToken = useCloudVaultStore(
+    (state) => state.handledSyncRequestToken,
+  );
   const suppressedAutoSyncCount = useCloudVaultStore(
     (state) => state.suppressedAutoSyncCount,
   );
   const syncStatus = useCloudVaultStore((state) => state.syncStatus);
   const syncMessage = useCloudVaultStore((state) => state.syncMessage);
   const setSyncState = useCloudVaultStore((state) => state.setSyncState);
+  const markSyncRequestHandled = useCloudVaultStore(
+    (state) => state.markSyncRequestHandled,
+  );
   const consumeSuppressedAutoSync = useCloudVaultStore(
     (state) => state.consumeSuppressedAutoSync,
   );
   const deviceScheme = useColorScheme();
   const colors = APP_THEME[resolveTheme("system", deviceScheme)];
   const reconcileInFlight = useRef(false);
-  const handledSyncRequestToken = useRef(0);
   const lastPushedAt = useRef<string | null>(null);
   const lastObservedModifiedAt = useRef<string | null>(null);
   const [isLocalPushSyncing, setIsLocalPushSyncing] = useState(false);
@@ -96,7 +101,6 @@ export function CloudSyncManager() {
   }, [setSyncState, syncStatus]);
 
   useEffect(() => {
-    handledSyncRequestToken.current = 0;
     lastPushedAt.current = null;
     lastObservedModifiedAt.current = lastModifiedAt;
   }, [cloudVaultChangeToken, user?.id]);
@@ -120,8 +124,7 @@ export function CloudSyncManager() {
 
     const currentUser = user;
     let cancelled = false;
-    const hasPendingSyncRequest =
-      syncRequestToken > handledSyncRequestToken.current;
+    const hasPendingSyncRequest = syncRequestToken > handledSyncRequestToken;
 
     if (reconcileInFlight.current) {
       return undefined;
@@ -144,7 +147,7 @@ export function CloudSyncManager() {
 
         if (!hasPassphrase) {
           setSyncState("idle");
-          handledSyncRequestToken.current = syncRequestToken;
+          markSyncRequestHandled(syncRequestToken);
           return;
         }
 
@@ -209,12 +212,12 @@ export function CloudSyncManager() {
           setSyncState("success", "Pocket ID is synced and up to date.");
         }
 
-        handledSyncRequestToken.current = syncRequestToken;
+        markSyncRequestHandled(syncRequestToken);
       } catch (error) {
         if (!isPassphraseMissingError(error)) {
           console.warn("Cloud sync reconcile failed", error);
         }
-        handledSyncRequestToken.current = syncRequestToken;
+        markSyncRequestHandled(syncRequestToken);
         setSyncState("error", "Could not sync your cloud data.");
       } finally {
         reconcileInFlight.current = false;
@@ -231,7 +234,9 @@ export function CloudSyncManager() {
     cards,
     cloudVaultChangeToken,
     hasHydrated,
+    handledSyncRequestToken,
     lastModifiedAt,
+    markSyncRequestHandled,
     replaceCards,
     setSyncState,
     syncRequestToken,

@@ -116,7 +116,13 @@ export default function RootLayout() {
           <SafeAreaView style={{ flex: 1, backgroundColor: "#1C1E21" }}>
             <StatusBar style="light" />
             {/* Logo centred – matches the native iOS/Android splash exactly */}
-            <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+            <View
+              style={{
+                flex: 1,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
               <Image
                 // eslint-disable-next-line @typescript-eslint/no-require-imports
                 source={require("../assets/ios-logo.png")}
@@ -126,8 +132,17 @@ export default function RootLayout() {
             </View>
             {/* "by tenovski" footer – mirrors the native iOS storyboard labels */}
             <View style={{ alignItems: "center", paddingBottom: 40 }}>
-              <Text style={{ color: "#8E8E93", fontSize: 13, lineHeight: 18 }}>by</Text>
-              <Text style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "bold", lineHeight: 18 }}>
+              <Text style={{ color: "#8E8E93", fontSize: 13, lineHeight: 18 }}>
+                by
+              </Text>
+              <Text
+                style={{
+                  color: "#FFFFFF",
+                  fontSize: 13,
+                  fontWeight: "bold",
+                  lineHeight: 18,
+                }}
+              >
                 tenovski
               </Text>
             </View>

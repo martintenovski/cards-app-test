@@ -42,7 +42,10 @@ export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [quickViewCard, setQuickViewCard] = useState<WalletCard | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [funMessage, setFunMessage] = useState({ emoji: "🃏", text: "Shuffling your cards..." });
+  const [funMessage, setFunMessage] = useState({
+    emoji: "🃏",
+    text: "Shuffling your cards...",
+  });
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const cards = useCardStore((state) => state.cards);
   const viewMode = useCardStore((state) => state.viewMode);
@@ -56,6 +59,7 @@ export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
   const colors = APP_THEME[resolvedTheme];
   const isCompact = width < 390;
   const isShort = height < 760;
+  const canUseAnimatedStack = cards.length >= 4;
 
   const FUN_MESSAGES = [
     { emoji: "🃏", text: "Shuffling your cards..." },
@@ -325,7 +329,7 @@ export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
           </View>
         ) : viewMode === "stack" ? (
           <View style={styles.stackStage}>
-            {filteredCards.length >= 4 ? (
+            {canUseAnimatedStack ? (
               <CardStack
                 cards={filteredCards}
                 onCycleFwd={cycleCardFwd}
@@ -333,7 +337,9 @@ export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
                 onCardPress={(id) =>
                   router.push({ pathname: "/card-detail", params: { id } })
                 }
-                onCardLongPress={(id) => openQuickViewForCard(filteredCards, id)}
+                onCardLongPress={(id) =>
+                  openQuickViewForCard(filteredCards, id)
+                }
               />
             ) : (
               <>
@@ -350,8 +356,21 @@ export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
                   onRefresh={handleRefresh}
                   funMessage={funMessage}
                 />
-                <View style={[styles.stackDisabledNotice, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                  <Text style={[styles.stackDisabledText, { color: colors.textMuted }]}>
+                <View
+                  style={[
+                    styles.stackDisabledNotice,
+                    {
+                      backgroundColor: colors.surface,
+                      borderColor: colors.border,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.stackDisabledText,
+                      { color: colors.textMuted },
+                    ]}
+                  >
                     Animated stack unlocks with 4 or more cards.
                   </Text>
                 </View>
