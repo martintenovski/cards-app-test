@@ -19,6 +19,12 @@
       "expo-secure-store",
       "expo-font",
       [
+        "react-native-document-scanner-plugin",
+        {
+          "cameraPermission": "Allow Pocket ID to use the camera so you can scan cards and documents into editable drafts."
+        }
+      ],
+      [
         "expo-local-authentication",
         {
           "faceIDPermission": "Allow Pocket ID to use Face ID so only you can open your saved cards and documents."
@@ -33,6 +39,13 @@
           "android": {}
         }
       ],
+      [
+        "rn-mlkit-ocr",
+        {
+          "ocrModels": ["latin"],
+          "ocrUseBundled": true
+        }
+      ],
       "@react-native-community/datetimepicker",
       "expo-web-browser",
       "expo-splash-screen",
@@ -45,6 +58,7 @@
       "buildNumber": "27",
       "bundleIdentifier": "com.tenovski.cardsapp",
       "infoPlist": {
+        "NSCameraUsageDescription": "Allow Pocket ID to use the camera so you can scan cards and documents into editable drafts.",
         "NSUserNotificationsUsageDescription": "Pocket ID uses notifications to remind you before cards and documents expire.",
         "ITSAppUsesNonExemptEncryption": false
       }

@@ -22,6 +22,7 @@ import { Gesture, GestureDetector } from "react-native-gesture-handler";
 
 import { CardForm } from "@/components/CardForm";
 import { useCardStore } from "@/store/useCardStore";
+import { useDocumentScannerStore } from "@/src/store/useDocumentScannerStore";
 import type { CardFormValues, CardPalette } from "@/types/card";
 import { APP_THEME, resolveTheme } from "@/utils/theme";
 
@@ -39,6 +40,12 @@ export function AddCardSheet({ isOpen, onClose }: AddCardSheetProps) {
   const router = useRouter();
   const addCard = useCardStore((state) => state.addCard);
   const themePreference = useCardStore((state) => state.themePreference);
+  const pendingScanDraft = useDocumentScannerStore(
+    (state) => state.pendingDraft,
+  );
+  const clearPendingScanDraft = useDocumentScannerStore(
+    (state) => state.clearPendingDraft,
+  );
   const deviceScheme = useColorScheme();
   const { width, height } = useWindowDimensions();
   const resolvedTheme = resolveTheme(themePreference, deviceScheme);
@@ -109,16 +116,29 @@ export function AddCardSheet({ isOpen, onClose }: AddCardSheetProps) {
     opacity: backdropOpacity.value,
   }));
 
+  const handleDismiss = () => {
+    clearPendingScanDraft();
+    onClose();
+  };
+
   const handleSubmit = (values: CardFormValues, palette: CardPalette) => {
     addCard(values, palette);
+    clearPendingScanDraft();
     setFormKey((k) => k + 1);
     onClose();
   };
 
   const handleImportSharedCard = () => {
-    onClose();
+    handleDismiss();
     requestAnimationFrame(() => {
       router.push("/import-card");
+    });
+  };
+
+  const handleOpenScanner = () => {
+    onClose();
+    requestAnimationFrame(() => {
+      router.push("/document-scanner");
     });
   };
 
@@ -127,14 +147,14 @@ export function AddCardSheet({ isOpen, onClose }: AddCardSheetProps) {
       transparent
       visible={modalVisible}
       animationType="none"
-      onRequestClose={onClose}
+      onRequestClose={handleDismiss}
       statusBarTranslucent
     >
       {/* Backdrop */}
       <Animated.View
         style={[StyleSheet.absoluteFill, styles.backdrop, backdropStyle]}
       >
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+        <Pressable style={StyleSheet.absoluteFill} onPress={handleDismiss} />
       </Animated.View>
 
       {/* Sheet panel */}
@@ -174,56 +194,147 @@ export function AddCardSheet({ isOpen, onClose }: AddCardSheetProps) {
             >
               Add new
             </Text>
-            <Pressable onPress={onClose} hitSlop={12} style={styles.closeBtn}>
+            <Pressable
+              onPress={handleDismiss}
+              hitSlop={12}
+              style={styles.closeBtn}
+            >
               <Feather name="x" size={22} color={colors.textMuted} />
             </Pressable>
           </View>
 
           <CardForm
-            key={formKey}
+            key={`${formKey}-${pendingScanDraft?.id ?? "blank"}`}
             onSubmit={handleSubmit}
+            initialValues={pendingScanDraft?.formValues}
             contentHorizontalPadding={isCompact ? 16 : 20}
             onScrollOffsetChange={(offsetY) => setIsFormAtTop(offsetY <= 4)}
             topAccessory={
-              <Pressable
-                onPress={handleImportSharedCard}
-                style={[
-                  styles.importCard,
-                  {
-                    backgroundColor: colors.surfaceMuted,
-                    borderColor: colors.buttonBorder,
-                  },
-                ]}
-              >
-                <View
+              <View style={styles.topAccessoryStack}>
+                <Pressable
+                  onPress={handleOpenScanner}
                   style={[
-                    styles.importIcon,
-                    { backgroundColor: colors.accent },
+                    styles.importCard,
+                    {
+                      backgroundColor: colors.accent,
+                      borderColor: colors.accent,
+                    },
                   ]}
                 >
+                  <View
+                    style={[
+                      styles.importIcon,
+                      { backgroundColor: "rgba(255,255,255,0.18)" },
+                    ]}
+                  >
+                    <Feather
+                      name="camera"
+                      size={18}
+                      color={colors.accentText}
+                    />
+                  </View>
+                  <View style={styles.importTextWrap}>
+                    <Text
+                      style={[styles.importTitle, { color: colors.accentText }]}
+                    >
+                      Scan document
+                    </Text>
+                    <Text
+                      style={[styles.importBody, { color: colors.accentText }]}
+                    >
+                      Scan a bank card or a personal document like an ID card or
+                      driving license, then return here with a prefilled form.
+                    </Text>
+                  </View>
                   <Feather
-                    name="download-cloud"
+                    name="chevron-right"
                     size={18}
                     color={colors.accentText}
                   />
-                </View>
-                <View style={styles.importTextWrap}>
-                  <Text style={[styles.importTitle, { color: colors.text }]}>
-                    Import shared card
-                  </Text>
-                  <Text
-                    style={[styles.importBody, { color: colors.textMuted }]}
+                </Pressable>
+
+                {pendingScanDraft ? (
+                  <View
+                    style={[
+                      styles.scanDraftCard,
+                      {
+                        backgroundColor: colors.surfaceMuted,
+                        borderColor: colors.buttonBorder,
+                      },
+                    ]}
                   >
-                    Have a Pocket ID card file? Bring it in here instead of
-                    typing everything manually.
-                  </Text>
-                </View>
-                <Feather
-                  name="chevron-right"
-                  size={18}
-                  color={colors.textSoft}
-                />
-              </Pressable>
+                    <View
+                      style={[
+                        styles.scanDraftIcon,
+                        { backgroundColor: colors.accent },
+                      ]}
+                    >
+                      <Feather
+                        name="camera"
+                        size={18}
+                        color={colors.accentText}
+                      />
+                    </View>
+                    <View style={styles.importTextWrap}>
+                      <Text
+                        style={[styles.importTitle, { color: colors.text }]}
+                      >
+                        Prefilled from document scan
+                      </Text>
+                      <Text
+                        style={[styles.importBody, { color: colors.textMuted }]}
+                      >
+                        {pendingScanDraft.analysis.classification.type} detected
+                        with{" "}
+                        {Math.round(
+                          pendingScanDraft.analysis.providerConfidence * 100,
+                        )}
+                        % confidence. Review and adjust any field before saving.
+                      </Text>
+                    </View>
+                  </View>
+                ) : null}
+
+                <Pressable
+                  onPress={handleImportSharedCard}
+                  style={[
+                    styles.importCard,
+                    {
+                      backgroundColor: colors.surfaceMuted,
+                      borderColor: colors.buttonBorder,
+                    },
+                  ]}
+                >
+                  <View
+                    style={[
+                      styles.importIcon,
+                      { backgroundColor: colors.accent },
+                    ]}
+                  >
+                    <Feather
+                      name="download-cloud"
+                      size={18}
+                      color={colors.accentText}
+                    />
+                  </View>
+                  <View style={styles.importTextWrap}>
+                    <Text style={[styles.importTitle, { color: colors.text }]}>
+                      Import shared card
+                    </Text>
+                    <Text
+                      style={[styles.importBody, { color: colors.textMuted }]}
+                    >
+                      Have a Pocket ID card file? Bring it in here instead of
+                      typing everything manually.
+                    </Text>
+                  </View>
+                  <Feather
+                    name="chevron-right"
+                    size={18}
+                    color={colors.textSoft}
+                  />
+                </Pressable>
+              </View>
             }
           />
         </Animated.View>
@@ -272,6 +383,25 @@ const styles = StyleSheet.create({
   closeBtn: {
     width: 36,
     height: 36,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  topAccessoryStack: {
+    gap: 12,
+  },
+  scanDraftCard: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 14,
+    borderWidth: 1,
+    borderRadius: 26,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+  },
+  scanDraftIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
   },

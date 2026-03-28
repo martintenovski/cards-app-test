@@ -235,7 +235,9 @@ export default function SettingsScreen() {
         setBiometricStatus(isEnrolled ? "supported" : "not-enrolled");
       });
     });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -638,9 +640,15 @@ export default function SettingsScreen() {
             borderColor={colors.buttonBorder}
             disabled={biometricStatus !== "supported"}
           />
-          {biometricStatus === "no-hardware" || biometricStatus === "not-enrolled" ? (
+          {biometricStatus === "no-hardware" ||
+          biometricStatus === "not-enrolled" ? (
             <View style={styles.warningBadge}>
-              <Feather name="alert-triangle" size={13} color="#92400E" style={{ marginTop: 1 }} />
+              <Feather
+                name="alert-triangle"
+                size={13}
+                color="#92400E"
+                style={{ marginTop: 1 }}
+              />
               <Text style={styles.warningBadgeText}>
                 {biometricStatus === "no-hardware"
                   ? "Your device doesn\u2019t support biometric authentication."
@@ -842,7 +850,11 @@ export default function SettingsScreen() {
                           },
                         ]}
                       >
-                        <Feather name="help-circle" size={15} color={colors.textMuted} />
+                        <Feather
+                          name="help-circle"
+                          size={15}
+                          color={colors.textMuted}
+                        />
                       </View>
                       <View style={styles.cloudGuideStepContent}>
                         <Text
