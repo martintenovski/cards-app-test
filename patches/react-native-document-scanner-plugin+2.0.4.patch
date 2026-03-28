@@ -1,0 +1,15 @@
+diff --git a/node_modules/react-native-document-scanner-plugin/android/src/main/java/com/documentscanner/DocumentScannerModule.kt b/node_modules/react-native-document-scanner-plugin/android/src/main/java/com/documentscanner/DocumentScannerModule.kt
+index fbb6836..3a396f9 100644
+--- a/node_modules/react-native-document-scanner-plugin/android/src/main/java/com/documentscanner/DocumentScannerModule.kt
++++ b/node_modules/react-native-document-scanner-plugin/android/src/main/java/com/documentscanner/DocumentScannerModule.kt
+@@ -50,8 +50,9 @@ class DocumentScannerModule(reactContext: ReactApplicationContext) :
+     val response: WritableMap = WritableNativeMap()
+ 
+     val documentScannerOptionsBuilder = GmsDocumentScannerOptions.Builder()
++      .setGalleryImportAllowed(false)
+       .setResultFormats(GmsDocumentScannerOptions.RESULT_FORMAT_JPEG)
+-      .setScannerMode(GmsDocumentScannerOptions.SCANNER_MODE_FULL)
++      .setScannerMode(GmsDocumentScannerOptions.SCANNER_MODE_BASE)
+ 
+     if (options.hasKey("maxNumDocuments")) {
+       documentScannerOptionsBuilder.setPageLimit(
