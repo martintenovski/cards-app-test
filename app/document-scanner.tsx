@@ -355,7 +355,7 @@ export default function DocumentScannerScreen() {
         </Pressable>
         <View style={styles.headerTextWrap}>
           <Text style={[styles.title, { color: colors.text }]}>
-            Scanned document(s)
+            Scanned
           </Text>
           <Text style={[styles.subtitle, { color: colors.textMuted }]}>
             {subtitleText}

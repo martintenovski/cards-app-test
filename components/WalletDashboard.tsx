@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Feather } from "@expo/vector-icons";
+import { useScrollToTop } from "@react-navigation/native";
 import * as Haptics from "expo-haptics";
 import {
   Pressable,
@@ -49,6 +50,7 @@ export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
     text: "Shuffling your cards...",
   });
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const listRef = useRef<Animated.FlatList<WalletCard> | null>(null);
   const cards = useCardStore((state) => state.cards);
   const viewMode = useCardStore((state) => state.viewMode);
   const homeFilter = useCardStore((state) => state.homeFilter);
@@ -221,6 +223,8 @@ export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
   const handleDismissQuickView = useCallback(() => setQuickViewCard(null), []);
   const handleCloseDetail = useCallback(() => setSelectedCardId(null), []);
 
+  useScrollToTop(listRef);
+
   return (
     <SafeAreaView
       edges={["top"]}
@@ -295,6 +299,7 @@ export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
       >
         {cards.length === 0 ? (
           <CardList
+            ref={listRef}
             cards={filteredDemoCards}
             bottomSpacing={132}
             onCardPress={handleCardPress}
@@ -302,6 +307,7 @@ export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
             refreshing={refreshing}
             onRefresh={handleRefresh}
             funMessage={funMessage}
+            refreshBannerBottomSpacing={15}
             header={
               <View style={styles.demoHeaderStack}>
                 <Pressable
@@ -402,6 +408,7 @@ export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
             ) : (
               <>
                 <CardList
+                  ref={listRef}
                   cards={filteredCards}
                   bottomSpacing={132}
                   onCardPress={handleCardPress}
@@ -433,6 +440,7 @@ export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
           </View>
         ) : (
           <CardList
+            ref={listRef}
             cards={filteredCards}
             bottomSpacing={132}
             onCardPress={handleCardPress}

@@ -209,6 +209,22 @@ export function AppTabBar({ state, navigation }: BottomTabBarProps) {
     compact: isCompact,
   };
 
+  const handleTabPress = (routeName: (typeof TAB_ROUTES)[number]) => {
+    const route = state.routes.find((item) => item.name === routeName);
+    if (!route) return;
+
+    const isFocused = currentRouteName === routeName;
+    const event = navigation.emit({
+      type: "tabPress",
+      target: route.key,
+      canPreventDefault: true,
+    });
+
+    if (!isFocused && !event.defaultPrevented) {
+      navigation.navigate(routeName);
+    }
+  };
+
   return (
     <View
       pointerEvents="box-none"
@@ -268,7 +284,7 @@ export function AppTabBar({ state, navigation }: BottomTabBarProps) {
             label={tr("tab_home")}
             icon="home"
             active={currentRouteName === "index"}
-            onPress={() => navigation.navigate("index")}
+            onPress={() => handleTabPress("index")}
             onLayout={handleTabLayout(0)}
           />
           <NavAction
@@ -276,7 +292,7 @@ export function AppTabBar({ state, navigation }: BottomTabBarProps) {
             label={tr("tab_search")}
             icon="search"
             active={currentRouteName === "search"}
-            onPress={() => navigation.navigate("search")}
+            onPress={() => handleTabPress("search")}
             onLayout={handleTabLayout(1)}
           />
           <NavAction
@@ -284,7 +300,7 @@ export function AppTabBar({ state, navigation }: BottomTabBarProps) {
             label={tr("tab_profile")}
             icon="user"
             active={currentRouteName === "profile"}
-            onPress={() => navigation.navigate("profile")}
+            onPress={() => handleTabPress("profile")}
             onLayout={handleTabLayout(2)}
           />
           <NavAction
@@ -292,7 +308,7 @@ export function AppTabBar({ state, navigation }: BottomTabBarProps) {
             label={tr("tab_settings")}
             icon="settings"
             active={currentRouteName === "settings"}
-            onPress={() => navigation.navigate("settings")}
+            onPress={() => handleTabPress("settings")}
             onLayout={handleTabLayout(3)}
           />
         </View>

@@ -1,5 +1,6 @@
 import { Feather } from "@expo/vector-icons";
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { useScrollToTop } from "@react-navigation/native";
 import {
   Pressable,
   ScrollView,
@@ -30,6 +31,9 @@ export default function SearchScreen() {
   const deviceScheme = useColorScheme();
   const resolvedTheme = resolveTheme(themePreference, deviceScheme);
   const colors = APP_THEME[resolvedTheme];
+  const scrollViewRef = useRef<ScrollView | null>(null);
+
+  useScrollToTop(scrollViewRef);
 
   const normalizedQuery = query.trim().toLowerCase();
   const results = useMemo(() => {
@@ -82,6 +86,7 @@ export default function SearchScreen() {
       </View>
 
       <ScrollView
+        ref={scrollViewRef}
         contentContainerStyle={[
           styles.content,
           { paddingBottom: FLOATING_TAB_SCROLL_BUFFER },

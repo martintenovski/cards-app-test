@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -78,6 +79,8 @@ export default function CloudPassphraseScreen() {
   const colors = APP_THEME[resolvedTheme];
   const [passphrase, setPassphrase] = useState("");
   const [confirmation, setConfirmation] = useState("");
+  const [isPassphraseVisible, setIsPassphraseVisible] = useState(false);
+  const [isConfirmationVisible, setIsConfirmationVisible] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [hasExistingPassphrase, setHasExistingPassphrase] = useState(false);
   const [isChecking, setIsChecking] = useState(true);
@@ -226,23 +229,52 @@ export default function CloudPassphraseScreen() {
                 <Text style={[styles.fieldLabel, { color: colors.text }]}>
                   {hasExistingPassphrase ? "New passphrase" : "Passphrase"}
                 </Text>
-                <TextInput
-                  value={passphrase}
-                  onChangeText={setPassphrase}
-                  secureTextEntry
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  placeholder="Enter a strong sync passphrase"
-                  placeholderTextColor={colors.textSoft}
+                <View
                   style={[
-                    styles.input,
+                    styles.inputWrap,
                     {
                       backgroundColor: colors.surfaceMuted,
                       borderColor: colors.border,
-                      color: colors.text,
                     },
                   ]}
-                />
+                >
+                  <TextInput
+                    value={passphrase}
+                    onChangeText={setPassphrase}
+                    secureTextEntry={!isPassphraseVisible}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    autoComplete="new-password"
+                    textContentType="newPassword"
+                    importantForAutofill="yes"
+                    placeholder="Enter a strong sync passphrase"
+                    placeholderTextColor={colors.textSoft}
+                    style={[
+                      styles.input,
+                      styles.inputInner,
+                      {
+                        color: colors.text,
+                      },
+                    ]}
+                  />
+                  <Pressable
+                    onPress={() => setIsPassphraseVisible((current) => !current)}
+                    hitSlop={10}
+                    accessibilityRole="button"
+                    accessibilityLabel={
+                      isPassphraseVisible
+                        ? "Hide passphrase"
+                        : "Show passphrase"
+                    }
+                    style={styles.visibilityButton}
+                  >
+                    <Feather
+                      name={isPassphraseVisible ? "eye-off" : "eye"}
+                      size={20}
+                      color={colors.textMuted}
+                    />
+                  </Pressable>
+                </View>
 
                 <View style={styles.strengthWrap}>
                   <View style={styles.strengthBarRow}>
@@ -283,23 +315,59 @@ export default function CloudPassphraseScreen() {
                 <Text style={[styles.fieldLabel, { color: colors.text }]}>
                   Confirm passphrase
                 </Text>
-                <TextInput
-                  value={confirmation}
-                  onChangeText={setConfirmation}
-                  secureTextEntry
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  placeholder="Enter it again"
-                  placeholderTextColor={colors.textSoft}
+                <View
                   style={[
-                    styles.input,
+                    styles.inputWrap,
                     {
                       backgroundColor: colors.surfaceMuted,
                       borderColor: colors.border,
-                      color: colors.text,
                     },
                   ]}
-                />
+                >
+                  <TextInput
+                    value={confirmation}
+                    onChangeText={setConfirmation}
+                    secureTextEntry={!isConfirmationVisible}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    autoComplete="new-password"
+                    textContentType="newPassword"
+                    importantForAutofill="yes"
+                    placeholder="Enter it again"
+                    placeholderTextColor={colors.textSoft}
+                    returnKeyType="done"
+                    onSubmitEditing={() => {
+                      Keyboard.dismiss();
+                      void handleSave();
+                    }}
+                    style={[
+                      styles.input,
+                      styles.inputInner,
+                      {
+                        color: colors.text,
+                      },
+                    ]}
+                  />
+                  <Pressable
+                    onPress={() =>
+                      setIsConfirmationVisible((current) => !current)
+                    }
+                    hitSlop={10}
+                    accessibilityRole="button"
+                    accessibilityLabel={
+                      isConfirmationVisible
+                        ? "Hide confirmation passphrase"
+                        : "Show confirmation passphrase"
+                    }
+                    style={styles.visibilityButton}
+                  >
+                    <Feather
+                      name={isConfirmationVisible ? "eye-off" : "eye"}
+                      size={20}
+                      color={colors.textMuted}
+                    />
+                  </Pressable>
+                </View>
 
                 <View
                   style={[
@@ -331,10 +399,17 @@ export default function CloudPassphraseScreen() {
                 </View>
 
                 <Pressable
-                  onPress={handleSave}
+                  onPress={() => {
+                    Keyboard.dismiss();
+                    void handleSave();
+                  }}
+                  disabled={isSaving}
                   style={[
                     styles.primaryButton,
-                    { backgroundColor: colors.accent },
+                    {
+                      backgroundColor: colors.accent,
+                      opacity: isSaving ? 0.7 : 1,
+                    },
                   ]}
                 >
                   <Text
@@ -424,13 +499,30 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   input: {
-    borderWidth: 1,
-    borderRadius: 18,
     minHeight: 54,
-    paddingHorizontal: 16,
     fontFamily: "OpenSans-Regular",
     fontSize: 15,
     marginBottom: 16,
+  },
+  inputWrap: {
+    minHeight: 54,
+    borderWidth: 1,
+    borderRadius: 18,
+    marginBottom: 16,
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  inputInner: {
+    flex: 1,
+    marginBottom: 0,
+    paddingLeft: 16,
+    paddingRight: 10,
+  },
+  visibilityButton: {
+    width: 48,
+    alignItems: "center",
+    justifyContent: "center",
+    alignSelf: "stretch",
   },
   strengthWrap: {
     marginTop: -4,

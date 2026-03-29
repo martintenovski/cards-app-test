@@ -3,7 +3,7 @@
     "name": "Pocket ID",
     "slug": "cards-app",
     "scheme": "pocketid",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "backgroundColor": "#1C1E21",
@@ -55,7 +55,7 @@
     "ios": {
       "icon": "./assets/ios-logo.png",
       "supportsTablet": true,
-      "buildNumber": "27",
+      "buildNumber": "1",
       "bundleIdentifier": "com.tenovski.cardsapp",
       "infoPlist": {
         "NSCameraUsageDescription": "Allow Pocket ID to use the camera so you can scan cards and documents into editable drafts.",

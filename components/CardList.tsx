@@ -13,7 +13,7 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from "react-native-reanimated";
-import { useCallback, useEffect, memo } from "react";
+import { useCallback, useEffect, forwardRef, memo } from "react";
 
 import { CardItem } from "@/components/CardItem";
 import type { WalletCard } from "@/types/card";
@@ -62,6 +62,7 @@ type CardListProps = {
   refreshing?: boolean;
   onRefresh?: () => void;
   funMessage?: { emoji: string; text: string };
+  refreshBannerBottomSpacing?: number;
 };
 
 function FunRefreshBanner({
@@ -69,11 +70,13 @@ function FunRefreshBanner({
   emoji,
   text,
   colors,
+  bottomSpacing,
 }: {
   visible: boolean;
   emoji: string;
   text: string;
   colors: (typeof APP_THEME)[keyof typeof APP_THEME];
+  bottomSpacing: number;
 }) {
   const scale = useSharedValue(0.95);
   const opacity = useSharedValue(0);
@@ -100,7 +103,11 @@ function FunRefreshBanner({
       style={[
         animStyle,
         styles.funBanner,
-        { backgroundColor: colors.surface, borderColor: colors.border },
+        {
+          backgroundColor: colors.surface,
+          borderColor: colors.border,
+          marginBottom: bottomSpacing,
+        },
       ]}
     >
       <Text style={styles.funEmoji}>{emoji}</Text>
@@ -130,69 +137,80 @@ const CardListItem = memo(function CardListItem({
   );
 });
 
-export function CardList({
-  cards,
-  header,
-  onCardPress,
-  onCardLongPress,
-  bottomSpacing = 120,
-  refreshing = false,
-  onRefresh,
-  funMessage = FUN_MESSAGES[0],
-}: CardListProps) {
-  const themePreference = useCardStore((s) => s.themePreference);
-  const deviceScheme = useColorScheme();
-  const colors = APP_THEME[resolveTheme(themePreference, deviceScheme)];
+export const CardList = forwardRef<FlatList<WalletCard>, CardListProps>(
+  function CardList(
+    {
+      cards,
+      header,
+      onCardPress,
+      onCardLongPress,
+      bottomSpacing = 120,
+      refreshing = false,
+      onRefresh,
+      funMessage = FUN_MESSAGES[0],
+      refreshBannerBottomSpacing = 0,
+    },
+    ref,
+  ) {
+    const themePreference = useCardStore((s) => s.themePreference);
+    const deviceScheme = useColorScheme();
+    const colors = APP_THEME[resolveTheme(themePreference, deviceScheme)];
 
-  const keyExtractor = useCallback((item: WalletCard) => item.id, []);
+    const keyExtractor = useCallback((item: WalletCard) => item.id, []);
 
-  const renderItem = useCallback(
-    ({ item }: { item: WalletCard }) => (
-      <CardListItem
-        card={item}
-        onCardPress={onCardPress}
-        onCardLongPress={onCardLongPress}
-      />
-    ),
-    [onCardPress, onCardLongPress],
-  );
-
-  const ListHeader = (
-    <>
-      {onRefresh ? (
-        <FunRefreshBanner
-          visible={refreshing}
-          emoji={funMessage.emoji}
-          text={funMessage.text}
-          colors={colors}
+    const renderItem = useCallback(
+      ({ item }: { item: WalletCard }) => (
+        <CardListItem
+          card={item}
+          onCardPress={onCardPress}
+          onCardLongPress={onCardLongPress}
         />
-      ) : null}
-      {header ? <View style={styles.header}>{header}</View> : null}
-    </>
-  );
+      ),
+      [onCardPress, onCardLongPress],
+    );
 
-  return (
-    <FlatList
-      data={cards}
-      keyExtractor={keyExtractor}
-      renderItem={renderItem}
-      style={styles.scroll}
-      contentContainerStyle={[styles.content, { paddingBottom: bottomSpacing }]}
-      showsVerticalScrollIndicator={false}
-      scrollEventThrottle={16}
-      removeClippedSubviews
-      initialNumToRender={8}
-      maxToRenderPerBatch={6}
-      windowSize={5}
-      ListHeaderComponent={ListHeader}
-      refreshControl={
-        onRefresh ? (
-          <RefreshControl refreshing={false} onRefresh={onRefresh} />
-        ) : undefined
-      }
-    />
-  );
-}
+    const ListHeader = (
+      <>
+        {onRefresh ? (
+          <FunRefreshBanner
+            visible={refreshing}
+            emoji={funMessage.emoji}
+            text={funMessage.text}
+            colors={colors}
+            bottomSpacing={refreshBannerBottomSpacing}
+          />
+        ) : null}
+        {header ? <View style={styles.header}>{header}</View> : null}
+      </>
+    );
+
+    return (
+      <FlatList
+        ref={ref}
+        data={cards}
+        keyExtractor={keyExtractor}
+        renderItem={renderItem}
+        style={styles.scroll}
+        contentContainerStyle={[
+          styles.content,
+          { paddingBottom: bottomSpacing },
+        ]}
+        showsVerticalScrollIndicator={false}
+        scrollEventThrottle={16}
+        removeClippedSubviews
+        initialNumToRender={8}
+        maxToRenderPerBatch={6}
+        windowSize={5}
+        ListHeaderComponent={ListHeader}
+        refreshControl={
+          onRefresh ? (
+            <RefreshControl refreshing={false} onRefresh={onRefresh} />
+          ) : undefined
+        }
+      />
+    );
+  },
+);
 
 const styles = StyleSheet.create({
   scroll: {
@@ -217,7 +235,6 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     paddingHorizontal: 18,
     paddingVertical: 14,
-    marginBottom: 15,
   },
   funEmoji: {
     fontSize: 26,

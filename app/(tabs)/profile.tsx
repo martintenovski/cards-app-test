@@ -1,8 +1,8 @@
 import { Feather } from "@expo/vector-icons";
-import { useIsFocused } from "@react-navigation/native";
+import { useIsFocused, useScrollToTop } from "@react-navigation/native";
 import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -198,6 +198,9 @@ export default function ProfileScreen() {
     : tr("profile_support_button_inactive");
   const shouldShowCloudSyncGuide =
     Boolean(authUser) && cloudVaultStatus === "missing";
+  const scrollViewRef = useRef<ScrollView | null>(null);
+
+  useScrollToTop(scrollViewRef);
 
   const categoryStats = useMemo(
     () =>
@@ -283,6 +286,7 @@ export default function ProfileScreen() {
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: colors.background }]}>
       <ScrollView
+        ref={scrollViewRef}
         contentContainerStyle={[
           styles.content,
           {

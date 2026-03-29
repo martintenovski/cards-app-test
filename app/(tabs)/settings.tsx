@@ -1,5 +1,5 @@
 import { Feather } from "@expo/vector-icons";
-import { useIsFocused } from "@react-navigation/native";
+import { useIsFocused, useScrollToTop } from "@react-navigation/native";
 import { useEffect, useRef, useState } from "react";
 import * as LocalAuthentication from "expo-local-authentication";
 import * as Linking from "expo-linking";
@@ -226,6 +226,8 @@ export default function SettingsScreen() {
     Boolean(authUser) && cloudVaultStatus === "missing";
   const canUseAnimatedStack = cards.length >= 4;
 
+  useScrollToTop(scrollViewRef);
+
   useEffect(() => {
     if (!canUseAnimatedStack && viewMode === "stack") {
       setViewMode("list");
@@ -442,7 +444,7 @@ export default function SettingsScreen() {
     if (!authUser) return;
 
     Alert.alert(
-      "Delete your data?",
+      "Delete your local data?",
       "This removes your synced wallet data and clears saved cards on this device. Your Google sign-in remains available, but this action cannot be undone.",
       [
         { text: "Cancel", style: "cancel" },
@@ -1001,19 +1003,16 @@ export default function SettingsScreen() {
                     onPress={handleDeleteData}
                     style={[
                       styles.testBtn,
-                      styles.dangerButton,
                       {
-                        backgroundColor: colors.dangerSoft,
-                        borderColor: colors.danger,
+                        backgroundColor: colors.surfaceMuted,
+                        borderColor: colors.buttonBorder,
                       },
                     ]}
                   >
-                    <Text
-                      style={[styles.testBtnText, { color: colors.danger }]}
-                    >
+                    <Text style={[styles.testBtnText, { color: colors.text }]}>
                       {authBusy === "delete-data"
-                        ? "Deleting data…"
-                        : "Delete My Data"}
+                        ? "Deleting data on this device…"
+                        : "Delete My Local Data"}
                     </Text>
                   </Pressable>
                 </>
@@ -1046,13 +1045,14 @@ export default function SettingsScreen() {
                   onPress={handleDeleteAccount}
                   style={[
                     styles.testBtn,
+                    styles.dangerButton,
                     {
-                      backgroundColor: colors.surface,
-                      borderColor: colors.buttonBorder,
+                      backgroundColor: colors.dangerSoft,
+                      borderColor: colors.danger,
                     },
                   ]}
                 >
-                  <Text style={[styles.testBtnText, { color: colors.text }]}>
+                  <Text style={[styles.testBtnText, { color: colors.danger }]}>
                     {authBusy === "delete-account"
                       ? "Deleting Account…"
                       : "Delete Account"}
