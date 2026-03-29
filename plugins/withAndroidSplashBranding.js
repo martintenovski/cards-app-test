@@ -59,37 +59,90 @@ function encodePNG(width, height, rgba) {
   return Buffer.concat([sig, chunk('IHDR', ihdr), chunk('IDAT', idat), chunk('IEND', Buffer.alloc(0))]);
 }
 
-// ─── 5 × 7 pixel font ────────────────────────────────────────────────────────
+// ─── 6 × 10 proportional-width lowercase font ────────────────────────────────
+// Height: 10 rows  (ascenders 0-2, x-height 3-8, descender 9)
+// Each glyph: { w: <width>, d: <10-row array of pixel rows> }
+const FH = 10;
+const FG = 2; // inter-glyph gap in font pixels
+
 const FONT = {
-  b: [[1,0,0,0,0],[1,0,0,0,0],[1,1,1,1,0],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,1,1,1,0]],
-  y: [[1,0,0,0,1],[1,0,0,0,1],[0,1,0,1,0],[0,0,1,0,0],[0,0,1,0,0],[0,0,1,0,0],[0,0,1,0,0]],
-  t: [[0,1,0,0,0],[0,1,0,0,0],[1,1,1,1,0],[0,1,0,0,0],[0,1,0,0,0],[0,1,0,0,0],[0,0,1,1,0]],
-  e: [[0,1,1,1,0],[1,0,0,0,1],[1,0,0,0,1],[1,1,1,1,1],[1,0,0,0,0],[1,0,0,0,0],[0,1,1,1,0]],
-  n: [[1,0,0,0,1],[1,0,0,0,1],[1,1,0,0,1],[1,0,1,0,1],[1,0,0,1,1],[1,0,0,0,1],[1,0,0,0,1]],
-  o: [[0,1,1,1,0],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[0,1,1,1,0]],
-  v: [[1,0,0,0,1],[1,0,0,0,1],[1,0,0,0,1],[0,1,0,1,0],[0,1,0,1,0],[0,0,1,0,0],[0,0,1,0,0]],
-  s: [[0,1,1,1,1],[1,0,0,0,0],[1,0,0,0,0],[0,1,1,1,0],[0,0,0,0,1],[0,0,0,0,1],[1,1,1,1,0]],
-  k: [[1,0,0,0,1],[1,0,0,1,0],[1,0,1,0,0],[1,1,0,0,0],[1,0,1,0,0],[1,0,0,1,0],[1,0,0,0,1]],
-  i: [[1,1,1,0,0],[0,1,0,0,0],[0,1,0,0,0],[0,1,0,0,0],[0,1,0,0,0],[0,1,0,0,0],[1,1,1,0,0]],
+  b: { w:6, d:[
+    [1,0,0,0,0,0],[1,0,0,0,0,0],[1,0,0,0,0,0],
+    [1,0,1,1,0,0],[1,1,0,0,1,0],[1,0,0,0,0,1],
+    [1,0,0,0,0,1],[1,1,0,0,1,0],[1,0,1,1,0,0],
+    [0,0,0,0,0,0]]},
+  y: { w:6, d:[
+    [0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0],
+    [1,0,0,0,0,1],[1,0,0,0,0,1],[0,1,0,0,1,0],
+    [0,0,1,1,0,0],[0,0,0,1,0,0],[0,0,1,0,0,0],
+    [0,1,0,0,0,0]]},
+  t: { w:5, d:[
+    [0,0,0,0,0],[0,1,0,0,0],[0,1,0,0,0],
+    [1,1,1,1,0],[0,1,0,0,0],[0,1,0,0,0],
+    [0,1,0,0,0],[0,1,0,0,0],[0,0,1,1,0],
+    [0,0,0,0,0]]},
+  e: { w:6, d:[
+    [0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0],
+    [0,1,1,1,0,0],[1,0,0,0,1,0],[1,1,1,1,1,0],
+    [1,0,0,0,0,0],[1,0,0,0,0,0],[0,1,1,1,0,0],
+    [0,0,0,0,0,0]]},
+  n: { w:6, d:[
+    [0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0],
+    [1,0,1,1,0,0],[1,1,0,0,1,0],[1,0,0,0,0,1],
+    [1,0,0,0,0,1],[1,0,0,0,0,1],[1,0,0,0,0,1],
+    [0,0,0,0,0,0]]},
+  o: { w:6, d:[
+    [0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0],
+    [0,0,1,1,0,0],[0,1,0,0,1,0],[1,0,0,0,0,1],
+    [1,0,0,0,0,1],[0,1,0,0,1,0],[0,0,1,1,0,0],
+    [0,0,0,0,0,0]]},
+  v: { w:6, d:[
+    [0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0],
+    [1,0,0,0,0,1],[1,0,0,0,0,1],[1,0,0,0,0,1],
+    [0,1,0,0,1,0],[0,1,0,0,1,0],[0,0,1,1,0,0],
+    [0,0,0,0,0,0]]},
+  s: { w:6, d:[
+    [0,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0],
+    [0,1,1,1,0,0],[1,0,0,0,1,0],[0,1,1,0,0,0],
+    [0,0,0,1,1,0],[1,0,0,0,1,0],[0,1,1,1,0,0],
+    [0,0,0,0,0,0]]},
+  k: { w:6, d:[
+    [1,0,0,0,0,0],[1,0,0,0,0,0],[1,0,0,0,0,0],
+    [1,0,0,1,0,0],[1,0,1,0,0,0],[1,1,0,0,0,0],
+    [1,0,1,0,0,0],[1,0,0,1,0,0],[1,0,0,0,1,0],
+    [0,0,0,0,0,0]]},
+  i: { w:4, d:[
+    [0,0,0,0],[0,1,0,0],[0,0,0,0],
+    [1,1,0,0],[0,1,0,0],[0,1,0,0],
+    [0,1,0,0],[0,1,0,0],[1,1,1,0],
+    [0,0,0,0]]},
 };
 
-function renderLine(text, scale, r, g, b) {
-  const chars = text.toLowerCase().split('').map(c => FONT[c]).filter(Boolean);
-  const n = chars.length;
-  const W = (n * (5 + 1) - 1) * scale; // FW=5  FG=1
-  const H = 7 * scale;                  // FH=7
+// ─── Render at high resolution ────────────────────────────────────────────────
+
+function renderLineHiRes(text, scale, r, g, b) {
+  const glyphs = text.toLowerCase().split('').map(c => FONT[c]).filter(Boolean);
+  let totalFW = 0;
+  const offsets = [];
+  glyphs.forEach((g, idx) => {
+    offsets.push(totalFW);
+    totalFW += g.w;
+    if (idx < glyphs.length - 1) totalFW += FG;
+  });
+  const W = totalFW * scale;
+  const H = FH * scale;
   const buf = Buffer.alloc(W * H * 4, 0);
-  chars.forEach((glyph, ci) => {
-    const ox = ci * 6 * scale;
-    for (let row = 0; row < 7; row++) {
-      for (let col = 0; col < 5; col++) {
-        if (!glyph[row][col]) continue;
+  glyphs.forEach((glyph, gi) => {
+    const ox = offsets[gi] * scale;
+    for (let row = 0; row < FH; row++) {
+      for (let col = 0; col < glyph.w; col++) {
+        if (!glyph.d[row][col]) continue;
         for (let sy = 0; sy < scale; sy++) {
           for (let sx = 0; sx < scale; sx++) {
             const px = ox + col * scale + sx;
             const py = row * scale + sy;
             const i = (py * W + px) * 4;
-            buf[i]=r; buf[i+1]=g; buf[i+2]=b; buf[i+3]=255;
+            buf[i] = r; buf[i+1] = g; buf[i+2] = b; buf[i+3] = 255;
           }
         }
       }
@@ -98,12 +151,50 @@ function renderLine(text, scale, r, g, b) {
   return { buf, W, H };
 }
 
-function buildBrandingPNG(scale) {
-  const PAD_H  = 4 * scale;
-  const LINE_G = 3 * scale;
-  const PAD_W  = 12 * scale;
-  const l1 = renderLine('by',       scale, 142, 142, 147);
-  const l2 = renderLine('tenovski', scale, 255, 255, 255);
+// ─── Area-average downsample ──────────────────────────────────────────────────
+// Shrinks an RGBA buffer by an integer factor using box filtering.  Each output
+// pixel is the average of (factor × factor) source pixels.  This converts the
+// hard bitmap edges into smooth gradients — the same technique GPUs use for
+// super-sampled anti-aliasing (SSAA).
+
+function downsample(src, srcW, srcH, factor) {
+  const dstW = Math.floor(srcW / factor);
+  const dstH = Math.floor(srcH / factor);
+  const area = factor * factor;
+  const out = Buffer.alloc(dstW * dstH * 4, 0);
+  for (let dy = 0; dy < dstH; dy++) {
+    for (let dx = 0; dx < dstW; dx++) {
+      let rr = 0, gg = 0, bb = 0, aa = 0;
+      for (let sy = 0; sy < factor; sy++) {
+        for (let sx = 0; sx < factor; sx++) {
+          const si = ((dy * factor + sy) * srcW + (dx * factor + sx)) * 4;
+          rr += src[si]; gg += src[si+1]; bb += src[si+2]; aa += src[si+3];
+        }
+      }
+      const di = (dy * dstW + dx) * 4;
+      out[di]   = Math.round(rr / area);
+      out[di+1] = Math.round(gg / area);
+      out[di+2] = Math.round(bb / area);
+      out[di+3] = Math.round(aa / area);
+    }
+  }
+  return { buf: out, W: dstW, H: dstH };
+}
+
+// ─── Build branding PNG with 4× SSAA ─────────────────────────────────────────
+// We render at 4× the target scale then downsample.  The box filter naturally
+// produces smooth, anti-aliased text at every density — no edge-softening
+// heuristics needed.
+
+const SSAA = 4; // super-sample factor
+
+function buildBrandingPNG(targetScale) {
+  const hiScale = targetScale * SSAA;
+  const PAD_H  = 4 * hiScale;
+  const LINE_G = 3 * hiScale;
+  const PAD_W  = 12 * hiScale;
+  const l1 = renderLineHiRes('by',       hiScale, 142, 142, 147);
+  const l2 = renderLineHiRes('tenovski', hiScale, 255, 255, 255);
   const imgW = Math.max(l1.W, l2.W) + PAD_W * 2;
   const imgH = PAD_H + l1.H + LINE_G + l2.H + PAD_H;
   const canvas = Buffer.alloc(imgW * imgH * 4, 0);
@@ -118,15 +209,16 @@ function buildBrandingPNG(scale) {
   }
   blit(l1.buf, l1.W, l1.H, Math.floor((imgW - l1.W) / 2), PAD_H);
   blit(l2.buf, l2.W, l2.H, Math.floor((imgW - l2.W) / 2), PAD_H + l1.H + LINE_G);
-  return encodePNG(imgW, imgH, canvas);
+  const ds = downsample(canvas, imgW, imgH, SSAA);
+  return encodePNG(ds.W, ds.H, ds.buf);
 }
 
 const DENSITIES = [
-  { folder: 'drawable-mdpi',    scale: 3  },
-  { folder: 'drawable-hdpi',    scale: 4  },
-  { folder: 'drawable-xhdpi',   scale: 6  },
-  { folder: 'drawable-xxhdpi',  scale: 9  },
-  { folder: 'drawable-xxxhdpi', scale: 12 },
+  { folder: 'drawable-mdpi',    scale: 2  },
+  { folder: 'drawable-hdpi',    scale: 2  },
+  { folder: 'drawable-xhdpi',   scale: 3  },
+  { folder: 'drawable-xxhdpi',  scale: 4  },
+  { folder: 'drawable-xxxhdpi', scale: 5  },
 ];
 
 // ─── Android 12+ branding-image style override ───────────────────────────────
