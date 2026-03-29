@@ -25,6 +25,7 @@ export function CardQuickView({ card, onDismiss }: Props) {
   const [displayCard, setDisplayCard] = useState<WalletCard | null>(null);
 
   const deviceScheme = useColorScheme();
+  const language = useCardStore((s) => s.language);
   const themePreference = useCardStore((s) => s.themePreference);
   const resolvedTheme = resolveTheme(themePreference, deviceScheme);
   const colors = APP_THEME[resolvedTheme];
@@ -52,7 +53,11 @@ export function CardQuickView({ card, onDismiss }: Props) {
       onDismiss={onDismiss}
       backgroundColor={colors.background}
       hintColor={colors.textSoft}
-      hint="Tap anywhere to dismiss"
+      hint={
+        language === "mk"
+          ? "Допрете каде било за затворање"
+          : "Tap anywhere to dismiss"
+      }
       contentContainerStyle={styles.cardWrap}
     >
       {displayCard ? (

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -13,7 +13,6 @@ import {
   useColorScheme,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
 import * as Clipboard from "expo-clipboard";
 import * as FileSystem from "expo-file-system/legacy";
@@ -48,10 +47,13 @@ import {
 import { getExpiryStatus, supportsValidityBadge } from "@/utils/expiry";
 import { APP_THEME, CARD_SIDE_TOGGLE_THEME, resolveTheme } from "@/utils/theme";
 
-export default function CardDetailScreen() {
+type CardDetailModalProps = {
+  cardId: string | null;
+  onClose: () => void;
+};
+
+export function CardDetailModal({ cardId, onClose }: CardDetailModalProps) {
   const tr = useTranslation();
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const router = useRouter();
   const cards = useCardStore((state) => state.cards);
   const deleteCard = useCardStore((state) => state.deleteCard);
   const language = useCardStore((state) => state.language);
@@ -61,33 +63,57 @@ export default function CardDetailScreen() {
   const colors = APP_THEME[resolvedTheme];
   const sideToggleColors = CARD_SIDE_TOGGLE_THEME[resolvedTheme];
 
-  const [toastMessage, setToastMessage] = useState("");
-  const [toastVisible, setToastVisible] = useState(false);
-  const demoCard = findDemoCardById(id);
-  const initialCard = cards.find((c) => c.id === id) ?? demoCard ?? undefined;
+  const demoCard = cardId ? findDemoCardById(cardId) : null;
+  const cardData =
+    (cardId ? cards.find((c) => c.id === cardId) : null) ?? demoCard ?? null;
+  const isDemoCard = Boolean(demoCard);
   const defaultsToBack =
-    initialCard?.category === "club" &&
-    (initialCard as import("@/types/card").ClubCard).memberIdFormat ===
-      "barcode";
-  const [isFlipped, setIsFlipped] = useState(defaultsToBack);
+    cardData?.category === "club" &&
+    (cardData as import("@/types/card").ClubCard).memberIdFormat === "barcode";
+
+  const [isFlipped, setIsFlipped] = useState(defaultsToBack ?? false);
   const [editSheetOpen, setEditSheetOpen] = useState(false);
   const [isSharing, setIsSharing] = useState(false);
   const [shareSheetOpen, setShareSheetOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastVisible, setToastVisible] = useState(false);
+
   const flipProgress = useSharedValue(defaultsToBack ? 1 : 0);
   const shareCaptureRef = useRef<ViewShot | null>(null);
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const currentSide = isFlipped ? "back" : "front";
 
-  // Cancel in-flight animations and timers when this screen unmounts.
-  // Without this, a withTiming() running on the UI thread after the native
-  // view is destroyed causes a Reanimated crash — reproducible by dismissing
-  // a card detail mid-gesture then quickly opening another card.
+  // Reset internal state whenever a new card is selected
+  useEffect(() => {
+    if (!cardId) return;
+    const nextDemoCard = findDemoCardById(cardId);
+    const nextCard = cards.find((c) => c.id === cardId) ?? nextDemoCard ?? null;
+    const nextDefaultsToBack =
+      nextCard?.category === "club" &&
+      (nextCard as import("@/types/card").ClubCard).memberIdFormat ===
+        "barcode";
+
+    cancelAnimation(flipProgress);
+    setIsFlipped(nextDefaultsToBack ?? false);
+    flipProgress.value = nextDefaultsToBack ? 1 : 0;
+    setEditSheetOpen(false);
+    setIsSharing(false);
+    setShareSheetOpen(false);
+    setToastVisible(false);
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+      toastTimerRef.current = null;
+    }
+  }, [cardId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Cancel in-flight animations and timers on unmount
   useEffect(() => {
     return () => {
       cancelAnimation(flipProgress);
       if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const currentSide = isFlipped ? "back" : "front";
 
   const frontStyle = useAnimatedStyle(() => ({
     transform: [
@@ -109,24 +135,40 @@ export default function CardDetailScreen() {
     backfaceVisibility: "hidden",
   }));
 
-  const card = cards.find((c) => c.id === id) ?? demoCard;
-  const isDemoCard = Boolean(demoCard);
+  const card = cardData;
+  const canFlip = card ? supportsCardBack(card) : false;
 
+  // Memoised so only recomputes when the card data or language changes,
+  // not on every toast / flip / share state update.
+  const fields = useMemo(
+    () => (card ? getCardFields(card, tr) : []),
+    [card, language], // eslint-disable-line react-hooks/exhaustive-deps
+  );
+
+  // All hooks must be called before any early return.
+  // Render the "not found" shell when cardId is set but no card exists.
   if (!card) {
     return (
-      <SafeAreaView
-        style={[styles.root, { backgroundColor: colors.background }]}
+      <Modal
+        visible={cardId !== null}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={onClose}
       >
-        <View style={styles.centeredError}>
-          <Text style={[styles.errorText, { color: colors.textMuted }]}>
-            {tr("card_detail_not_found")}
-          </Text>
-        </View>
-      </SafeAreaView>
+        <SafeAreaView
+          style={[styles.root, { backgroundColor: colors.background }]}
+        >
+          <View style={styles.centeredError}>
+            <Text style={[styles.errorText, { color: colors.textMuted }]}>
+              {tr("card_detail_not_found")}
+            </Text>
+          </View>
+        </SafeAreaView>
+      </Modal>
     );
   }
 
-  const currentCard = card;
+  // Beyond this point card is guaranteed non-null (WalletCard).
 
   function showDemoActionWarning(actionLabel: string) {
     Alert.alert(
@@ -136,8 +178,6 @@ export default function CardDetailScreen() {
         : `${actionLabel} is not available for demo cards. Add your own card or sync your saved cards to use this action.`,
     );
   }
-
-  const canFlip = supportsCardBack(currentCard);
 
   function setCardSide(side: "front" | "back") {
     if (!canFlip) return;
@@ -178,22 +218,16 @@ export default function CardDetailScreen() {
           text: language === "mk" ? "Избриши" : "Delete",
           style: "destructive",
           onPress: () => {
-            deleteCard(id!);
-            router.back();
+            deleteCard(cardId!);
+            onClose();
           },
         },
       ],
     );
   }
 
-  async function shareAsImage() {
+  const shareAsImage = async () => {
     if (isSharing) return;
-
-    const cardToShare = card;
-
-    if (!cardToShare) {
-      return;
-    }
 
     try {
       setIsSharing(true);
@@ -211,8 +245,8 @@ export default function CardDetailScreen() {
       }
 
       await Share.share({
-        title: `${cardToShare.title} details`,
-        message: buildShareMessage(cardToShare, fields),
+        title: `${card.title} details`,
+        message: buildShareMessage(card, fields),
         url: imageUri,
       });
     } catch {
@@ -225,21 +259,21 @@ export default function CardDetailScreen() {
     } finally {
       setIsSharing(false);
     }
-  }
+  };
 
-  async function shareAsText() {
+  const shareAsText = async () => {
     if (isSharing) return;
 
     try {
       setIsSharing(true);
       await Share.share({
-        title: `${currentCard.title} details`,
-        message: buildShareMessage(currentCard, fields),
+        title: `${card.title} details`,
+        message: buildShareMessage(card, fields),
       });
     } finally {
       setIsSharing(false);
     }
-  }
+  };
 
   async function createPocketIdShareFile(fileName: string, payload: string) {
     const writableDirectory =
@@ -263,10 +297,10 @@ export default function CardDetailScreen() {
     return exportFileUri;
   }
 
-  async function sharePocketIdFileThroughApps(
+  const sharePocketIdFileThroughApps = async (
     fileName: string,
     payload: string,
-  ) {
+  ) => {
     try {
       setIsSharing(true);
       const exportFileUri = await createPocketIdShareFile(fileName, payload);
@@ -278,7 +312,7 @@ export default function CardDetailScreen() {
           : exportFileUri;
 
       await Share.share({
-        title: `Send ${currentCard.title} as a Pocket ID card`,
+        title: `Send ${card.title} as a Pocket ID card`,
         url: shareUri,
       });
     } catch (error) {
@@ -292,17 +326,15 @@ export default function CardDetailScreen() {
     } finally {
       setIsSharing(false);
     }
-  }
+  };
 
-  async function shareAsPocketIdFile() {
+  const shareAsPocketIdFile = async () => {
     if (isSharing) return;
 
     try {
       setIsSharing(true);
-      const fileName = createSharedCardFileName(currentCard);
-      const payload = stringifySharedCardPayload(
-        createSharedCardPayload(currentCard),
-      );
+      const fileName = createSharedCardFileName(card);
+      const payload = stringifySharedCardPayload(createSharedCardPayload(card));
 
       if (Platform.OS === "android") {
         const permissions =
@@ -330,7 +362,7 @@ export default function CardDetailScreen() {
             ? "Pocket ID датотеката е зачувана"
             : "Pocket ID file saved",
           language === "mk"
-            ? `Зачувано е ${fileName} во избраната папка. Ако имаш инсталирано Viber, Messenger, WhatsApp, Gmail, Drive или слични апликации, ќе се појават автоматски кога ќе допреш „Сподели сега“.`
+            ? `Зачувано е ${fileName} во избраната папка. Ако имаш инсталирано Viber, Messenger, WhatsApp, Gmail, Drive или слични апликации, ќе се појават автоматски кога ќе допреш „Сподели сега".`
             : `Saved ${fileName} to the folder you selected. If Viber, Messenger, WhatsApp, Gmail, Drive, or similar apps are installed, they will show up automatically when you tap Share now.`,
           [
             { text: language === "mk" ? "Готово" : "Done", style: "cancel" },
@@ -352,7 +384,7 @@ export default function CardDetailScreen() {
           ? "Pocket ID датотеката е подготвена"
           : "Pocket ID file ready",
         language === "mk"
-          ? `Подготвено е ${fileName}. Ако имаш инсталирано Messages, Mail, WhatsApp, Messenger, Viber, Drive или слични апликации, ќе се појават автоматски кога ќе допреш „Сподели сега“.`
+          ? `Подготвено е ${fileName}. Ако имаш инсталирано Messages, Mail, WhatsApp, Messenger, Viber, Drive или слични апликации, ќе се појават автоматски кога ќе допреш „Сподели сега".`
           : `Prepared ${fileName}. If Messages, Mail, WhatsApp, Messenger, Viber, Drive, or similar apps are installed, they will show up automatically when you tap Share now.`,
         [
           { text: language === "mk" ? "Готово" : "Done", style: "cancel" },
@@ -375,7 +407,7 @@ export default function CardDetailScreen() {
     } finally {
       setIsSharing(false);
     }
-  }
+  };
 
   async function handleShareOption(
     option: "image" | "text" | "pocket-id-file",
@@ -402,393 +434,102 @@ export default function CardDetailScreen() {
     await shareAsPocketIdFile();
   }
 
-  const fields = getCardFields(card, tr);
-
   return (
-    <SafeAreaView style={[styles.root, { backgroundColor: colors.background }]}>
-      <Stack.Screen
-        options={{
-          gestureEnabled: !editSheetOpen,
-        }}
-      />
-
-      {/* ── Header ─────────────────────────────── */}
-      <View style={styles.header}>
-        <Pressable
-          onPress={() => router.back()}
-          hitSlop={12}
-          style={styles.headerBtn}
-        >
-          <Feather name="arrow-left" size={24} color={colors.text} />
-        </Pressable>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>
-          {card.title}
-        </Text>
-        <Pressable
-          hitSlop={12}
-          style={styles.headerBtn}
-          onPress={() => {
-            if (isDemoCard) {
-              showDemoActionWarning("Edit");
-              return;
-            }
-            setEditSheetOpen(true);
-          }}
-        >
-          <Feather name="edit-2" size={20} color={colors.text} />
-        </Pressable>
-      </View>
-
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
+    <Modal
+      visible={cardId !== null}
+      animationType="slide"
+      presentationStyle="pageSheet"
+      onRequestClose={onClose}
+    >
+      <SafeAreaView
+        style={[styles.root, { backgroundColor: colors.background }]}
       >
-        {/* ── Card visual with flip ───────────── */}
-        <View style={styles.cardWrapper}>
-          {canFlip ? (
-            <View
-              style={[
-                styles.sideToggle,
-                { backgroundColor: sideToggleColors.containerBackground },
-              ]}
-            >
-              {(["front", "back"] as const).map((side) => {
-                const active = currentSide === side;
-                return (
-                  <Pressable
-                    key={side}
-                    onPress={() => setCardSide(side)}
-                    style={[
-                      styles.sideToggleBtn,
-                      {
-                        backgroundColor: active
-                          ? sideToggleColors.activeBackground
-                          : "transparent",
-                      },
-                    ]}
-                  >
-                    <Text
+        {/* ── Header ─────────────────────────────── */}
+        <View style={styles.header}>
+          <Pressable onPress={onClose} hitSlop={12} style={styles.headerBtn}>
+            <Feather name="arrow-left" size={24} color={colors.text} />
+          </Pressable>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>
+            {card.title}
+          </Text>
+          <Pressable
+            hitSlop={12}
+            style={styles.headerBtn}
+            onPress={() => {
+              if (isDemoCard) {
+                showDemoActionWarning("Edit");
+                return;
+              }
+              setEditSheetOpen(true);
+            }}
+          >
+            <Feather name="edit-2" size={20} color={colors.text} />
+          </Pressable>
+        </View>
+
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* ── Card visual with flip ───────────── */}
+          <View style={styles.cardWrapper}>
+            {canFlip ? (
+              <View
+                style={[
+                  styles.sideToggle,
+                  { backgroundColor: sideToggleColors.containerBackground },
+                ]}
+              >
+                {(["front", "back"] as const).map((side) => {
+                  const active = currentSide === side;
+                  return (
+                    <Pressable
+                      key={side}
+                      onPress={() => setCardSide(side)}
                       style={[
-                        styles.sideToggleText,
+                        styles.sideToggleBtn,
                         {
-                          color: active
-                            ? sideToggleColors.activeText
-                            : sideToggleColors.inactiveText,
+                          backgroundColor: active
+                            ? sideToggleColors.activeBackground
+                            : "transparent",
                         },
                       ]}
                     >
-                      {side === "front"
-                        ? tr("card_detail_front")
-                        : tr("card_detail_back")}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          ) : null}
-          <View style={styles.previewWrap}>
-            <Pressable
-              onPress={handleFlip}
-              style={styles.cardContainer}
-              disabled={!canFlip}
-            >
-              <Animated.View style={frontStyle}>
-                <CardItem
-                  card={card}
-                  side="front"
-                  size="full"
-                  showExpirySuffix
-                  showExpiryBadge={false}
-                />
-              </Animated.View>
-              <Animated.View style={backStyle}>
-                <CardItem
-                  card={card}
-                  side="back"
-                  size="full"
-                  showExpirySuffix
-                  showExpiryBadge={false}
-                />
-              </Animated.View>
-            </Pressable>
-            {canFlip && (
-              <Text style={[styles.flipHint, { color: colors.textSoft }]}>
-                {tr("card_detail_flip_hint")}
-              </Text>
-            )}
-          </View>
-        </View>
-
-        {/* ── Field list ─────────────────────── */}
-        <View style={styles.fieldList}>
-          {(() => {
-            if (isDemoCard) return null;
-            const expiryStatus = supportsValidityBadge(card)
-              ? getExpiryStatus(card)
-              : null;
-            if (!expiryStatus?.isExpired) return null;
-            const daysSinceExpiry = Math.floor(-expiryStatus.daysUntilExpiry);
-            const daysLeft = Math.max(0, 7 - daysSinceExpiry);
-            const bannerText =
-              daysLeft > 0
-                ? tr("card_detail_auto_delete_banner").replace(
-                    "{days}",
-                    String(daysLeft),
-                  )
-                : tr("card_detail_auto_delete_today");
-            return (
-              <View
-                style={[
-                  styles.autoDeleteBanner,
-                  {
-                    backgroundColor: colors.dangerSoft,
-                    borderColor: colors.danger,
-                  },
-                ]}
+                      <Text
+                        style={[
+                          styles.sideToggleText,
+                          {
+                            color: active
+                              ? sideToggleColors.activeText
+                              : sideToggleColors.inactiveText,
+                          },
+                        ]}
+                      >
+                        {side === "front"
+                          ? tr("card_detail_front")
+                          : tr("card_detail_back")}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            ) : null}
+            <View style={styles.previewWrap}>
+              <Pressable
+                onPress={handleFlip}
+                style={styles.cardContainer}
+                disabled={!canFlip}
               >
-                <Feather name="clock" size={14} color={colors.danger} />
-                <Text
-                  style={[
-                    styles.autoDeleteBannerText,
-                    { color: colors.danger },
-                  ]}
-                >
-                  {bannerText}
-                </Text>
-              </View>
-            );
-          })()}
-          {supportsValidityBadge(card) ? (
-            <ExpiryBadge
-              card={card}
-              appearance={resolvedTheme === "light" ? "surface" : "default"}
-            />
-          ) : null}
-          {fields.map(({ label, value }) => (
-            <Pressable
-              key={label}
-              style={[
-                styles.fieldRow,
-                {
-                  backgroundColor: colors.input,
-                  borderColor: colors.inputBorder,
-                },
-              ]}
-              onPress={() => handleCopy(value, label)}
-              android_ripple={{ color: colors.border, borderless: false }}
-            >
-              <View style={styles.fieldText}>
-                <Text style={[styles.fieldLabel, { color: colors.textSoft }]}>
-                  {label}
-                </Text>
-                <Text
-                  style={[styles.fieldValue, { color: colors.text }]}
-                  numberOfLines={1}
-                >
-                  {value || "—"}
-                </Text>
-              </View>
-              <Feather name="copy" size={16} color={colors.textSoft} />
-            </Pressable>
-          ))}
-        </View>
-
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={tr("cards_share_card")}
-          disabled={isSharing}
-          onPress={() => {
-            if (isDemoCard) {
-              showDemoActionWarning("Share");
-              return;
-            }
-            setShareSheetOpen(true);
-          }}
-          style={[
-            styles.shareBtn,
-            {
-              backgroundColor: colors.accent,
-              opacity: isSharing ? 0.72 : 1,
-            },
-          ]}
-        >
-          {isSharing ? (
-            <ActivityIndicator size="small" color={colors.accentText} />
-          ) : (
-            <Feather name="share-2" size={18} color={colors.accentText} />
-          )}
-          <Text style={[styles.shareText, { color: colors.accentText }]}>
-            {isSharing
-              ? tr("card_detail_share_preparing")
-              : tr("cards_share_card")}
-          </Text>
-        </Pressable>
-
-        {/* ── Delete button ──────────────────── */}
-        <Pressable
-          onPress={handleDelete}
-          style={[styles.deleteBtn, { borderColor: colors.danger }]}
-        >
-          <Feather name="trash-2" size={18} color={colors.danger} />
-          <Text style={[styles.deleteText, { color: colors.danger }]}>
-            {tr("card_detail_delete_card")}
-          </Text>
-        </Pressable>
-      </ScrollView>
-
-      {/* ── Toast ─────────────────────────────── */}
-      {toastVisible && (
-        <View
-          style={[styles.toast, { backgroundColor: colors.surfaceStrong }]}
-          pointerEvents="none"
-        >
-          <Text style={[styles.toastText, { color: colors.text }]}>
-            {toastMessage}
-          </Text>
-        </View>
-      )}
-
-      <Modal
-        transparent
-        visible={shareSheetOpen}
-        animationType="fade"
-        onRequestClose={() => setShareSheetOpen(false)}
-      >
-        <View
-          style={[
-            styles.shareSheetBackdrop,
-            { backgroundColor: colors.overlay },
-          ]}
-        >
-          <Pressable
-            style={StyleSheet.absoluteFill}
-            onPress={() => setShareSheetOpen(false)}
-          />
-          <View
-            style={[styles.shareSheet, { backgroundColor: colors.surface }]}
-          >
-            <Text style={[styles.shareSheetTitle, { color: colors.text }]}>
-              {tr("card_detail_share_title")}
-            </Text>
-            <Text style={[styles.shareSheetBody, { color: colors.textMuted }]}>
-              {tr("card_detail_share_body")}
-            </Text>
-
-            <Pressable
-              onPress={() => handleShareOption("image")}
-              style={[styles.shareOption, { borderColor: colors.buttonBorder }]}
-            >
-              <View>
-                <Text style={[styles.shareOptionTitle, { color: colors.text }]}>
-                  {tr("card_detail_share_image")}
-                </Text>
-                <Text
-                  style={[styles.shareOptionBody, { color: colors.textMuted }]}
-                >
-                  {tr("card_detail_share_image_body")}
-                </Text>
-              </View>
-              <Feather name="image" size={18} color={colors.textSoft} />
-            </Pressable>
-
-            <Pressable
-              onPress={() => handleShareOption("text")}
-              style={[styles.shareOption, { borderColor: colors.buttonBorder }]}
-            >
-              <View>
-                <Text style={[styles.shareOptionTitle, { color: colors.text }]}>
-                  {tr("card_detail_share_text")}
-                </Text>
-                <Text
-                  style={[styles.shareOptionBody, { color: colors.textMuted }]}
-                >
-                  {tr("card_detail_share_text_body")}
-                </Text>
-              </View>
-              <Feather name="file-text" size={18} color={colors.textSoft} />
-            </Pressable>
-
-            <Pressable
-              onPress={() => handleShareOption("pocket-id-file")}
-              style={[styles.shareOption, { borderColor: colors.buttonBorder }]}
-            >
-              <View>
-                <Text style={[styles.shareOptionTitle, { color: colors.text }]}>
-                  {tr("card_detail_share_file")}
-                </Text>
-                <Text
-                  style={[styles.shareOptionBody, { color: colors.textMuted }]}
-                >
-                  {tr("card_detail_share_file_body")}
-                </Text>
-              </View>
-              <Feather
-                name="download-cloud"
-                size={18}
-                color={colors.textSoft}
-              />
-            </Pressable>
-
-            <Pressable
-              onPress={() => setShareSheetOpen(false)}
-              style={[
-                styles.shareCancel,
-                { backgroundColor: colors.surfaceMuted },
-              ]}
-            >
-              <Text style={[styles.shareCancelText, { color: colors.text }]}>
-                {tr("common_cancel")}
-              </Text>
-            </Pressable>
-          </View>
-        </View>
-      </Modal>
-
-      {shareSheetOpen || isSharing ? (
-        <View
-          pointerEvents="none"
-          style={styles.captureStage}
-          collapsable={false}
-        >
-          <ViewShot
-            ref={shareCaptureRef}
-            options={{ format: "jpg", quality: 0.95, result: "tmpfile" }}
-            style={[styles.captureCanvas, { backgroundColor: colors.surface }]}
-          >
-            <Text style={[styles.captureTitle, { color: colors.text }]}>
-              {card.title}
-            </Text>
-            <Text style={[styles.captureSubtitle, { color: colors.textMuted }]}>
-              {language === "mk"
-                ? "Преглед на предна и задна страна"
-                : "Front and back card preview"}
-            </Text>
-
-            <View style={styles.captureCardBlock} collapsable={false}>
-              <Text
-                style={[styles.captureSideLabel, { color: colors.textSoft }]}
-              >
-                {tr("card_detail_front")}
-              </Text>
-              <View style={styles.captureCardFrame} collapsable={false}>
-                <CardItem
-                  card={card}
-                  side="front"
-                  size="full"
-                  showExpirySuffix
-                  showExpiryBadge={false}
-                />
-              </View>
-            </View>
-
-            {canFlip ? (
-              <View style={styles.captureCardBlock} collapsable={false}>
-                <Text
-                  style={[styles.captureSideLabel, { color: colors.textSoft }]}
-                >
-                  {tr("card_detail_back")}
-                </Text>
-                <View style={styles.captureCardFrame} collapsable={false}>
+                <Animated.View style={frontStyle}>
+                  <CardItem
+                    card={card}
+                    side="front"
+                    size="full"
+                    showExpirySuffix
+                    showExpiryBadge={false}
+                  />
+                </Animated.View>
+                <Animated.View style={backStyle}>
                   <CardItem
                     card={card}
                     side="back"
@@ -796,23 +537,345 @@ export default function CardDetailScreen() {
                     showExpirySuffix
                     showExpiryBadge={false}
                   />
+                </Animated.View>
+              </Pressable>
+              {canFlip && (
+                <Text style={[styles.flipHint, { color: colors.textSoft }]}>
+                  {tr("card_detail_flip_hint")}
+                </Text>
+              )}
+            </View>
+          </View>
+
+          {/* ── Field list ─────────────────────── */}
+          <View style={styles.fieldList}>
+            {(() => {
+              if (isDemoCard) return null;
+              const expiryStatus = supportsValidityBadge(card)
+                ? getExpiryStatus(card)
+                : null;
+              if (!expiryStatus?.isExpired) return null;
+              const daysSinceExpiry = Math.floor(-expiryStatus.daysUntilExpiry);
+              const daysLeft = Math.max(0, 7 - daysSinceExpiry);
+              const bannerText =
+                daysLeft > 0
+                  ? tr("card_detail_auto_delete_banner").replace(
+                      "{days}",
+                      String(daysLeft),
+                    )
+                  : tr("card_detail_auto_delete_today");
+              return (
+                <View
+                  style={[
+                    styles.autoDeleteBanner,
+                    {
+                      backgroundColor: colors.dangerSoft,
+                      borderColor: colors.danger,
+                    },
+                  ]}
+                >
+                  <Feather name="clock" size={14} color={colors.danger} />
+                  <Text
+                    style={[
+                      styles.autoDeleteBannerText,
+                      { color: colors.danger },
+                    ]}
+                  >
+                    {bannerText}
+                  </Text>
+                </View>
+              );
+            })()}
+            {supportsValidityBadge(card) ? (
+              <ExpiryBadge
+                card={card}
+                appearance={resolvedTheme === "light" ? "surface" : "default"}
+              />
+            ) : null}
+            {fields.map(({ label, value }) => (
+              <Pressable
+                key={label}
+                style={[
+                  styles.fieldRow,
+                  {
+                    backgroundColor: colors.input,
+                    borderColor: colors.inputBorder,
+                  },
+                ]}
+                onPress={() => handleCopy(value, label)}
+                android_ripple={{ color: colors.border, borderless: false }}
+              >
+                <View style={styles.fieldText}>
+                  <Text style={[styles.fieldLabel, { color: colors.textSoft }]}>
+                    {label}
+                  </Text>
+                  <Text
+                    style={[styles.fieldValue, { color: colors.text }]}
+                    numberOfLines={1}
+                  >
+                    {value || "—"}
+                  </Text>
+                </View>
+                <Feather name="copy" size={16} color={colors.textSoft} />
+              </Pressable>
+            ))}
+          </View>
+
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={tr("cards_share_card")}
+            disabled={isSharing}
+            onPress={() => {
+              if (isDemoCard) {
+                showDemoActionWarning("Share");
+                return;
+              }
+              setShareSheetOpen(true);
+            }}
+            style={[
+              styles.shareBtn,
+              {
+                backgroundColor: colors.accent,
+                opacity: isSharing ? 0.72 : 1,
+              },
+            ]}
+          >
+            {isSharing ? (
+              <ActivityIndicator size="small" color={colors.accentText} />
+            ) : (
+              <Feather name="share-2" size={18} color={colors.accentText} />
+            )}
+            <Text style={[styles.shareText, { color: colors.accentText }]}>
+              {isSharing
+                ? tr("card_detail_share_preparing")
+                : tr("cards_share_card")}
+            </Text>
+          </Pressable>
+
+          {/* ── Delete button ──────────────────── */}
+          <Pressable
+            onPress={handleDelete}
+            style={[styles.deleteBtn, { borderColor: colors.danger }]}
+          >
+            <Feather name="trash-2" size={18} color={colors.danger} />
+            <Text style={[styles.deleteText, { color: colors.danger }]}>
+              {tr("card_detail_delete_card")}
+            </Text>
+          </Pressable>
+        </ScrollView>
+
+        {/* ── Toast ─────────────────────────────── */}
+        {toastVisible && (
+          <View
+            style={[styles.toast, { backgroundColor: colors.surfaceStrong }]}
+            pointerEvents="none"
+          >
+            <Text style={[styles.toastText, { color: colors.text }]}>
+              {toastMessage}
+            </Text>
+          </View>
+        )}
+
+        <Modal
+          transparent
+          visible={shareSheetOpen}
+          animationType="fade"
+          onRequestClose={() => setShareSheetOpen(false)}
+        >
+          <View
+            style={[
+              styles.shareSheetBackdrop,
+              { backgroundColor: colors.overlay },
+            ]}
+          >
+            <Pressable
+              style={StyleSheet.absoluteFill}
+              onPress={() => setShareSheetOpen(false)}
+            />
+            <View
+              style={[styles.shareSheet, { backgroundColor: colors.surface }]}
+            >
+              <Text style={[styles.shareSheetTitle, { color: colors.text }]}>
+                {tr("card_detail_share_title")}
+              </Text>
+              <Text
+                style={[styles.shareSheetBody, { color: colors.textMuted }]}
+              >
+                {tr("card_detail_share_body")}
+              </Text>
+
+              <Pressable
+                onPress={() => handleShareOption("image")}
+                style={[
+                  styles.shareOption,
+                  { borderColor: colors.buttonBorder },
+                ]}
+              >
+                <View>
+                  <Text
+                    style={[styles.shareOptionTitle, { color: colors.text }]}
+                  >
+                    {tr("card_detail_share_image")}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.shareOptionBody,
+                      { color: colors.textMuted },
+                    ]}
+                  >
+                    {tr("card_detail_share_image_body")}
+                  </Text>
+                </View>
+                <Feather name="image" size={18} color={colors.textSoft} />
+              </Pressable>
+
+              <Pressable
+                onPress={() => handleShareOption("text")}
+                style={[
+                  styles.shareOption,
+                  { borderColor: colors.buttonBorder },
+                ]}
+              >
+                <View>
+                  <Text
+                    style={[styles.shareOptionTitle, { color: colors.text }]}
+                  >
+                    {tr("card_detail_share_text")}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.shareOptionBody,
+                      { color: colors.textMuted },
+                    ]}
+                  >
+                    {tr("card_detail_share_text_body")}
+                  </Text>
+                </View>
+                <Feather name="file-text" size={18} color={colors.textSoft} />
+              </Pressable>
+
+              <Pressable
+                onPress={() => handleShareOption("pocket-id-file")}
+                style={[
+                  styles.shareOption,
+                  { borderColor: colors.buttonBorder },
+                ]}
+              >
+                <View>
+                  <Text
+                    style={[styles.shareOptionTitle, { color: colors.text }]}
+                  >
+                    {tr("card_detail_share_file")}
+                  </Text>
+                  <Text
+                    style={[
+                      styles.shareOptionBody,
+                      { color: colors.textMuted },
+                    ]}
+                  >
+                    {tr("card_detail_share_file_body")}
+                  </Text>
+                </View>
+                <Feather
+                  name="download-cloud"
+                  size={18}
+                  color={colors.textSoft}
+                />
+              </Pressable>
+
+              <Pressable
+                onPress={() => setShareSheetOpen(false)}
+                style={[
+                  styles.shareCancel,
+                  { backgroundColor: colors.surfaceMuted },
+                ]}
+              >
+                <Text style={[styles.shareCancelText, { color: colors.text }]}>
+                  {tr("common_cancel")}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
+
+        {shareSheetOpen || isSharing ? (
+          <View
+            pointerEvents="none"
+            style={styles.captureStage}
+            collapsable={false}
+          >
+            <ViewShot
+              ref={shareCaptureRef}
+              options={{ format: "jpg", quality: 0.95, result: "tmpfile" }}
+              style={[
+                styles.captureCanvas,
+                { backgroundColor: colors.surface },
+              ]}
+            >
+              <Text style={[styles.captureTitle, { color: colors.text }]}>
+                {card.title}
+              </Text>
+              <Text
+                style={[styles.captureSubtitle, { color: colors.textMuted }]}
+              >
+                {language === "mk"
+                  ? "Преглед на предна и задна страна"
+                  : "Front and back card preview"}
+              </Text>
+
+              <View style={styles.captureCardBlock} collapsable={false}>
+                <Text
+                  style={[styles.captureSideLabel, { color: colors.textSoft }]}
+                >
+                  {tr("card_detail_front")}
+                </Text>
+                <View style={styles.captureCardFrame} collapsable={false}>
+                  <CardItem
+                    card={card}
+                    side="front"
+                    size="full"
+                    showExpirySuffix
+                    showExpiryBadge={false}
+                  />
                 </View>
               </View>
-            ) : null}
-          </ViewShot>
-        </View>
-      ) : null}
 
-      {/* ── Edit sheet ────────────────────────── */}
-      {editSheetOpen ? (
-        <EditCardSheet
-          card={card}
-          isOpen={editSheetOpen}
-          onClose={() => setEditSheetOpen(false)}
-        />
-      ) : null}
-      <AppPreviewShield />
-    </SafeAreaView>
+              {canFlip ? (
+                <View style={styles.captureCardBlock} collapsable={false}>
+                  <Text
+                    style={[
+                      styles.captureSideLabel,
+                      { color: colors.textSoft },
+                    ]}
+                  >
+                    {tr("card_detail_back")}
+                  </Text>
+                  <View style={styles.captureCardFrame} collapsable={false}>
+                    <CardItem
+                      card={card}
+                      side="back"
+                      size="full"
+                      showExpirySuffix
+                      showExpiryBadge={false}
+                    />
+                  </View>
+                </View>
+              ) : null}
+            </ViewShot>
+          </View>
+        ) : null}
+
+        {/* ── Edit sheet ────────────────────────── */}
+        {editSheetOpen ? (
+          <EditCardSheet
+            card={card}
+            isOpen={editSheetOpen}
+            onClose={() => setEditSheetOpen(false)}
+          />
+        ) : null}
+        <AppPreviewShield />
+      </SafeAreaView>
+    </Modal>
   );
 }
 

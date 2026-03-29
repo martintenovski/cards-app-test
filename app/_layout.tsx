@@ -44,6 +44,7 @@ export default function RootLayout() {
   const segments = useSegments();
   const deviceScheme = useColorScheme();
   const hasHydrated = useCardStore((state) => state.hasHydrated);
+  const purgeExpiredCards = useCardStore((state) => state.purgeExpiredCards);
   const hasSeenOnboarding = useCardStore((state) => state.hasSeenOnboarding);
   const themePreference = useCardStore((state) => state.themePreference);
   const screenshotBlockingEnabled = useCardStore(
@@ -60,6 +61,12 @@ export default function RootLayout() {
     "OpenSans-Bold": OpenSans_700Bold,
     "OpenSans-ExtraBold": OpenSans_800ExtraBold,
   });
+
+  useEffect(() => {
+    if (hasHydrated) {
+      purgeExpiredCards();
+    }
+  }, [hasHydrated, purgeExpiredCards]);
 
   useEffect(() => {
     if (!fontsLoaded || !hasHydrated) {
@@ -180,6 +187,10 @@ export default function RootLayout() {
               />
               <Stack.Screen
                 name="card-detail"
+                dangerouslySingular={(
+                  _name: string,
+                  params: Record<string, string>,
+                ) => params?.id}
                 options={{
                   headerShown: false,
                   presentation: "modal",

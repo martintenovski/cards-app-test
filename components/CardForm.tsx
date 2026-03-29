@@ -35,6 +35,7 @@ import DateTimePicker, {
 
 import { CardPreview } from "@/components/CardPreview";
 import { GRADIENTS } from "@/constants/gradients";
+import { useTranslation } from "@/src/hooks/useTranslation";
 import { useCardStore } from "@/store/useCardStore";
 import {
   CATEGORY_OPTIONS,
@@ -1102,6 +1103,7 @@ function SelectRow({
   value,
   options,
   onChange,
+  emptyLabel,
   colors,
   error,
   helperText,
@@ -1112,6 +1114,7 @@ function SelectRow({
   value: string;
   options: SelectOption[];
   onChange: (v: string) => void;
+  emptyLabel?: string;
   colors: ThemeColors;
   error?: string;
   helperText: string;
@@ -1163,7 +1166,7 @@ function SelectRow({
               { color: selectedLabel ? colors.text : colors.textSoft },
             ]}
           >
-            {selectedLabel || "Choose one"}
+            {selectedLabel || emptyLabel || "Choose one"}
           </Text>
         </View>
         <Feather name="chevron-down" size={18} color={colors.textMuted} />
@@ -1411,11 +1414,17 @@ function CardColorPicker({
   presets,
   selectedGradient,
   onSelectGradient,
+  pickerTitle,
+  cancelLabel,
+  applyLabel,
   colors,
 }: {
   presets: [string, string][];
   selectedGradient: [string, string] | null;
   onSelectGradient: (gradient: [string, string]) => void;
+  pickerTitle: string;
+  cancelLabel: string;
+  applyLabel: string;
   colors: ThemeColors;
 }) {
   const [customOpen, setCustomOpen] = useState(false);
@@ -1543,7 +1552,7 @@ function CardColorPicker({
         <View style={[cpSt.modalOverlay, { backgroundColor: colors.overlay }]}>
           <View style={[cpSt.pickerCard, { backgroundColor: colors.surface }]}>
             <Text style={[cpSt.pickerTitle, { color: colors.text }]}>
-              Pick a color
+              {pickerTitle}
             </Text>
 
             {/* Live gradient preview */}
@@ -1585,7 +1594,7 @@ function CardColorPicker({
                 style={cpSt.cancelBtn}
               >
                 <Text style={[cpSt.cancelText, { color: colors.textMuted }]}>
-                  Cancel
+                  {cancelLabel}
                 </Text>
               </Pressable>
               <Pressable
@@ -1596,7 +1605,7 @@ function CardColorPicker({
                 style={[cpSt.applyBtn, { backgroundColor: colors.accent }]}
               >
                 <Text style={[cpSt.applyText, { color: colors.accentText }]}>
-                  Apply
+                  {applyLabel}
                 </Text>
               </Pressable>
             </View>
@@ -1617,10 +1626,12 @@ export function CardForm({
   topAccessory,
   onScrollOffsetChange,
 }: CardFormProps) {
+  const tr = useTranslation();
   const keyboardAccessoryId = "card-form-keyboard-accessory";
   const insets = useSafeAreaInsets();
   const deviceScheme = useColorScheme();
   const themePreference = useCardStore((state) => state.themePreference);
+  const language = useCardStore((state) => state.language);
   const resolvedTheme =
     forcedTheme ?? resolveTheme(themePreference, deviceScheme);
   const colors = APP_THEME[resolvedTheme];
@@ -1647,6 +1658,96 @@ export function CardForm({
   const [focusedField, setFocusedField] = useState<FieldName | null>(null);
   const [androidKeyboardHeight, setAndroidKeyboardHeight] = useState(0);
   const inputRefs = useRef<Partial<Record<FieldName, TextInput | null>>>({});
+
+  const localizeFormText = (text: string) => {
+    if (language !== "mk") return text;
+
+    const map: Record<string, string> = {
+      "Card type": "Тип на картичка",
+      "Bank name": "Име на банка",
+      "Cardholder name": "Име на носител",
+      "Card number": "Број на картичка",
+      "Expiry date": "Важи до",
+      CVC: "CVC",
+      "Account number": "Број на сметка",
+      "Club name": "Име на клуб",
+      "Member name": "Име на член",
+      "Tier / status": "Ниво / статус",
+      "Member ID format": "Формат на ID",
+      "Typed Member ID": "Внесен членски ID",
+      Barcode: "Баркод",
+      "Barcode digits": "Цифри од баркод",
+      "Member ID": "ID на член",
+      "Membership number": "Број на членство",
+      Address: "Адреса",
+      "Member since": "Член од",
+      "Insurance type": "Тип на осигурување",
+      Provider: "Провајдер",
+      "Policy number": "Број на полиса",
+      "Plan name": "Име на план",
+      "Group number": "Групен број",
+      "Support phone": "Телефон за поддршка",
+      "Issue date": "Датум на издавање",
+      "Document type": "Тип на документ",
+      Authority: "Орган",
+      "Owner name": "Име на сопственик",
+      "Registration number": "Регистрациски број",
+      "Vehicle model": "Модел на возило",
+      "VIN / chassis number": "VIN / број на шасија",
+      "Badge type": "Тип на беџ",
+      Company: "Компанија",
+      "Badge holder": "Носител на беџ",
+      "Employee ID": "ID на вработен",
+      Department: "Оддел",
+      "Access level": "Ниво на пристап",
+      Type: "Тип",
+      Issuer: "Издавач",
+      "Full name": "Полно име",
+      "License number": "Број на дозвола",
+      "Class / restrictions": "Класа / ограничувања",
+      Sex: "Пол",
+      "Date of issue": "Датум на издавање",
+      "Date of expiry": "Датум на истекување",
+      "Date of birth": "Датум на раѓање",
+      "Passport number": "Број на пасош",
+      Nationality: "Националност",
+      "National ID number": "Матичен број",
+      "Identity card number": "Број на лична карта",
+      "Required. Choose Debit Card or Credit Card.":
+        "Задолжително. Избери дебитна или кредитна картичка.",
+      "Please fix the highlighted fields before adding this card.":
+        "Коригирај ги означените полиња пред додавање.",
+      "This field is required.": "Ова поле е задолжително.",
+      "Use letters, spaces and standard punctuation only.":
+        "Користи само букви, празни места и стандардна интерпункција.",
+      "Please enter at least 2 characters.": "Внеси најмалку 2 знаци.",
+      "Card numbers should contain 12 to 19 digits.":
+        "Бројот на картичка треба да има 12 до 19 цифри.",
+      "Card number checksum looks invalid.":
+        "Проверката на бројот на картичката е невалидна.",
+      "Use letters, digits, hyphens, slashes or spaces only.":
+        "Користи само букви, цифри, цртички, коси црти или празни места.",
+      "CVC should contain 3 or 4 digits.": "CVC треба да има 3 или 4 цифри.",
+      "Use 6–20 digits.": "Користи 6–20 цифри.",
+      "Please pick a valid date.": "Избери валиден датум.",
+      "Please pick a valid expiry date.": "Избери валиден датум на истекување.",
+      "Use a 2–3 letter country code, e.g. USA or MKD.":
+        "Користи 2-3 буквен код за држава, пр. USA или MKD.",
+      "Use M, F or X.": "Користи M, F или X.",
+      "Use a valid phone number format.":
+        "Користи валиден формат за телефонски број.",
+      "Please enter a fuller address.": "Внеси подетална адреса.",
+      "Please choose a card or document type.":
+        "Избери тип на картичка или документ.",
+      "Date picker unavailable": "Избирачот за датум не е достапен",
+      "This iOS build does not include the native date picker yet. You can still type the date manually for now.":
+        "Оваа iOS верзија сè уште нема вграден избирач за датум. Засега внеси датум рачно.",
+      "This Android build does not expose the native date picker yet. You can still type the date manually for now.":
+        "Оваа Android верзија сè уште нема вграден избирач за датум. Засега внеси датум рачно.",
+    };
+
+    return map[text] ?? text;
+  };
 
   const sections = useMemo(() => getFormSections(values), [values]);
   const editableFieldOrder = useMemo(
@@ -1728,7 +1829,9 @@ export function CardForm({
 
     if (Object.keys(nextErrors).length > 0) {
       setSubmitErrorMessage(
-        "Please fix the highlighted fields before adding this card.",
+        localizeFormText(
+          "Please fix the highlighted fields before adding this card.",
+        ),
       );
       return;
     }
@@ -1780,7 +1883,8 @@ export function CardForm({
 
   const renderField = (field: FieldConfig) => {
     const value = String(values[field.key] ?? "");
-    const error = touched[field.key] ? errors[field.key] : undefined;
+    const rawError = touched[field.key] ? errors[field.key] : undefined;
+    const error = rawError ? localizeFormText(rawError) : undefined;
     const valid = !!value.trim() && !validateField(field.key, values);
     const required = requiredFields.has(field.key);
     const isLastEditableField =
@@ -1800,9 +1904,13 @@ export function CardForm({
       return (
         <SelectRow
           key={field.key}
-          label={field.label}
+          label={localizeFormText(field.label)}
           value={value}
-          options={field.options}
+          options={field.options.map((option) => ({
+            ...option,
+            label: localizeFormText(option.label),
+          }))}
+          emptyLabel={tr("form_choose_one")}
           onChange={(nextValue) => {
             const nextValues =
               field.key === "memberIdFormat"
@@ -1818,7 +1926,7 @@ export function CardForm({
           }}
           colors={colors}
           error={error}
-          helperText={field.helperText}
+          helperText={localizeFormText(field.helperText)}
           valid={valid}
           required={required}
         />
@@ -1829,7 +1937,7 @@ export function CardForm({
       return (
         <DateRow
           key={field.key}
-          label={field.label}
+          label={localizeFormText(field.label)}
           value={value}
           kind={field.kind}
           onChange={(nextValue) => {
@@ -1845,7 +1953,7 @@ export function CardForm({
           }}
           colors={colors}
           error={error}
-          helperText={field.helperText}
+          helperText={localizeFormText(field.helperText)}
           valid={valid}
           required={required}
           onFocus={handleFocus}
@@ -1860,7 +1968,7 @@ export function CardForm({
     return (
       <FormRow
         key={field.key}
-        label={field.label}
+        label={localizeFormText(field.label)}
         value={value}
         onChange={(nextValue) => {
           updateField(field.key, nextValue);
@@ -1874,7 +1982,7 @@ export function CardForm({
         keyboardType={field.keyboardType}
         colors={colors}
         error={error}
-        helperText={field.helperText}
+        helperText={localizeFormText(field.helperText)}
         valid={valid}
         required={required}
         onFocus={handleFocus}
@@ -1911,25 +2019,26 @@ export function CardForm({
         {topAccessory ? topAccessory : null}
 
         <SelectRow
-          label="Card category"
+          label={tr("form_category")}
           value={values.category}
           options={CATEGORY_OPTIONS.map((option) => ({
             label: option.label,
             value: option.value,
           }))}
           onChange={handleCategoryChange}
+          emptyLabel={tr("form_choose_one")}
           colors={colors}
-          helperText="Choose the broad card family first — this changes the available fields below."
+          helperText={tr("form_category_helper")}
           valid
         />
 
         <Text style={[formSt.sectionLabel, { color: colors.text }]}>
-          Front details
+          {tr("form_front_details")}
         </Text>
         {sections.front.map(renderField)}
 
         <Text style={[formSt.sectionLabel, { color: colors.text }]}>
-          Back details
+          {tr("form_back_details")}
         </Text>
         {sections.back.map(renderField)}
 
@@ -1964,7 +2073,9 @@ export function CardForm({
                     },
                   ]}
                 >
-                  {side === "front" ? "Front" : "Back"}
+                  {side === "front"
+                    ? tr("card_detail_front")
+                    : tr("card_detail_back")}
                 </Text>
               </Pressable>
             );
@@ -1982,7 +2093,7 @@ export function CardForm({
         >
           <CardPreview previewSide={previewSide} card={previewCard} />
           <Text style={[formSt.previewHint, { color: colors.textSoft }]}>
-            Tap the card preview to flip
+            {tr("form_flip_preview_hint")}
           </Text>
         </Pressable>
 
@@ -1990,6 +2101,9 @@ export function CardForm({
           presets={presetGradients}
           selectedGradient={selectedGradient}
           onSelectGradient={handleSelectGradient}
+          pickerTitle={tr("form_pick_color")}
+          cancelLabel={tr("common_cancel")}
+          applyLabel={tr("form_apply")}
           colors={colors}
         />
       </ScrollView>
@@ -2021,7 +2135,7 @@ export function CardForm({
                   { color: nextField ? colors.accent : colors.textSoft },
                 ]}
               >
-                Next
+                {tr("form_next")}
               </Text>
             </Pressable>
 
@@ -2037,7 +2151,7 @@ export function CardForm({
               <Text
                 style={[accessorySt.doneText, { color: colors.accentText }]}
               >
-                Done
+                {tr("common_done")}
               </Text>
             </Pressable>
           </View>
@@ -2079,7 +2193,7 @@ export function CardForm({
                   { color: nextField ? colors.accent : colors.textSoft },
                 ]}
               >
-                Next
+                {tr("form_next")}
               </Text>
             </Pressable>
 
@@ -2095,7 +2209,7 @@ export function CardForm({
               <Text
                 style={[accessorySt.doneText, { color: colors.accentText }]}
               >
-                Done
+                {tr("common_done")}
               </Text>
             </Pressable>
           </View>
@@ -2128,7 +2242,7 @@ export function CardForm({
           onPress={handleSubmit}
         >
           <Text style={[formSt.submitText, { color: colors.accentText }]}>
-            {submitLabel ?? "Add Card"}
+            {submitLabel ?? tr("form_create_card")}
           </Text>
         </Pressable>
       </View>

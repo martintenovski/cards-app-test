@@ -1,11 +1,19 @@
 import type { ReactNode } from "react";
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View, useColorScheme } from "react-native";
+import {
+  FlatList,
+  Pressable,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  View,
+  useColorScheme,
+} from "react-native";
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withTiming,
 } from "react-native-reanimated";
-import { useEffect } from "react";
+import { useCallback, useEffect, memo } from "react";
 
 import { CardItem } from "@/components/CardItem";
 import type { WalletCard } from "@/types/card";
@@ -101,6 +109,27 @@ function FunRefreshBanner({
   );
 }
 
+const CardListItem = memo(function CardListItem({
+  card,
+  onCardPress,
+  onCardLongPress,
+}: {
+  card: WalletCard;
+  onCardPress?: (id: string) => void;
+  onCardLongPress?: (id: string) => void;
+}) {
+  return (
+    <Pressable
+      style={styles.item}
+      onPress={() => onCardPress?.(card.id)}
+      onLongPress={() => onCardLongPress?.(card.id)}
+      delayLongPress={600}
+    >
+      <CardItem card={card} size="full" side="front" />
+    </Pressable>
+  );
+});
+
 export function CardList({
   cards,
   header,
@@ -115,20 +144,21 @@ export function CardList({
   const deviceScheme = useColorScheme();
   const colors = APP_THEME[resolveTheme(themePreference, deviceScheme)];
 
-  return (
-    <ScrollView
-      style={styles.scroll}
-      contentContainerStyle={[styles.content, { paddingBottom: bottomSpacing }]}
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        onRefresh ? (
-          <RefreshControl
-            refreshing={false}
-            onRefresh={onRefresh}
-          />
-        ) : undefined
-      }
-    >
+  const keyExtractor = useCallback((item: WalletCard) => item.id, []);
+
+  const renderItem = useCallback(
+    ({ item }: { item: WalletCard }) => (
+      <CardListItem
+        card={item}
+        onCardPress={onCardPress}
+        onCardLongPress={onCardLongPress}
+      />
+    ),
+    [onCardPress, onCardLongPress],
+  );
+
+  const ListHeader = (
+    <>
       {onRefresh ? (
         <FunRefreshBanner
           visible={refreshing}
@@ -138,18 +168,29 @@ export function CardList({
         />
       ) : null}
       {header ? <View style={styles.header}>{header}</View> : null}
-      {cards.map((card) => (
-        <Pressable
-          key={card.id}
-          style={styles.item}
-          onPress={() => onCardPress?.(card.id)}
-          onLongPress={() => onCardLongPress?.(card.id)}
-          delayLongPress={600}
-        >
-          <CardItem card={card} size="full" side="front" />
-        </Pressable>
-      ))}
-    </ScrollView>
+    </>
+  );
+
+  return (
+    <FlatList
+      data={cards}
+      keyExtractor={keyExtractor}
+      renderItem={renderItem}
+      style={styles.scroll}
+      contentContainerStyle={[styles.content, { paddingBottom: bottomSpacing }]}
+      showsVerticalScrollIndicator={false}
+      scrollEventThrottle={16}
+      removeClippedSubviews
+      initialNumToRender={8}
+      maxToRenderPerBatch={6}
+      windowSize={5}
+      ListHeaderComponent={ListHeader}
+      refreshControl={
+        onRefresh ? (
+          <RefreshControl refreshing={false} onRefresh={onRefresh} />
+        ) : undefined
+      }
+    />
   );
 }
 
@@ -176,7 +217,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     paddingHorizontal: 18,
     paddingVertical: 14,
-    marginBottom: 4,
+    marginBottom: 15,
   },
   funEmoji: {
     fontSize: 26,

@@ -19,6 +19,7 @@ import {
   FormSheetScaffold,
   formSheetScaffoldStyles,
 } from "@/components/FormSheetScaffold";
+import { useTranslation } from "@/src/hooks/useTranslation";
 import { useCardStore } from "@/store/useCardStore";
 import { cardToFormValues } from "@/types/card";
 import type { CardFormValues, CardPalette, WalletCard } from "@/types/card";
@@ -47,6 +48,7 @@ type EditCardSheetProps = {
 };
 
 export function EditCardSheet({ card, isOpen, onClose }: EditCardSheetProps) {
+  const tr = useTranslation();
   const updateCard = useCardStore((state) => state.updateCard);
   const themePreference = useCardStore((state) => state.themePreference);
   const deviceScheme = useColorScheme();
@@ -127,7 +129,7 @@ export function EditCardSheet({ card, isOpen, onClose }: EditCardSheetProps) {
         <GestureDetector gesture={dragGesture}>
           <View style={styles.sheetContent}>
             <FormSheetScaffold
-              title="Edit Card"
+              title={tr("cards_edit_card")}
               backgroundColor={colors.surface}
               titleColor={colors.text}
               closeColor={colors.textMuted}
@@ -138,7 +140,7 @@ export function EditCardSheet({ card, isOpen, onClose }: EditCardSheetProps) {
                 onSubmit={handleSubmit}
                 initialValues={cardToFormValues(card)}
                 initialPalette={card.palette}
-                submitLabel="Save Changes"
+                submitLabel={tr("form_save_changes")}
                 onScrollOffsetChange={(offsetY) => setIsFormAtTop(offsetY <= 4)}
               />
             </FormSheetScaffold>

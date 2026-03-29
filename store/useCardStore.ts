@@ -18,8 +18,10 @@ import {
   getContrastColor,
   initialSeedCards,
 } from "@/types/card";
+import { getCardExpiryDate } from "@/utils/expiry";
 import { GRADIENTS } from "@/constants/gradients";
 import type { ResolvedTheme, ThemePreference } from "@/utils/theme";
+import type { LanguageCode } from "@/src/i18n/translations";
 
 const storage: StateStorage =
   Platform.OS === "web"
@@ -52,6 +54,7 @@ interface CardStoreState {
   expiryNotificationsEnabled: boolean;
   screenshotBlockingEnabled: boolean;
   lockScreenEnabled: boolean;
+  language: LanguageCode;
   addCardSheetOpen: boolean;
   hasHydrated: boolean;
   lastModifiedAt: string;
@@ -67,6 +70,7 @@ interface CardStoreState {
   setExpiryNotificationsEnabled: (enabled: boolean) => void;
   setScreenshotBlockingEnabled: (enabled: boolean) => void;
   setLockScreenEnabled: (enabled: boolean) => void;
+  setLanguage: (language: LanguageCode) => void;
   openAddCardSheet: () => void;
   closeAddCardSheet: () => void;
   addCard: (values: CardFormValues, palette: CardPalette) => void;
@@ -78,6 +82,8 @@ interface CardStoreState {
     palette: CardPalette,
   ) => void;
   deleteCard: (id: string) => void;
+  /** Delete all cards that expired more than 7 days ago */
+  purgeExpiredCards: () => void;
   /** Advance the stack: current top → end (swipe left) */
   cycleCardFwd: () => void;
   /** Go back in the stack: last card → front (swipe right) */
@@ -99,6 +105,7 @@ export const useCardStore = create<CardStoreState>()(
       expiryNotificationsEnabled: true,
       screenshotBlockingEnabled: false,
       lockScreenEnabled: true,
+      language: "en",
       hasHydrated: false,
       lastModifiedAt: new Date().toISOString(),
       addCardSheetOpen: false,
@@ -127,8 +134,8 @@ export const useCardStore = create<CardStoreState>()(
         set({ expiryNotificationsEnabled }),
       setScreenshotBlockingEnabled: (screenshotBlockingEnabled) =>
         set({ screenshotBlockingEnabled }),
-      setLockScreenEnabled: (lockScreenEnabled) =>
-        set({ lockScreenEnabled }),
+      setLockScreenEnabled: (lockScreenEnabled) => set({ lockScreenEnabled }),
+      setLanguage: (language) => set({ language }),
       toggleThemePreference: (resolvedTheme) =>
         set((state) => ({
           themePreference:
@@ -187,6 +194,19 @@ export const useCardStore = create<CardStoreState>()(
           cards: state.cards.filter((c) => c.id !== id),
           lastModifiedAt: new Date().toISOString(),
         })),
+      purgeExpiredCards: () =>
+        set((state) => {
+          const now = new Date();
+          const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+          const surviving = state.cards.filter((c) => {
+            const expiryDate = getCardExpiryDate(c);
+            if (!expiryDate) return true;
+            const msSinceExpiry = now.getTime() - expiryDate.getTime();
+            return msSinceExpiry < SEVEN_DAYS_MS;
+          });
+          if (surviving.length === state.cards.length) return state;
+          return { cards: surviving, lastModifiedAt: new Date().toISOString() };
+        }),
       cycleCardFwd: () =>
         set((state) => {
           if (state.cards.length <= 1) return state;
@@ -253,6 +273,7 @@ export const useCardStore = create<CardStoreState>()(
         expiryNotificationsEnabled: state.expiryNotificationsEnabled,
         screenshotBlockingEnabled: state.screenshotBlockingEnabled,
         lockScreenEnabled: state.lockScreenEnabled,
+        language: state.language,
         lastModifiedAt: state.lastModifiedAt,
       }),
     },

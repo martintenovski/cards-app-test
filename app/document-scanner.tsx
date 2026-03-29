@@ -92,6 +92,7 @@ export default function DocumentScannerScreen() {
 
       if (response.status === ScanDocumentResponseStatus.Cancel) {
         if (!front) {
+          openAddCardSheet();
           router.back();
           return;
         }
@@ -141,7 +142,7 @@ export default function DocumentScannerScreen() {
 
     try {
       const result = await runDocumentScanPipeline({
-        captureMode: "auto",
+        captureMode: "manual",
         requiresBackSide: Boolean(back),
         frontUri: front,
         backUri: back,
@@ -373,6 +374,7 @@ export default function DocumentScannerScreen() {
             }}
             style={styles.lightboxPager}
             contentContainerStyle={styles.lightboxPagerContent}
+            decelerationRate="fast"
           >
             {lightboxImages.map((uri, i) => (
               <View key={i} style={styles.lightboxPage}>
@@ -601,16 +603,16 @@ const styles = StyleSheet.create({
   lightboxBackdrop: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.92)",
-    alignItems: "center",
     justifyContent: "center",
   },
   lightboxPager: {
     width: SCREEN_W,
     height: SCREEN_H * 0.78,
     flexGrow: 0,
+    flexShrink: 0,
   },
   lightboxPagerContent: {
-    alignItems: "center",
+    flexDirection: "row",
   },
   lightboxPage: {
     width: SCREEN_W,

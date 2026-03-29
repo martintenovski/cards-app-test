@@ -10,10 +10,11 @@ import {
   useColorScheme,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useRouter } from "expo-router";
 
+import { CardDetailModal } from "@/components/CardDetailModal";
 import { ExpiryBadge } from "@/components/ExpiryBadge";
 import { useCardStore } from "@/store/useCardStore";
+import { useTranslation } from "@/src/hooks/useTranslation";
 import { getCategoryLabel } from "@/types/card";
 import { APP_THEME, resolveTheme } from "@/utils/theme";
 import { supportsValidityBadge } from "@/utils/expiry";
@@ -21,8 +22,9 @@ import { supportsValidityBadge } from "@/utils/expiry";
 const FLOATING_TAB_SCROLL_BUFFER = 132;
 
 export default function SearchScreen() {
-  const router = useRouter();
+  const tr = useTranslation();
   const [query, setQuery] = useState("");
+  const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const cards = useCardStore((state) => state.cards);
   const themePreference = useCardStore((state) => state.themePreference);
   const deviceScheme = useColorScheme();
@@ -55,9 +57,11 @@ export default function SearchScreen() {
   return (
     <SafeAreaView style={[styles.root, { backgroundColor: colors.background }]}>
       <View style={styles.header}>
-        <Text style={[styles.title, { color: colors.text }]}>Search</Text>
+        <Text style={[styles.title, { color: colors.text }]}>
+          {tr("tab_search")}
+        </Text>
         <Text style={[styles.subtitle, { color: colors.textMuted }]}>
-          Find any saved card or document instantly.
+          {tr("search_placeholder")}
         </Text>
       </View>
 
@@ -71,7 +75,7 @@ export default function SearchScreen() {
         <TextInput
           value={query}
           onChangeText={setQuery}
-          placeholder="Search by name, issuer, type or number"
+          placeholder={tr("search_placeholder")}
           placeholderTextColor={colors.textSoft}
           style={[styles.input, { color: colors.text }]}
         />
@@ -89,7 +93,7 @@ export default function SearchScreen() {
             style={[styles.emptyState, { backgroundColor: colors.surface }]}
           >
             <Text style={[styles.emptyTitle, { color: colors.text }]}>
-              No matches
+              {tr("search_no_results")}
             </Text>
             <Text style={[styles.emptyBody, { color: colors.textMuted }]}>
               Try a bank name, ID number, membership code or card type.
@@ -99,12 +103,7 @@ export default function SearchScreen() {
           results.map((card) => (
             <Pressable
               key={card.id}
-              onPress={() =>
-                router.push({
-                  pathname: "/card-detail",
-                  params: { id: card.id },
-                })
-              }
+              onPress={() => setSelectedCardId(card.id)}
               style={[
                 styles.resultCard,
                 { backgroundColor: colors.surface, borderColor: colors.border },
@@ -151,6 +150,10 @@ export default function SearchScreen() {
           ))
         )}
       </ScrollView>
+      <CardDetailModal
+        cardId={selectedCardId}
+        onClose={() => setSelectedCardId(null)}
+      />
     </SafeAreaView>
   );
 }

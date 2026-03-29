@@ -56,7 +56,6 @@
     "expo-status-bar": "~3.0.9",
     "expo-system-ui": "~6.0.9",
     "expo-web-browser": "~15.0.10",
-    "mrz": "^5.0.2",
     "nativewind": "^4.1.23",
     "patch-package": "^8.0.1",
     "react": "19.1.0",

@@ -7,7 +7,6 @@ import {
   Modal,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -19,7 +18,11 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from "react-native-reanimated";
-import { Gesture, GestureDetector } from "react-native-gesture-handler";
+import {
+  Gesture,
+  GestureDetector,
+  ScrollView as GHScrollView,
+} from "react-native-gesture-handler";
 import type { CustomerInfo, PurchasesPackage } from "react-native-purchases";
 
 import {
@@ -108,6 +111,7 @@ export function SupportModal({
   const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const translateY = useSharedValue(SHEET_HEIGHT);
   const backdropOpacity = useSharedValue(0);
+  const isScrollAtTop = useSharedValue(1);
 
   useEffect(() => {
     if (visible) {
@@ -298,9 +302,13 @@ export function SupportModal({
     }
 
     return (
-      <ScrollView
+      <GHScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.packageList}
+        scrollEventThrottle={16}
+        onScroll={(e) => {
+          isScrollAtTop.value = e.nativeEvent.contentOffset.y <= 4 ? 1 : 0;
+        }}
       >
         {(() => {
           const monthlyPackage = packages.find(
@@ -320,14 +328,18 @@ export function SupportModal({
                     Monthly support
                   </Text>
                   <LinearGradient
-                    colors={["#FFD66B", "#FF9A62", "#F46BA9"]}
+                    colors={["#4895FF", "#1A5FD9", "#0A3BAF"]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={styles.featuredCard}
                   >
                     <View style={styles.featuredCardTopRow}>
                       <View style={styles.featuredBadge}>
-                        <Feather name="heart" size={13} color="#3A1B00" />
+                        <Feather
+                          name="heart"
+                          size={13}
+                          color="rgba(255,255,255,0.85)"
+                        />
                         <Text style={styles.featuredBadgeText}>
                           Best for ongoing support
                         </Text>
@@ -347,14 +359,22 @@ export function SupportModal({
 
                     <View style={styles.featuredHighlights}>
                       <View style={styles.featuredHighlightRow}>
-                        <Feather name="zap" size={15} color="#3A1B00" />
+                        <Feather
+                          name="zap"
+                          size={15}
+                          color="rgba(255,255,255,0.85)"
+                        />
                         <Text style={styles.featuredHighlightText}>
                           Small recurring support that keeps updates
                           sustainable.
                         </Text>
                       </View>
                       <View style={styles.featuredHighlightRow}>
-                        <Feather name="refresh-cw" size={15} color="#3A1B00" />
+                        <Feather
+                          name="refresh-cw"
+                          size={15}
+                          color="rgba(255,255,255,0.85)"
+                        />
                         <Text style={styles.featuredHighlightText}>
                           Manage or cancel later from your store subscription
                           settings.
@@ -468,7 +488,7 @@ export function SupportModal({
                         ? "Buying…"
                         : product.identifier === "supporter_lifetime"
                           ? "Unlock forever"
-                          : "Support once";
+                          : "Buy";
 
                     return (
                       <View
@@ -594,12 +614,13 @@ export function SupportModal({
             </>
           );
         })()}
-      </ScrollView>
+      </GHScrollView>
     );
   }, [
     colors,
     errorMessage,
     isLoading,
+    isScrollAtTop,
     packages,
     purchasingIdentifier,
     thankYouMessage,
@@ -610,15 +631,19 @@ export function SupportModal({
     .activeOffsetY([12, 9999])
     .failOffsetX([-12, 12])
     .onUpdate((event) => {
-      if (event.translationY > 0) {
-        translateY.value = event.translationY;
-        backdropOpacity.value = Math.max(
-          0,
-          0.55 - (event.translationY / SHEET_HEIGHT) * 0.55,
-        );
-      }
+      if (!isScrollAtTop.value || event.translationY <= 0) return;
+      translateY.value = event.translationY;
+      backdropOpacity.value = Math.max(
+        0,
+        0.55 - (event.translationY / SHEET_HEIGHT) * 0.55,
+      );
     })
     .onEnd((event) => {
+      if (!isScrollAtTop.value) {
+        translateY.value = withSpring(0, SPRING_OPEN);
+        backdropOpacity.value = withSpring(0.55, SPRING_OPEN);
+        return;
+      }
       if (event.translationY > CLOSE_THRESHOLD || event.velocityY > 800) {
         runOnJS(dismissWithAnimation)();
       } else {
@@ -678,10 +703,6 @@ export function SupportModal({
                 handleColor={colors.textSoft}
                 onClose={dismissWithAnimation}
               >
-                <Text style={[styles.subheading, { color: colors.textMuted }]}>
-                  Optional support for the developer, entirely by free will.
-                </Text>
-
                 {content}
               </FormSheetScaffold>
             </View>
@@ -778,7 +799,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    backgroundColor: "rgba(255,255,255,0.74)",
+    backgroundColor: "rgba(255,255,255,0.18)",
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 999,
@@ -786,10 +807,10 @@ const styles = StyleSheet.create({
   featuredBadgeText: {
     fontFamily: "ReadexPro-Bold",
     fontSize: 11,
-    color: "#3A1B00",
+    color: "#FFFFFF",
   },
   featuredPill: {
-    backgroundColor: "rgba(58,27,0,0.10)",
+    backgroundColor: "rgba(255,255,255,0.18)",
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: 999,
@@ -797,19 +818,19 @@ const styles = StyleSheet.create({
   featuredPillText: {
     fontFamily: "ReadexPro-Bold",
     fontSize: 11,
-    color: "#3A1B00",
+    color: "#FFFFFF",
   },
   featuredTitle: {
     fontFamily: "ReadexPro-Bold",
     fontSize: 24,
     lineHeight: 30,
-    color: "#231100",
+    color: "#FFFFFF",
   },
   featuredBody: {
     fontFamily: "ReadexPro-Regular",
     fontSize: 14,
     lineHeight: 21,
-    color: "rgba(35,17,0,0.80)",
+    color: "rgba(255,255,255,0.80)",
   },
   featuredHighlights: {
     gap: 8,
@@ -824,7 +845,7 @@ const styles = StyleSheet.create({
     fontFamily: "ReadexPro-Medium",
     fontSize: 13,
     lineHeight: 18,
-    color: "rgba(35,17,0,0.85)",
+    color: "rgba(255,255,255,0.85)",
   },
   featuredFooter: {
     flexDirection: "row",
@@ -840,12 +861,12 @@ const styles = StyleSheet.create({
     fontFamily: "ReadexPro-Bold",
     fontSize: 27,
     lineHeight: 32,
-    color: "#231100",
+    color: "#FFFFFF",
   },
   featuredPriceCaption: {
     fontFamily: "ReadexPro-Regular",
     fontSize: 12,
-    color: "rgba(35,17,0,0.72)",
+    color: "rgba(255,255,255,0.72)",
   },
   featuredButton: {
     minHeight: 52,
@@ -861,7 +882,7 @@ const styles = StyleSheet.create({
   featuredButtonText: {
     fontFamily: "ReadexPro-Bold",
     fontSize: 15,
-    color: "#231100",
+    color: "#0A3BAF",
   },
   featuredButtonTextDisabled: {
     color: "rgba(35,17,0,0.62)",

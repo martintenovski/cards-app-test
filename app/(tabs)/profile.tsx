@@ -26,6 +26,7 @@ import {
   useCustomerInfo,
 } from "@/src/services/purchases";
 import { useSupportModalStore } from "@/src/store/useSupportModalStore";
+import { useTranslation } from "@/src/hooks/useTranslation";
 import { useAuthStore } from "@/store/useAuthStore";
 import { useCardStore } from "@/store/useCardStore";
 import { useCloudVaultStore } from "@/store/useCloudVaultStore";
@@ -146,6 +147,7 @@ function SupporterBadges({
 }
 
 export default function ProfileScreen() {
+  const tr = useTranslation();
   const router = useRouter();
   const isFocused = useIsFocused();
   const cards = useCardStore((state) => state.cards);
@@ -182,8 +184,8 @@ export default function ProfileScreen() {
   const supportBadges = getSupportBadges(customerInfo);
   const hasActiveSupport = isSupporterActive(customerInfo);
   const supportCardTitle = hasActiveSupport
-    ? "Support Pocket ID again? 💛"
-    : "Show me some love? 💛";
+    ? tr("profile_support_cta_active")
+    : tr("profile_support_cta_inactive");
   const supportCardBody = hasActiveSupport
     ? supporterStatus === "lifetime"
       ? "Your lifetime support is active. You can still leave a tip anytime if you want to help even more."
@@ -192,8 +194,8 @@ export default function ProfileScreen() {
         : "Thanks for supporting the app. You can always add another tip whenever you want."
     : "Support my work and keep this app alive.";
   const supportButtonLabel = hasActiveSupport
-    ? "View more support options →"
-    : "Support the app →";
+    ? tr("profile_support_button_active")
+    : tr("profile_support_button_inactive");
   const shouldShowCloudSyncGuide =
     Boolean(authUser) && cloudVaultStatus === "missing";
 
@@ -307,7 +309,7 @@ export default function ProfileScreen() {
               { color: colors.text, fontSize: isCompact ? 24 : 30 },
             ]}
           >
-            Personal Stats
+            {tr("profile_personal_stats")}
           </Text>
           <View style={styles.supporterBadgeWrap}>
             <SupporterBadges badges={supportBadges} colors={colors} />
@@ -342,7 +344,9 @@ export default function ProfileScreen() {
                   },
                 ]}
               >
-                {isVeryCompact ? "Saved" : "Saved items"}
+                {isVeryCompact
+                  ? tr("cards_saved_items")
+                  : tr("profile_saved_items")}
               </Text>
             </View>
             <View
@@ -373,7 +377,9 @@ export default function ProfileScreen() {
                   },
                 ]}
               >
-                {isVeryCompact ? "Categories" : "Active categories"}
+                {isVeryCompact
+                  ? tr("profile_categories_short")
+                  : tr("profile_active_categories")}
               </Text>
             </View>
           </View>
@@ -418,7 +424,7 @@ export default function ProfileScreen() {
           <View style={styles.sectionHeaderRow}>
             <GoogleWordmark size={15} />
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              Account
+              {tr("profile_account_section")}
             </Text>
             <Pressable
               onPress={() => setCloudInfoVisible(true)}
@@ -490,13 +496,13 @@ export default function ProfileScreen() {
             <View style={styles.authLoading}>
               <ActivityIndicator size="small" color={colors.text} />
               <Text style={[styles.accountBody, { color: colors.textMuted }]}>
-                Checking account session…
+                {tr("profile_checking_session")}
               </Text>
             </View>
           ) : authUser ? (
             <>
               <Text style={[styles.accountLabel, { color: colors.text }]}>
-                Signed in as
+                {tr("profile_signed_in_as")}
               </Text>
               <Text style={[styles.accountValue, { color: colors.textMuted }]}>
                 {authUser.displayName ?? authUser.email ?? "Pocket ID user"}
@@ -514,13 +520,12 @@ export default function ProfileScreen() {
                   <Text
                     style={[styles.cloudGuideTitle, { color: colors.text }]}
                   >
-                    Set up Google sync in 2 short steps
+                    {tr("profile_setup_sync_title")}
                   </Text>
                   <Text
                     style={[styles.cloudGuideBody, { color: colors.textMuted }]}
                   >
-                    You already finished the first part by signing in with
-                    Google.
+                    {tr("profile_setup_sync_body")}
                   </Text>
 
                   <View style={styles.cloudGuideSteps}>
@@ -610,7 +615,7 @@ export default function ProfileScreen() {
                               { color: colors.accentText },
                             ]}
                           >
-                            Set Sync Passphrase
+                            {tr("profile_set_sync_passphrase")}
                           </Text>
                         </Pressable>
                       </View>
@@ -626,7 +631,11 @@ export default function ProfileScreen() {
                           },
                         ]}
                       >
-                        <Feather name="help-circle" size={15} color={colors.textMuted} />
+                        <Feather
+                          name="help-circle"
+                          size={15}
+                          color={colors.textMuted}
+                        />
                       </View>
                       <View style={styles.cloudGuideStepContent}>
                         <Text
@@ -662,7 +671,7 @@ export default function ProfileScreen() {
                               { color: colors.text },
                             ]}
                           >
-                            Read More
+                            {tr("profile_read_more")}
                           </Text>
                         </Pressable>
                       </View>
@@ -687,7 +696,7 @@ export default function ProfileScreen() {
                       { color: warningColor },
                     ]}
                   >
-                    Sync disabled. Tap to set up.
+                    {tr("profile_sync_disabled_tap_setup")}
                   </Text>
                 </Pressable>
               ) : null}
@@ -707,8 +716,8 @@ export default function ProfileScreen() {
                     ]}
                   >
                     {authBusy === "switch-google"
-                      ? "Switching Google…"
-                      : "Switch Google Account"}
+                      ? tr("profile_switching_google")
+                      : tr("profile_switch_google_account")}
                   </Text>
                 </Pressable>
                 <Pressable
@@ -724,7 +733,9 @@ export default function ProfileScreen() {
                   ]}
                 >
                   <Text style={[styles.authButtonText, { color: colors.text }]}>
-                    {authBusy === "signout" ? "Signing out…" : "Sign Out"}
+                    {authBusy === "signout"
+                      ? tr("profile_signing_out")
+                      : tr("profile_sign_out")}
                   </Text>
                 </Pressable>
               </View>
@@ -732,8 +743,7 @@ export default function ProfileScreen() {
           ) : (
             <>
               <Text style={[styles.accountBody, { color: colors.textMuted }]}>
-                Sign in to restore your cards on a new device and keep this
-                wallet synced.
+                {tr("profile_signin_restore_body")}
               </Text>
               <Pressable
                 onPress={() => handleSignIn("google")}
@@ -743,8 +753,8 @@ export default function ProfileScreen() {
                   style={[styles.authButtonText, { color: colors.accentText }]}
                 >
                   {authBusy === "google"
-                    ? "Connecting Google…"
-                    : "Continue With Google"}
+                    ? tr("profile_connecting_google")
+                    : tr("profile_continue_google")}
                 </Text>
               </Pressable>
             </>

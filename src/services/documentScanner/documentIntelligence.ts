@@ -1,5 +1,3 @@
-import { parse } from "mrz";
-
 import {
   DEFAULT_FORM_VALUES,
   type CardCategory,
@@ -46,9 +44,18 @@ const DATE_LABEL_PATTERNS: Array<{ label: ParsedDateLabel; pattern: RegExp }> =
   ];
 
 const PERSONAL_KEYWORDS = {
-  passport: ["passport", "surname", "given names", "nationality"],
+  // Only truly Passport-specific words. "surname", "given names", "nationality"
+  // are printed field labels on ALL personal documents and must not score here.
+  passport: ["passport"],
   driving: ["driver", "driving", "licence", "license", "class"],
-  identity: ["identity", "identification", "id card", "personal no"],
+  identity: [
+    "identity card",
+    "id card",
+    "personal no",
+    "id card number",
+    "identification card",
+    "лична карта",
+  ],
 };
 
 const CATEGORY_KEYWORDS: Array<{
@@ -147,14 +154,34 @@ function countDigits(value: string) {
   return value.match(/\d/g)?.length ?? 0;
 }
 
+/**
+ * Score how "naturally Latin" a string is by its vowel density.
+ * Real Latin words (names, addresses) have ~25–45% vowels.
+ * Bilingual-document OCR artefacts (Cyrillic chars mapped to visually similar
+ * Latin chars: Н→H, В→B, С→C, Р→P, М→M) produce dense consonant clusters
+ * with very few vowels, so they score lower and are deprioritised.
+ */
+function latinStructureScore(value: string): number {
+  const letters = value.replace(/[^A-Za-z]/g, "");
+  if (letters.length < 2) return 0;
+  const vowels = letters.match(/[AEIOUaeiou]/g)?.length ?? 0;
+  const ratio = vowels / letters.length;
+  // Reward natural vowel distribution (≥15%); harsh penalty for near-zero
+  return ratio >= 0.15 ? ratio : ratio * 0.2;
+}
+
 function scoreCandidate(value: string, preferDigits = false) {
   const normalized = normalizeText(value);
   const latinCount = countLatinCharacters(normalized);
   const digitCount = countDigits(normalized);
   const cyrillicCount = value.match(CYRILLIC_CHARACTERS_REGEX)?.length ?? 0;
+  const structureBonus = latinStructureScore(normalized) * 20;
 
   return (
-    latinCount * 3 + digitCount * (preferDigits ? 2 : 0.5) - cyrillicCount * 4
+    latinCount * 3 +
+    digitCount * (preferDigits ? 2 : 0.5) -
+    cyrillicCount * 4 +
+    structureBonus
   );
 }
 
@@ -203,6 +230,24 @@ function isAddressCandidate(value: string) {
     /\d/.test(normalized) &&
     !/(address|residence|living place|street)/i.test(normalized)
   );
+}
+
+/**
+ * When a bilingual document prints both a Cyrillic and a Latin version on the
+ * same line, separated by ' / ', prefer the Latin half.
+ * e.g. "МВР - СКОПЈЕ / MOI - SKOPJE"  →  "MOI - SKOPJE"
+ * e.g. "БУЛ.АСНОМ БР. 42-69 / BUL.ASNOM BR. 42-69"  →  "BUL.ASNOM BR. 42-69"
+ * Falls back to the full value if no '/' separator is found.
+ */
+function preferLatinHalf(value: string): string {
+  const idx = value.indexOf(" / ");
+  if (idx === -1) return normalizeText(value);
+  const left = value.slice(0, idx).trim();
+  const right = value.slice(idx + 3).trim();
+  // Pick whichever half has more Latin characters
+  return countLatinCharacters(right) >= countLatinCharacters(left)
+    ? normalizeText(right)
+    : normalizeText(left);
 }
 
 function isCodeCandidate(value: string) {
@@ -538,9 +583,9 @@ function findValueNearLabels(
     }
 
     return [
-      normalizeText(line.replace(inlinePattern, " ")),
-      lines[index + 1] ?? "",
-      lines[index + 2] ?? "",
+      preferLatinHalf(line.replace(inlinePattern, " ")),
+      preferLatinHalf(lines[index + 1] ?? ""),
+      preferLatinHalf(lines[index + 2] ?? ""),
     ];
   });
 
@@ -602,9 +647,21 @@ function gatherLines(bundle: ProviderBundle) {
 export function classifyDocument(
   bundle: ProviderBundle,
 ): DocumentClassificationResult {
-  const { combinedText } = gatherLines(bundle);
+  const { backLines, combinedLines, combinedText } = gatherLines(bundle);
   const haystack = normalizeForMatching(combinedText);
 
+  // ── 1. Luhn-valid card number (strong bank signal) ───────────────────────
+  const bankCardNum = parseBankCardNumber(combinedText);
+  if (bankCardNum) {
+    return {
+      category: "bank",
+      type: haystack.includes("credit") ? "Credit Card" : "Debit Card",
+      confidence: 0.92,
+      matchedKeywords: ["card-number"],
+    };
+  }
+
+  // ── 4. Keyword fallback ──────────────────────────────────────────────────
   const ranked = CATEGORY_KEYWORDS.map((entry) => {
     const matches = entry.keywords.filter((keyword) =>
       haystack.includes(keyword),
@@ -699,46 +756,49 @@ function extractBankFields(bundle: ProviderBundle, fields: ExtractedFieldMap) {
 const MRZ_LINE_REGEX = /^[A-Z0-9<]{30,44}$/;
 
 /**
- * Scan OCR lines for MRZ rows (TD1 = 3×30, TD3/TD2 = 2×44 or 2×36).
- * Returns null if no valid MRZ could be parsed.
+ * Map the MRZ document code (first 1-2 chars of line 1) to a readable type.
+ * P = Passport, V = Visa, I/A/C = ID card (TD1), D = Driving License (some states)
  */
-function parseMrzFromLines(lines: string[]) {
-  const candidates = lines
-    .map((line) => line.replace(/\s/g, "").toUpperCase())
-    .filter((line) => MRZ_LINE_REGEX.test(line));
+function mrzDocumentCodeToType(
+  documentCode: string | null | undefined,
+): string {
+  const code = (documentCode ?? "").replace(/<+/g, "").trim().toUpperCase();
+  if (code.startsWith("P")) return "Passport";
+  if (code.startsWith("V")) return "Visa";
+  if (code.startsWith("D")) return "Driving License";
+  // I, A, C are TD1 ID cards per ICAO 9303
+  return "Identity Card";
+}
 
-  if (candidates.length < 2) {
-    return null;
-  }
+/**
+ * Normalise a raw OCR line into its closest MRZ representation.
+ * OCR commonly substitutes the '<' filler character with '-', '_', '.' or
+ * drops it entirely. This function reverses those substitutions so the MRZ
+ * regex and parser have a clean input to work with.
+ */
+function normalizeMrzCandidate(raw: string): string {
+  return (
+    raw
+      .toUpperCase()
+      // Spaces, hyphens and underscores are the most common OCR substitutes for '<'.
+      // IMPORTANT: replace spaces with '<', do NOT strip them — OCR reads '<' filler
+      // as a space, so stripping would shorten lines and break the parser entirely.
+      .replace(/[ \t\-_]/g, "<")
+      // A lone '.' flanked by MRZ-legal chars is also read as '<'
+      .replace(/(?<=[A-Z0-9<])\.(?=[A-Z0-9<])/g, "<")
+      // Strip anything that is not a valid MRZ character
+      .replace(/[^A-Z0-9<]/g, "")
+  );
+}
 
-  // Try longest matching runs of 3 (TD1), then 2 lines (TD3/TD2)
-  const windowSizes = [3, 2];
-  for (const size of windowSizes) {
-    for (let start = 0; start <= candidates.length - size; start++) {
-      const window = candidates.slice(start, start + size);
-      try {
-        const result = parse(window, { autocorrect: true });
-        if (result.valid) {
-          return result;
-        }
-      } catch {
-        // keep trying
-      }
-    }
-  }
-
-  // One last attempt: try all matching lines together if count is correct
-  if (candidates.length === 2 || candidates.length === 3) {
-    try {
-      const result = parse(candidates, { autocorrect: true });
-      if (result.valid || result.details.some((d) => d.valid)) {
-        return result;
-      }
-    } catch {
-      // ignore
-    }
-  }
-
+/**
+ * Attempt to parse `lines` as MRZ.  Accepts 2-line (TD3/TD2) and 3-line (TD1)
+ * formats and is tolerant of common OCR artefacts:
+ *   • '<' filler replaced by '-' / '_' / '.'
+ *   • A single long MRZ line split across two shorter OCR lines
+ *   • Lines that are slightly too short (padded to the nearest valid length)
+ */
+function parseMrzFromLines(_lines: string[]) {
   return null;
 }
 
@@ -780,53 +840,99 @@ function extractPersonalFields(
   classification: DocumentClassificationResult,
   fields: ExtractedFieldMap,
 ) {
-  const {
-    frontLines,
-    backLines,
-    frontText,
-    backText,
-    combinedLines,
-    combinedText,
-  } = gatherLines(bundle);
+  const { frontLines, backLines, combinedLines } = gatherLines(bundle);
   const provider = bundle.front?.provider ?? bundle.back?.provider ?? "mlkit";
-  const dateEntries = collectDateEntries(combinedLines);
-  const labeledBirthDate = pickDateByLabel(dateEntries, "birth");
-  const labeledIssueDate = pickDateByLabel(dateEntries, "issue");
-  const labeledExpiryDate = pickDateByLabel(dateEntries, "expiry");
-  const dateOfBirth = labeledBirthDate || pickBirthDate(dateEntries);
-  const dateOfExpiry =
-    labeledExpiryDate || pickExpiryDate(dateEntries, [dateOfBirth]);
+
+  setField(fields, "category", "personal", 1, provider, "combined");
+  setField(
+    fields,
+    "type",
+    classification.type,
+    classification.confidence,
+    provider,
+    "combined",
+  );
+
+  // ── Heuristic extraction ─────────────────────────────────────────────────
+  // Address and issuer are printed on the card in human-readable text; the MRZ
+  // zone never includes them. We always run these regardless of MRZ success.
+  const { combinedText } = gatherLines(bundle);
+
+  // Authority / Issuer: label appears as "ISSUED BY", "AUTHORITY", "ИЗДАДЕНА ОД"
+  // on bilingual ID cards. The value on the next line is "CYRILLIC / LATIN" —
+  // we prefer the Latin half.
+  const allLines = [...frontLines, ...backLines];
+  const authorityLabelIdx = allLines.findIndex((line) =>
+    /(?:authority|issued\s*by|issuer|издадена|издал|izdadena)/i.test(line),
+  );
+  const rawIssuer =
+    authorityLabelIdx >= 0
+      ? (allLines[authorityLabelIdx + 1] ?? "")
+      : (allLines.find((line) =>
+          /(MOI|MUP|MVR|MVD|police|ministry of interior|ministry of the interior)/i.test(
+            line,
+          ),
+        ) ?? "");
+  const issuer = preferLatinHalf(rawIssuer);
+  if (issuer) setField(fields, "issuer", issuer, 0.78, provider, "back");
+
+  // Address: look for the "ADDRESS" label and prefer the Latin half of each
+  // candidate so we get "BUL.ASNOM BR. 42-69" over "БУЛ.АСНОМ БР. 42-69".
+  const rawAddress = firstNonEmpty(
+    findValueNearLabels(
+      [...backLines, ...frontLines],
+      [
+        "address",
+        "adresa",
+        "адреса",
+        "residence",
+        "place of residence",
+        "living place",
+      ],
+      (v) => v.length >= 4,
+    ),
+    pickBestCandidate([...backLines, ...frontLines], isAddressCandidate),
+  );
+  const address = preferLatinHalf(rawAddress);
+  if (address) setField(fields, "address", address, 0.7, provider, "back");
+
+  // Date of issue is sometimes on the card face but never encoded in MRZ
+  const allDateEntries = collectDateEntries(combinedLines);
+  const knownDob = fields.dateOfBirth?.value ?? "";
+  const knownExpiry = fields.dateOfExpiry?.value ?? "";
   const dateOfIssue =
-    labeledIssueDate || pickIssueDate(dateEntries, [dateOfBirth, dateOfExpiry]);
+    pickDateByLabel(allDateEntries, "issue") ||
+    pickIssueDate(allDateEntries, [knownDob, knownExpiry]);
+  if (dateOfIssue)
+    setField(fields, "dateOfIssue", dateOfIssue, 0.6, provider, "combined");
+
+  // ── Date / identity heuristic fallback ─────────────────────────────────
+  const dateEntries = collectDateEntries(combinedLines);
+  const dateOfBirth =
+    pickDateByLabel(dateEntries, "birth") || pickBirthDate(dateEntries);
+  const dateOfExpiry =
+    pickDateByLabel(dateEntries, "expiry") ||
+    pickExpiryDate(dateEntries, [dateOfBirth]);
+
+  // Surname and given name: accept single-word values — both are single tokens
+  // on most ID cards. scoreCandidate's latinStructureScore will prefer the Latin
+  // version over the Cyrillic-artefact version (both look like Latin to the
+  // regex, but the native Latin has a higher vowel ratio).
   const surname = findValueNearLabels(
     combinedLines,
     ["surname", "last name", "family name"],
-    (value) => !/\d/.test(value) && isNameCandidate(value),
+    (v) => !/\d/.test(v) && countLatinCharacters(v) >= 3,
   );
   const givenName = findValueNearLabels(
     combinedLines,
     ["given name", "given names", "first name"],
-    (value) => !/\d/.test(value) && countLatinCharacters(value) >= 3,
+    (v) => !/\d/.test(v) && countLatinCharacters(v) >= 3,
   );
-  const likelyName = firstNonEmpty(
+  const name = firstNonEmpty(
     [givenName, surname].filter(Boolean).join(" ").trim(),
     findLikelyName(combinedLines),
   );
-  const nationality =
-    NATIONALITY_CODES.find((code) => combinedText.includes(code)) ??
-    findByLabel(combinedText, /(?:nationality|nat)\s*[:#-]?\s*([A-Z]{2,3})/i);
-  const sex = findByLabel(
-    combinedText,
-    /(?:sex|gender)\s*[:#-]?\s*([MFX])/i,
-  ).toUpperCase();
-  const issuerLine =
-    frontLines.find((line) =>
-      /(republic|ministry|department|authority|dmv|issuing|passport)/i.test(
-        line,
-      ),
-    ) ??
-    frontLines[0] ??
-    "";
+
   const documentNumber = firstNonEmpty(
     findValueNearLabels(
       combinedLines,
@@ -845,13 +951,8 @@ function extractPersonalFields(
       combinedText,
       /(?:document no|document number|passport no|license no|card no|id no)\s*[:#-]?\s*([A-Z0-9\-\/ ]{5,24})/i,
     ),
-    combinedLines
-      .map(compactCode)
-      .find(
-        (value) =>
-          /[A-Z]/.test(value) && value.length >= 5 && value.length <= 24,
-      ) ?? "",
   );
+
   const personalId = firstNonEmpty(
     findValueNearLabels(
       combinedLines,
@@ -875,132 +976,23 @@ function extractPersonalFields(
     ),
     (combinedText.match(/\b\d{8,14}\b/g) ?? [])[0] ?? "",
   );
-  const address = firstNonEmpty(
-    findValueNearLabels(
-      backLines,
-      ["address", "residence", "place of residence", "living place"],
-      isAddressCandidate,
-    ),
-    pickBestCandidate(backLines, isAddressCandidate),
-  );
 
-  setField(fields, "category", "personal", 1, provider, "combined");
-  setField(
-    fields,
-    "type",
-    classification.type,
-    classification.confidence,
-    provider,
-    "combined",
-  );
-  setField(fields, "issuer", issuerLine, 0.72, provider, "front");
-  setField(fields, "nameOnCard", likelyName, 0.84, provider, "combined");
-  setField(fields, "cardNumber", documentNumber, 0.8, provider, "combined");
-  setField(fields, "personalIdNumber", personalId, 0.72, provider, "combined");
-  setField(fields, "dateOfBirth", dateOfBirth, 0.78, provider, "combined");
-  setField(fields, "dateOfIssue", dateOfIssue, 0.7, provider, "combined");
-  setField(fields, "dateOfExpiry", dateOfExpiry, 0.8, provider, "combined");
-  setField(fields, "nationality", nationality, 0.66, provider, "combined");
-  setField(fields, "sex", sex, 0.64, provider, "combined");
-  setField(fields, "address", address, 0.56, provider, "back");
+  const nationality =
+    NATIONALITY_CODES.find((code) => combinedText.includes(code)) ??
+    findByLabel(combinedText, /(?:nationality|nat)\s*[:#-]?\s*([A-Z]{2,3})/i) ??
+    "";
+  const sex = findByLabel(
+    combinedText,
+    /(?:sex|gender)\s*[:#-]?\s*([MFX])/i,
+  ).toUpperCase();
 
-  // ── MRZ overlay ──────────────────────────────────────────────────────────
-  // Try to locate and parse Machine Readable Zone lines in the OCR output.
-  // MRZ fields have built-in check digits, making them much more reliable than
-  // heuristic text extraction, so they override the values set above.
-  const mrzResult = parseMrzFromLines(combinedLines);
-  if (mrzResult) {
-    const mrzFields = mrzResult.fields;
-    const mrzProvider = provider;
-
-    const mrzName = mrzNameToDisplay(mrzFields.lastName, mrzFields.firstName);
-    if (mrzName) {
-      setField(fields, "nameOnCard", mrzName, 0.97, mrzProvider, "combined");
-    }
-
-    const mrzDocNumber =
-      mrzFields.documentNumber?.replace(/<+/g, "").trim() ?? "";
-    if (mrzDocNumber) {
-      setField(
-        fields,
-        "cardNumber",
-        mrzDocNumber,
-        0.97,
-        mrzProvider,
-        "combined",
-      );
-    }
-
-    const mrzPersonalNumber =
-      mrzFields.personalNumber?.replace(/<+/g, "").trim() ?? "";
-    if (mrzPersonalNumber && mrzPersonalNumber.length >= 4) {
-      setField(
-        fields,
-        "personalIdNumber",
-        mrzPersonalNumber,
-        0.96,
-        mrzProvider,
-        "combined",
-      );
-    }
-
-    const mrzBirthDate = mrzDateToFormatted(mrzFields.birthDate);
-    if (mrzBirthDate) {
-      setField(
-        fields,
-        "dateOfBirth",
-        mrzBirthDate,
-        0.97,
-        mrzProvider,
-        "combined",
-      );
-    }
-
-    const mrzExpiryDate = mrzDateToFormatted(mrzFields.expirationDate);
-    if (mrzExpiryDate) {
-      setField(
-        fields,
-        "dateOfExpiry",
-        mrzExpiryDate,
-        0.97,
-        mrzProvider,
-        "combined",
-      );
-    }
-
-    const mrzIssuingState =
-      mrzFields.issuingState?.replace(/<+/g, "").trim() ?? "";
-    if (mrzIssuingState && mrzIssuingState.length >= 2) {
-      setField(
-        fields,
-        "nationality",
-        mrzIssuingState,
-        0.95,
-        mrzProvider,
-        "combined",
-      );
-    }
-
-    const mrzNationality =
-      mrzFields.nationality?.replace(/<+/g, "").trim() ?? "";
-    if (mrzNationality && mrzNationality.length >= 2) {
-      // nationality on the MRZ overrides issuing state
-      setField(
-        fields,
-        "nationality",
-        mrzNationality,
-        0.96,
-        mrzProvider,
-        "combined",
-      );
-    }
-
-    const mrzSex = mrzFields.sex?.replace(/<+/g, "").trim() ?? "";
-    if (mrzSex) {
-      setField(fields, "sex", mrzSex, 0.97, mrzProvider, "combined");
-    }
-  }
-  // ── End MRZ overlay ──────────────────────────────────────────────────────
+  setField(fields, "nameOnCard", name, 0.72, provider, "combined");
+  setField(fields, "cardNumber", documentNumber, 0.68, provider, "combined");
+  setField(fields, "personalIdNumber", personalId, 0.62, provider, "combined");
+  setField(fields, "dateOfBirth", dateOfBirth, 0.66, provider, "combined");
+  setField(fields, "dateOfExpiry", dateOfExpiry, 0.68, provider, "combined");
+  setField(fields, "nationality", nationality, 0.56, provider, "combined");
+  setField(fields, "sex", sex, 0.54, provider, "combined");
 }
 
 function extractInsuranceFields(

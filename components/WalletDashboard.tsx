@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Feather } from "@expo/vector-icons";
 import * as Haptics from "expo-haptics";
 import {
@@ -15,13 +15,14 @@ import Animated, {
   useSharedValue,
   withTiming,
 } from "react-native-reanimated";
-import { useRouter } from "expo-router";
 
+import { CardDetailModal } from "@/components/CardDetailModal";
 import { CardList } from "@/components/CardList";
 import { CardQuickView } from "@/components/CardQuickView";
 import { CardStack } from "@/components/CardStack";
 import { TopMenu } from "@/components/TopMenu";
 import { DEMO_CARDS } from "@/constants/demoCards";
+import { useTranslation } from "@/src/hooks/useTranslation";
 import { useCardStore } from "@/store/useCardStore";
 import {
   FILTER_LABELS,
@@ -36,11 +37,12 @@ type WalletDashboardProps = {
 };
 
 export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
-  const router = useRouter();
+  const tr = useTranslation();
   const deviceScheme = useColorScheme();
   const { width, height } = useWindowDimensions();
   const [menuOpen, setMenuOpen] = useState(false);
   const [quickViewCard, setQuickViewCard] = useState<WalletCard | null>(null);
+  const [selectedCardId, setSelectedCardId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [funMessage, setFunMessage] = useState({
     emoji: "🃏",
@@ -50,51 +52,67 @@ export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
   const cards = useCardStore((state) => state.cards);
   const viewMode = useCardStore((state) => state.viewMode);
   const homeFilter = useCardStore((state) => state.homeFilter);
+  const language = useCardStore((state) => state.language);
   const themePreference = useCardStore((state) => state.themePreference);
   const setHomeFilter = useCardStore((state) => state.setHomeFilter);
   const openAddCardSheet = useCardStore((state) => state.openAddCardSheet);
-  const cycleCardFwd = useCardStore((state) => state.cycleCardFwd);
-  const cycleCardBwd = useCardStore((state) => state.cycleCardBwd);
   const resolvedTheme = resolveTheme(themePreference, deviceScheme);
   const colors = APP_THEME[resolvedTheme];
   const isCompact = width < 390;
   const isShort = height < 760;
   const canUseAnimatedStack = cards.length >= 4;
 
-  const FUN_MESSAGES = [
-    { emoji: "🃏", text: "Shuffling your cards..." },
-    { emoji: "✨", text: "Polishing your wallet..." },
-    { emoji: "🔍", text: "Checking for secret cards..." },
-    { emoji: "🧹", text: "Dusting off the deck..." },
-    { emoji: "🎴", text: "Dealing from the top..." },
-    { emoji: "🪄", text: "Nothing up my sleeve..." },
-    { emoji: "🎩", text: "Pulling a card out of a hat..." },
-    { emoji: "💳", text: "Card inspection in progress..." },
-    { emoji: "🎰", text: "Jackpot? Nope. Still the same cards." },
-    { emoji: "🕵️", text: "Investigating your wallet..." },
-    { emoji: "🐌", text: "Taking my sweet time..." },
-    { emoji: "🤌", text: "Chef's kiss on those cards." },
-    { emoji: "🦆", text: "Quack. Just checking in." },
-    { emoji: "🛸", text: "Scanning for alien cards..." },
-    { emoji: "🍕", text: "No pizza here. Just cards." },
-    { emoji: "🐉", text: "Dragon guarding your vault..." },
-    { emoji: "🎭", text: "The drama of it all..." },
-    { emoji: "🧠", text: "Memorising every card..." },
-    { emoji: "🌀", text: "Going in circles... found nothing new." },
-    { emoji: "🫧", text: "Bubble-wrapping your data..." },
-    { emoji: "🐧", text: "Penguin approved. Refreshing." },
-    { emoji: "🪩", text: "Disco mode: activated." },
-    { emoji: "🦥", text: "Refreshing at my own pace..." },
-    { emoji: "🧃", text: "Freshly squeezed wallet." },
-    { emoji: "🎯", text: "Locked in. Cards confirmed." },
-    { emoji: "🦋", text: "A fresh flutter of cards..." },
-    { emoji: "🧊", text: "Keeping things cool..." },
-    { emoji: "🥷", text: "Ninja card check complete." },
-    { emoji: "🌮", text: "Taco Tuesday? No — card day." },
-    { emoji: "📡", text: "Pinging your wallet..." },
-  ];
+  const FUN_MESSAGES = useMemo(
+    () =>
+      language === "mk"
+        ? [
+            { emoji: "🃏", text: "Ги мешаме картичките..." },
+            { emoji: "✨", text: "Го полираме паричникот..." },
+            { emoji: "🔍", text: "Проверуваме за тајни картички..." },
+            { emoji: "🧹", text: "Го чистиме шпилот..." },
+            { emoji: "🎴", text: "Делиме одозгора..." },
+            { emoji: "🪄", text: "Ништо во ракавот..." },
+            { emoji: "💳", text: "Проверка на картичките е во тек..." },
+            { emoji: "🕵️", text: "Го истражуваме паричникот..." },
+            { emoji: "🐧", text: "Пингвински одобрено освежување." },
+            { emoji: "🎯", text: "Заклучено. Картичките се потврдени." },
+          ]
+        : [
+            { emoji: "🃏", text: "Shuffling your cards..." },
+            { emoji: "✨", text: "Polishing your wallet..." },
+            { emoji: "🔍", text: "Checking for secret cards..." },
+            { emoji: "🧹", text: "Dusting off the deck..." },
+            { emoji: "🎴", text: "Dealing from the top..." },
+            { emoji: "🪄", text: "Nothing up my sleeve..." },
+            { emoji: "🎩", text: "Pulling a card out of a hat..." },
+            { emoji: "💳", text: "Card inspection in progress..." },
+            { emoji: "🎰", text: "Jackpot? Nope. Still the same cards." },
+            { emoji: "🕵️", text: "Investigating your wallet..." },
+            { emoji: "🐌", text: "Taking my sweet time..." },
+            { emoji: "🤌", text: "Chef's kiss on those cards." },
+            { emoji: "🦆", text: "Quack. Just checking in." },
+            { emoji: "🛸", text: "Scanning for alien cards..." },
+            { emoji: "🍕", text: "No pizza here. Just cards." },
+            { emoji: "🐉", text: "Dragon guarding your vault..." },
+            { emoji: "🎭", text: "The drama of it all..." },
+            { emoji: "🧠", text: "Memorising every card..." },
+            { emoji: "🌀", text: "Going in circles... found nothing new." },
+            { emoji: "🫧", text: "Bubble-wrapping your data..." },
+            { emoji: "🐧", text: "Penguin approved. Refreshing." },
+            { emoji: "🪩", text: "Disco mode: activated." },
+            { emoji: "🦥", text: "Refreshing at my own pace..." },
+            { emoji: "🧃", text: "Freshly squeezed wallet." },
+            { emoji: "🎯", text: "Locked in. Cards confirmed." },
+            { emoji: "🦋", text: "A fresh flutter of cards..." },
+            { emoji: "🧊", text: "Keeping things cool..." },
+            { emoji: "🥷", text: "Ninja card check complete." },
+            { emoji: "🌮", text: "Taco Tuesday? No — card day." },
+            { emoji: "📡", text: "Pinging your wallet..." },
+          ],
+    [language],
+  );
 
-  const handleRefresh = () => {
+  const handleRefresh = useCallback(() => {
     const msg = FUN_MESSAGES[Math.floor(Math.random() * FUN_MESSAGES.length)];
     setFunMessage(msg);
     setRefreshing(true);
@@ -103,7 +121,7 @@ export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
     refreshTimer.current = setTimeout(() => {
       setRefreshing(false);
     }, 1400);
-  };
+  }, [FUN_MESSAGES]);
 
   useEffect(() => {
     return () => {
@@ -140,17 +158,68 @@ export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
     [activeFilter],
   );
 
-  const handleSelectFilter = (filter: HomeFilter) => {
-    setHomeFilter(filter);
-    // Filter in place — no navigation
-  };
+  const handleSelectFilter = useCallback(
+    (filter: HomeFilter) => {
+      setHomeFilter(filter);
+    },
+    [setHomeFilter],
+  );
 
-  const openQuickViewForCard = (availableCards: WalletCard[], id: string) => {
-    const card = availableCards.find((candidate) => candidate.id === id);
-    if (!card) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setQuickViewCard(card);
-  };
+  const getFilterLabel = useCallback(
+    (filter: HomeFilter) => {
+      if (language !== "mk") return FILTER_LABELS[filter];
+      switch (filter) {
+        case "everything":
+          return "Сите";
+        case "personal":
+          return "Лични документи";
+        case "bank":
+          return "Банкарски картички";
+        case "club":
+          return "Клуб картички";
+        case "insurance":
+          return "Осигурителни картички";
+        case "vehicle":
+          return "Возачки документи";
+        case "access":
+          return "Пристапни беџови";
+        default:
+          return FILTER_LABELS[filter];
+      }
+    },
+    [language],
+  );
+
+  // Stable long-press handlers — depend on memoized card arrays so renderItem
+  // in CardList only gets a new reference when the list actually changes.
+  const handleCardLongPress = useCallback(
+    (id: string) => {
+      const found = filteredCards.find((c) => c.id === id);
+      if (!found) return;
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      setQuickViewCard(found);
+    },
+    [filteredCards],
+  );
+
+  const handleDemoCardLongPress = useCallback(
+    (id: string) => {
+      const found = filteredDemoCards.find((c) => c.id === id);
+      if (!found) return;
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      setQuickViewCard(found);
+    },
+    [filteredDemoCards],
+  );
+
+  const handleCardPress = useCallback((id: string) => {
+    setSelectedCardId(id);
+  }, []);
+
+  const handleOpenMenu = useCallback(() => setMenuOpen(true), []);
+  const handleCloseMenu = useCallback(() => setMenuOpen(false), []);
+  const handleDismissQuickView = useCallback(() => setQuickViewCard(null), []);
+  const handleCloseDetail = useCallback(() => setSelectedCardId(null), []);
 
   return (
     <SafeAreaView
@@ -161,7 +230,7 @@ export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Open filter menu"
-        onPress={() => setMenuOpen(true)}
+        onPress={handleOpenMenu}
         style={[
           styles.header,
           {
@@ -181,7 +250,7 @@ export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
               },
             ]}
           >
-            Manage
+            {tr("cards_manage_heading")}
           </Text>
           <Text
             numberOfLines={2}
@@ -194,7 +263,7 @@ export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
               },
             ]}
           >
-            {FILTER_LABELS[activeFilter]}
+            {getFilterLabel(activeFilter)}
           </Text>
         </View>
         <View
@@ -228,12 +297,8 @@ export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
           <CardList
             cards={filteredDemoCards}
             bottomSpacing={132}
-            onCardPress={(id) =>
-              router.push({ pathname: "/card-detail", params: { id } })
-            }
-            onCardLongPress={(id) =>
-              openQuickViewForCard(filteredDemoCards, id)
-            }
+            onCardPress={handleCardPress}
+            onCardLongPress={handleDemoCardLongPress}
             refreshing={refreshing}
             onRefresh={handleRefresh}
             funMessage={funMessage}
@@ -265,7 +330,7 @@ export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
                       },
                     ]}
                   >
-                    Add your first card
+                    {tr("cards_add_first_card")}
                   </Text>
                   <Text
                     style={[
@@ -276,7 +341,7 @@ export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
                       },
                     ]}
                   >
-                    Tap here to get started
+                    {tr("cards_add_first_subtitle")}
                   </Text>
                 </Pressable>
 
@@ -295,13 +360,12 @@ export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
                   <Text
                     style={[styles.demoNoticeTitle, { color: colors.text }]}
                   >
-                    Demo cards
+                    {tr("cards_demo_title")}
                   </Text>
                   <Text
                     style={[styles.demoNoticeBody, { color: colors.textMuted }]}
                   >
-                    Don't worry, these disappear once you add a card or sync
-                    your cards.
+                    {tr("cards_demo_body")}
                   </Text>
                 </View>
               </View>
@@ -321,10 +385,10 @@ export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
             ]}
           >
             <Text style={[styles.emptyTitle, { color: colors.text }]}>
-              No cards here
+              {tr("cards_no_cards_title")}
             </Text>
             <Text style={[styles.emptyBody, { color: colors.textMuted }]}>
-              No cards in this category yet.
+              {tr("cards_none_in_category")}
             </Text>
           </View>
         ) : viewMode === "stack" ? (
@@ -332,26 +396,16 @@ export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
             {canUseAnimatedStack ? (
               <CardStack
                 cards={filteredCards}
-                onCycleFwd={cycleCardFwd}
-                onCycleBwd={cycleCardBwd}
-                onCardPress={(id) =>
-                  router.push({ pathname: "/card-detail", params: { id } })
-                }
-                onCardLongPress={(id) =>
-                  openQuickViewForCard(filteredCards, id)
-                }
+                onCardPress={handleCardPress}
+                onCardLongPress={handleCardLongPress}
               />
             ) : (
               <>
                 <CardList
                   cards={filteredCards}
                   bottomSpacing={132}
-                  onCardPress={(id) =>
-                    router.push({ pathname: "/card-detail", params: { id } })
-                  }
-                  onCardLongPress={(id) =>
-                    openQuickViewForCard(filteredCards, id)
-                  }
+                  onCardPress={handleCardPress}
+                  onCardLongPress={handleCardLongPress}
                   refreshing={refreshing}
                   onRefresh={handleRefresh}
                   funMessage={funMessage}
@@ -371,7 +425,7 @@ export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
                       { color: colors.textMuted },
                     ]}
                   >
-                    Animated stack unlocks with 4 or more cards.
+                    {tr("cards_stack_unlock_hint")}
                   </Text>
                 </View>
               </>
@@ -381,10 +435,8 @@ export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
           <CardList
             cards={filteredCards}
             bottomSpacing={132}
-            onCardPress={(id) =>
-              router.push({ pathname: "/card-detail", params: { id } })
-            }
-            onCardLongPress={(id) => openQuickViewForCard(filteredCards, id)}
+            onCardPress={handleCardPress}
+            onCardLongPress={handleCardLongPress}
             refreshing={refreshing}
             onRefresh={handleRefresh}
             funMessage={funMessage}
@@ -393,14 +445,12 @@ export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
       </View>
       <TopMenu
         isOpen={menuOpen}
-        onClose={() => setMenuOpen(false)}
+        onClose={handleCloseMenu}
         onSelect={handleSelectFilter}
         selectedFilter={activeFilter}
       />
-      <CardQuickView
-        card={quickViewCard}
-        onDismiss={() => setQuickViewCard(null)}
-      />
+      <CardQuickView card={quickViewCard} onDismiss={handleDismissQuickView} />
+      <CardDetailModal cardId={selectedCardId} onClose={handleCloseDetail} />
     </SafeAreaView>
   );
 }

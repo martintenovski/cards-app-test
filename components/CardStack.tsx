@@ -71,9 +71,6 @@ function posMod(v: number, n: number) {
 
 type CardStackProps = {
   cards: WalletCard[];
-  /** kept for API compatibility with WalletDashboard */
-  onCycleFwd: () => void;
-  onCycleBwd: () => void;
   /** Called when the user taps the active (focused) card */
   onCardPress?: (cardId: string) => void;
   /** Called when any card is long-pressed — triggers quick fullscreen view */

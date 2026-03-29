@@ -45,6 +45,7 @@ export function TopMenu({
 }: TopMenuProps) {
   const insets = useSafeAreaInsets();
   const cards = useCardStore((state) => state.cards);
+  const language = useCardStore((state) => state.language);
   const themePreference = useCardStore((state) => state.themePreference);
   const deviceScheme = useColorScheme();
   const resolvedTheme = resolveTheme(themePreference, deviceScheme);
@@ -74,6 +75,29 @@ export function TopMenu({
   const backdropStyle = useAnimatedStyle(() => ({
     opacity: backdropOpacity.value,
   }));
+
+  const getFilterLabel = (filter: HomeFilter) => {
+    if (language !== "mk") return FILTER_LABELS[filter];
+
+    switch (filter) {
+      case "everything":
+        return "Сите";
+      case "personal":
+        return "Лични документи";
+      case "bank":
+        return "Банкарски картички";
+      case "club":
+        return "Клуб картички";
+      case "insurance":
+        return "Осигурителни картички";
+      case "vehicle":
+        return "Возачки документи";
+      case "access":
+        return "Пристапни беџови";
+      default:
+        return FILTER_LABELS[filter];
+    }
+  };
 
   return (
     <Modal
@@ -106,12 +130,14 @@ export function TopMenu({
         {/* Header */}
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Close menu"
+          accessibilityLabel={language === "mk" ? "Затвори мени" : "Close menu"}
           style={styles.sheetHeader}
           onPress={onClose}
         >
           <View style={styles.sheetTitleWrap}>
-            <Text style={[styles.sheetTitle, { color: colors.text }]}>Manage</Text>
+            <Text style={[styles.sheetTitle, { color: colors.text }]}>
+              {language === "mk" ? "Управувај" : "Manage"}
+            </Text>
           </View>
           <View style={styles.closeBtn}>
             <Feather name="chevron-up" size={22} color={colors.text} />
@@ -142,7 +168,7 @@ export function TopMenu({
                     ]}
                     numberOfLines={1}
                   >
-                    {FILTER_LABELS[item]}
+                    {getFilterLabel(item)}
                   </Text>
                   <View
                     style={[

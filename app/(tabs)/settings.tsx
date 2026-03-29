@@ -43,6 +43,12 @@ import { signOut } from "@/utils/authSync";
 import { getCardExpiryDate } from "@/utils/expiry";
 import type { ThemePreference } from "@/utils/theme";
 import { APP_THEME, resolveTheme } from "@/utils/theme";
+import {
+  LANGUAGE_FLAGS,
+  LANGUAGES,
+  type LanguageCode,
+} from "@/src/i18n/translations";
+import { useTranslation } from "@/src/hooks/useTranslation";
 
 const THEME_OPTIONS: ThemePreference[] = ["system", "light", "dark"];
 const FLOATING_TAB_SCROLL_BUFFER = 132;
@@ -147,7 +153,10 @@ export default function SettingsScreen() {
   const router = useRouter();
   const themePreference = useCardStore((state) => state.themePreference);
   const setThemePreference = useCardStore((state) => state.setThemePreference);
+  const language = useCardStore((state) => state.language);
+  const setLanguage = useCardStore((state) => state.setLanguage);
   const viewMode = useCardStore((state) => state.viewMode);
+  const [langDropdownOpen, setLangDropdownOpen] = useState(false);
   const setViewMode = useCardStore((state) => state.setViewMode);
   const appLockEnabled = useCardStore((state) => state.appLockEnabled);
   const setAppLockEnabled = useCardStore((state) => state.setAppLockEnabled);
@@ -198,6 +207,7 @@ export default function SettingsScreen() {
   const deviceScheme = useColorScheme();
   const resolvedTheme = resolveTheme(themePreference, deviceScheme);
   const colors = APP_THEME[resolvedTheme];
+  const tr = useTranslation();
   const isDark = resolvedTheme === "dark";
   const scrollViewRef = useRef<ScrollView | null>(null);
   const [cloudSyncSectionY, setCloudSyncSectionY] = useState(0);
@@ -514,9 +524,11 @@ export default function SettingsScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <Text style={[styles.title, { color: colors.text }]}>Settings</Text>
+          <Text style={[styles.title, { color: colors.text }]}>
+            {tr("settings_title")}
+          </Text>
           <Text style={[styles.subtitle, { color: colors.textMuted }]}>
-            Control the wallet look, lock behavior, and reminder automation.
+            {tr("settings_subtitle")}
           </Text>
         </View>
 
@@ -525,11 +537,10 @@ export default function SettingsScreen() {
           style={[styles.section, { backgroundColor: colors.surface }]}
         >
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Appearance
+            {tr("settings_section_appearance")}
           </Text>
           <Text style={[styles.sectionBody, { color: colors.textMuted }]}>
-            Choose whether the app follows the system theme or stays in light or
-            dark mode.
+            {tr("settings_appearance_body")}
           </Text>
           <View
             style={[
@@ -558,10 +569,10 @@ export default function SettingsScreen() {
                     ]}
                   >
                     {option === "system"
-                      ? "System"
+                      ? tr("settings_theme_system")
                       : option === "light"
-                        ? "Light"
-                        : "Dark"}
+                        ? tr("settings_theme_light")
+                        : tr("settings_theme_dark")}
                   </Text>
                 </Pressable>
               );
@@ -571,10 +582,10 @@ export default function SettingsScreen() {
 
         <View style={[styles.section, { backgroundColor: colors.surface }]}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Card View
+            {tr("settings_section_card_view")}
           </Text>
           <Text style={[styles.sectionBody, { color: colors.textMuted }]}>
-            Choose how cards are displayed on the home screen.
+            {tr("settings_card_view_body")}
           </Text>
           <View
             style={[
@@ -611,7 +622,9 @@ export default function SettingsScreen() {
                       { color: active ? colors.accentText : colors.textMuted },
                     ]}
                   >
-                    {option === "stack" ? "Animated Stack" : "List"}
+                    {option === "stack"
+                      ? tr("settings_card_view_stack")
+                      : tr("settings_card_view_list")}
                   </Text>
                 </Pressable>
               );
@@ -619,18 +632,18 @@ export default function SettingsScreen() {
           </View>
           {!canUseAnimatedStack ? (
             <Text style={[styles.cardViewHint, { color: colors.textSoft }]}>
-              Animated stack unlocks with 4 or more saved cards.
+              {tr("settings_card_view_stack_hint")}
             </Text>
           ) : null}
         </View>
 
         <View style={[styles.section, { backgroundColor: colors.surface }]}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Security
+            {tr("settings_section_security")}
           </Text>
           <SettingToggle
-            label="Biometric Lock"
-            description="Require biometrics or the device passcode fallback when Pocket ID is locked."
+            label={tr("settings_biometric_lock_label")}
+            description={tr("settings_biometric_lock_desc")}
             value={appLockEnabled}
             onChange={setAppLockEnabled}
             textColor={colors.text}
@@ -657,8 +670,8 @@ export default function SettingsScreen() {
             </View>
           ) : null}
           <SettingToggle
-            label="Block Screenshots"
-            description="Prevent screenshots and screen recordings while Pocket ID is open."
+            label={tr("settings_block_screenshots_label")}
+            description={tr("settings_block_screenshots_desc")}
             value={screenshotBlockingEnabled}
             onChange={setScreenshotBlockingEnabled}
             textColor={colors.text}
@@ -668,8 +681,8 @@ export default function SettingsScreen() {
             borderColor={colors.buttonBorder}
           />
           <SettingToggle
-            label="Lock Screen"
-            description="Hide app content on the recent apps screen and when the app is backgrounded."
+            label={tr("settings_lock_screen_label")}
+            description={tr("settings_lock_screen_desc")}
             value={lockScreenEnabled}
             onChange={handleLockScreenChange}
             textColor={colors.text}
@@ -682,11 +695,11 @@ export default function SettingsScreen() {
 
         <View style={[styles.section, { backgroundColor: colors.surface }]}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Reminders
+            {tr("settings_section_reminders")}
           </Text>
           <SettingToggle
-            label="Expiry Notifications"
-            description="Schedule reminders 1 month, 2 weeks and 2 days before supported cards expire."
+            label={tr("settings_expiry_notifications_label")}
+            description={tr("settings_expiry_notifications_desc")}
             value={expiryNotificationsEnabled}
             onChange={setExpiryNotificationsEnabled}
             textColor={colors.text}
@@ -701,7 +714,7 @@ export default function SettingsScreen() {
           <View style={styles.sectionHeaderRow}>
             <GoogleWordmark size={15} />
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              Cloud Sync
+              {tr("settings_section_cloud_sync")}
             </Text>
             <Pressable
               onPress={() => setCloudInfoVisible(true)}
@@ -716,8 +729,7 @@ export default function SettingsScreen() {
             onClose={() => setCloudInfoVisible(false)}
           />
           <Text style={[styles.sectionBody, { color: colors.textMuted }]}>
-            Manage your encrypted cloud vault, sync cloud data on demand, and
-            clean up this device when needed.
+            {tr("settings_cloud_sync_body")}
           </Text>
           {!isSupabaseConfigured || !authUser ? (
             <Text style={[styles.sectionBody, { color: colors.textMuted }]}>
@@ -1053,26 +1065,28 @@ export default function SettingsScreen() {
 
         <View style={[styles.section, { backgroundColor: colors.surface }]}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Your Support
+            {tr("settings_section_support")}
           </Text>
           <Text style={[styles.sectionBody, { color: colors.textMuted }]}>
-            RevenueCat supporter details for this app-store account.
+            {tr("settings_support_body")}
           </Text>
           <View
             style={[styles.supportRow, { borderBottomColor: colors.border }]}
           >
             <Text style={[styles.rowLabel, { color: colors.text }]}>
-              Status
+              {tr("settings_support_status")}
             </Text>
             <Text style={[styles.supportValue, { color: colors.textMuted }]}>
-              {supportSummary.active ? "Active ❤️" : "Not a supporter yet"}
+              {supportSummary.active
+                ? tr("settings_support_active")
+                : tr("settings_support_not_yet")}
             </Text>
           </View>
           <View
             style={[styles.supportRow, { borderBottomColor: colors.border }]}
           >
             <Text style={[styles.rowLabel, { color: colors.text }]}>
-              Support type
+              {tr("settings_support_type")}
             </Text>
             <Text style={[styles.supportValue, { color: colors.textMuted }]}>
               {supportSummary.status === "monthly"
@@ -1088,7 +1102,7 @@ export default function SettingsScreen() {
             style={[styles.supportRow, { borderBottomColor: colors.border }]}
           >
             <Text style={[styles.rowLabel, { color: colors.text }]}>
-              Last payment date
+              {tr("settings_support_last_payment")}
             </Text>
             <Text style={[styles.supportValue, { color: colors.textMuted }]}>
               {formatSupportDate(supportSummary.lastPaymentDate)}
@@ -1098,7 +1112,7 @@ export default function SettingsScreen() {
             style={[styles.supportRow, { borderBottomColor: colors.border }]}
           >
             <Text style={[styles.rowLabel, { color: colors.text }]}>
-              Next renewal date
+              {tr("settings_support_next_renewal")}
             </Text>
             <Text style={[styles.supportValue, { color: colors.textMuted }]}>
               {supportSummary.status === "monthly"
@@ -1108,7 +1122,7 @@ export default function SettingsScreen() {
           </View>
           <View style={styles.supportRow}>
             <Text style={[styles.rowLabel, { color: colors.text }]}>
-              Total tips count
+              {tr("settings_support_tips_count")}
             </Text>
             <Text style={[styles.supportValue, { color: colors.textMuted }]}>
               {supportSummary.totalTipsCount}
@@ -1125,7 +1139,7 @@ export default function SettingsScreen() {
             ]}
           >
             <Text style={[styles.testBtnText, { color: colors.text }]}>
-              View Support Options
+              {tr("settings_view_support_options")}
             </Text>
           </Pressable>
           {canManageMonthlySubscription(customerInfo) ? (
@@ -1155,7 +1169,7 @@ export default function SettingsScreen() {
             ]}
           >
             <Text style={[styles.testBtnText, { color: colors.text }]}>
-              Restore Purchases
+              {tr("settings_restore_purchases")}
             </Text>
           </Pressable>
         </View>
@@ -1164,12 +1178,11 @@ export default function SettingsScreen() {
           <View style={styles.githubHeaderRow}>
             <GitHubIcon size={22} color={colors.text} />
             <Text style={[styles.sectionTitle, { color: colors.text }]}>
-              Open Source
+              {tr("settings_section_open_source")}
             </Text>
           </View>
           <Text style={[styles.sectionBody, { color: colors.textMuted }]}>
-            Pocket ID is fully open source. Browse the code, report issues, or
-            contribute on GitHub.
+            {tr("settings_open_source_body")}
           </Text>
           <Pressable
             onPress={() => void openURL(GITHUB_REPO_URL)}
@@ -1177,14 +1190,96 @@ export default function SettingsScreen() {
           >
             <GitHubIcon size={18} color={colors.text} />
             <Text style={[styles.githubButtonText, { color: colors.text }]}>
-              Open on GitHub
+              {tr("settings_open_on_github")}
             </Text>
           </Pressable>
         </View>
 
         <View style={[styles.section, { backgroundColor: colors.surface }]}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Developer Actions
+            {tr("settings_section_language")}
+          </Text>
+          <Text style={[styles.sectionBody, { color: colors.textMuted }]}>
+            {tr("settings_language_body")}
+          </Text>
+          <Pressable
+            onPress={() => setLangDropdownOpen((o) => !o)}
+            style={[
+              styles.langDropdownTrigger,
+              {
+                backgroundColor: colors.surfaceMuted,
+                borderColor: colors.buttonBorder,
+              },
+            ]}
+          >
+            <Text style={styles.langFlag}>{LANGUAGE_FLAGS[language]}</Text>
+            <Text style={[styles.langDropdownValue, { color: colors.text }]}>
+              {LANGUAGES[language]}
+            </Text>
+            <Feather
+              name={langDropdownOpen ? "chevron-up" : "chevron-down"}
+              size={16}
+              color={colors.textMuted}
+            />
+          </Pressable>
+          {langDropdownOpen ? (
+            <View
+              style={[
+                styles.langDropdownList,
+                {
+                  backgroundColor: colors.surfaceMuted,
+                  borderColor: colors.buttonBorder,
+                },
+              ]}
+            >
+              {(Object.keys(LANGUAGES) as LanguageCode[]).map(
+                (code, i, arr) => {
+                  const active = language === code;
+                  return (
+                    <Pressable
+                      key={code}
+                      onPress={() => {
+                        setLanguage(code);
+                        setLangDropdownOpen(false);
+                      }}
+                      style={[
+                        styles.langDropdownItem,
+                        i < arr.length - 1 && {
+                          borderBottomWidth: 1,
+                          borderBottomColor: colors.buttonBorder,
+                        },
+                      ]}
+                    >
+                      <Text style={styles.langFlag}>
+                        {LANGUAGE_FLAGS[code]}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.langDropdownItemText,
+                          { color: active ? colors.accent : colors.text },
+                        ]}
+                      >
+                        {LANGUAGES[code]}
+                      </Text>
+                      {active ? (
+                        <Feather
+                          name="check"
+                          size={15}
+                          color={colors.accent}
+                          style={{ marginLeft: "auto" }}
+                        />
+                      ) : null}
+                    </Pressable>
+                  );
+                },
+              )}
+            </View>
+          ) : null}
+        </View>
+
+        <View style={[styles.section, { backgroundColor: colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            {tr("settings_section_developer")}
           </Text>
           <Pressable
             onPress={sendTestNotification}
@@ -1197,7 +1292,7 @@ export default function SettingsScreen() {
             ]}
           >
             <Text style={[styles.testBtnText, { color: colors.text }]}>
-              Send test notification (5 s)
+              {tr("settings_send_test_notification")}
             </Text>
           </Pressable>
           <Pressable
@@ -1211,7 +1306,7 @@ export default function SettingsScreen() {
             ]}
           >
             <Text style={[styles.testBtnText, { color: colors.text }]}>
-              View onboarding again
+              {tr("settings_view_onboarding")}
             </Text>
           </Pressable>
         </View>
@@ -1340,6 +1435,42 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: 16,
     borderWidth: 1,
+  },
+  langDropdownTrigger: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    borderWidth: 1,
+    borderRadius: 14,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+    marginTop: 14,
+  },
+  langDropdownValue: {
+    flex: 1,
+    fontFamily: "ReadexPro-Medium",
+    fontSize: 15,
+  },
+  langFlag: {
+    fontSize: 20,
+    lineHeight: 24,
+  },
+  langDropdownList: {
+    borderWidth: 1,
+    borderRadius: 14,
+    marginTop: 6,
+    overflow: "hidden",
+  },
+  langDropdownItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 13,
+  },
+  langDropdownItemText: {
+    fontFamily: "ReadexPro-Medium",
+    fontSize: 15,
   },
   dangerButton: {
     borderWidth: 1,
