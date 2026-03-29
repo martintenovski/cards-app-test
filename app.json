@@ -40,7 +40,7 @@
         }
       ],
       [
-        "rn-mlkit-ocr",
+        "./node_modules/rn-mlkit-ocr/app.plugin.js",
         {
           "ocrModels": ["latin"],
           "ocrUseBundled": true

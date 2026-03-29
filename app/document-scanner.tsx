@@ -117,6 +117,37 @@ export default function DocumentScannerScreen() {
     }
   };
 
+  const launchBackScanner = async () => {
+    setErrorMessage("");
+    setPhase("capturing");
+
+    try {
+      const response = await DocumentScanner.scanDocument({
+        croppedImageQuality: 100,
+        maxNumDocuments: 1,
+        responseType: ResponseType.ImageFilePath,
+      });
+
+      if (response.status === ScanDocumentResponseStatus.Cancel) {
+        setPhase("confirming");
+        return;
+      }
+
+      const image = response.scannedImages?.[0];
+      if (!image) {
+        throw new Error("No image was returned from the scanner.");
+      }
+
+      setBack(image);
+      setPhase("confirming");
+    } catch (error) {
+      setPhase("failed");
+      setErrorMessage(
+        error instanceof Error ? error.message : "Back scan could not start.",
+      );
+    }
+  };
+
   // Auto-launch on mount — delay so the screen transition finishes before
   // the native camera sheet tries to present itself.
   useEffect(() => {
@@ -219,21 +250,28 @@ export default function DocumentScannerScreen() {
             </Pressable>
           </View>
         ) : (
-          <View
+          <Pressable
+            onPress={() => void launchBackScanner()}
+            accessibilityRole="button"
+            accessibilityLabel="Scan back side"
+            style={{ flex: 1 }}
+          >
+            <View
             style={[
               styles.imageWrap,
               styles.imageWrapEmpty,
               { borderColor: colors.buttonBorder },
             ]}
-          >
-            <Text style={[styles.imageLabel, { color: colors.textSoft }]}>
-              BACK
-            </Text>
-            <Feather name="image" size={28} color={colors.textMuted} />
-            <Text style={[styles.emptyImageHint, { color: colors.textMuted }]}>
-              No back side
-            </Text>
-          </View>
+            >
+              <Text style={[styles.imageLabel, { color: colors.textSoft }]}>
+                BACK
+              </Text>
+              <Feather name="camera" size={28} color={colors.textMuted} />
+              <Text style={[styles.emptyImageHint, { color: colors.textMuted }]}>
+                Tap to scan back side
+              </Text>
+            </View>
+          </Pressable>
         )}
       </View>
 
@@ -317,7 +355,7 @@ export default function DocumentScannerScreen() {
         </Pressable>
         <View style={styles.headerTextWrap}>
           <Text style={[styles.title, { color: colors.text }]}>
-            Scan document
+            Scanned document(s)
           </Text>
           <Text style={[styles.subtitle, { color: colors.textMuted }]}>
             {subtitleText}

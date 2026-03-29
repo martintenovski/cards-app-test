@@ -1,6 +1,3 @@
-import PaddleOcr from "@gutenye/ocr-react-native";
-import MlkitOcr, { type OcrBlock, type OcrLine } from "rn-mlkit-ocr";
-
 import type {
   DocumentScanAsset,
   OcrLineCandidate,
@@ -22,9 +19,33 @@ function estimateCoverageConfidence(lines: OcrLineCandidate[]) {
   return Number((densityScore * 0.65 + lineScore * 0.35).toFixed(2));
 }
 
-function flattenMlKitLines(blocks: OcrBlock[]): OcrLineCandidate[] {
+type MlkitLine = {
+  text: string;
+  frame: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+};
+
+type MlkitBlock = {
+  text: string;
+  lines: MlkitLine[];
+};
+
+type MlkitResult = {
+  text: string;
+  blocks: MlkitBlock[];
+};
+
+type MlkitModule = {
+  recognizeText: (uri: string) => Promise<MlkitResult>;
+};
+
+function flattenMlKitLines(blocks: MlkitBlock[]): OcrLineCandidate[] {
   return blocks.flatMap((block) =>
-    block.lines.map((line: OcrLine) => ({
+    block.lines.map((line) => ({
       text: normalizeText(line.text),
       confidence: 0.76,
       bounds: {
@@ -37,11 +58,72 @@ function flattenMlKitLines(blocks: OcrBlock[]): OcrLineCandidate[] {
   );
 }
 
-let paddleInstancePromise: Promise<PaddleOcr> | null = null;
+function getMlKitModule(): MlkitModule {
+  try {
+    const mlkitModule = require("rn-mlkit-ocr") as
+      | MlkitModule
+      | { default: MlkitModule };
+
+    return "default" in mlkitModule ? mlkitModule.default : mlkitModule;
+  } catch (error) {
+    throw new Error(
+      error instanceof Error && /doesn't seem to be linked|not using Expo Go/i.test(error.message)
+        ? "ML Kit OCR is not available in the current app build. Rebuild the Android app after installing native modules (for example with `npx expo run:android`) and open the rebuilt dev client instead of only restarting Metro."
+        : error instanceof Error
+          ? `ML Kit OCR is unavailable in this build: ${error.message}`
+          : "ML Kit OCR is unavailable in this build.",
+    );
+  }
+}
+
+type PaddleOcrInstance = {
+  detect: (uri: string) => Promise<
+    Array<{
+      text: string;
+      score: number;
+      frame: {
+        left: number;
+        top: number;
+        width: number;
+        height: number;
+      };
+    }>
+  >;
+};
+
+type PaddleOcrModule = {
+  create: (options: {
+    recognitionImageMaxSize: number;
+    detectionThreshold: number;
+    detectionBoxThreshold: number;
+    detectionUseDilate: boolean;
+    useDirectionClassify: boolean;
+  }) => Promise<PaddleOcrInstance>;
+};
+
+let paddleInstancePromise: Promise<PaddleOcrInstance> | null = null;
+
+function getPaddleModule(): PaddleOcrModule {
+  try {
+    const paddleModule = require("@gutenye/ocr-react-native") as
+      | PaddleOcrModule
+      | { default: PaddleOcrModule };
+
+    return "default" in paddleModule ? paddleModule.default : paddleModule;
+  } catch (error) {
+    throw new Error(
+      error instanceof Error
+        ? `Paddle OCR is unavailable in this build: ${error.message}`
+        : "Paddle OCR is unavailable in this build.",
+    );
+  }
+}
 
 async function getPaddleInstance() {
   if (!paddleInstancePromise) {
-    paddleInstancePromise = PaddleOcr.create({
+    const paddleModule = getPaddleModule();
+
+    paddleInstancePromise = paddleModule.create({
       recognitionImageMaxSize: 1600,
       detectionThreshold: 0.24,
       detectionBoxThreshold: 0.45,
@@ -56,7 +138,8 @@ async function getPaddleInstance() {
 export async function runMlKitOcr(
   asset: DocumentScanAsset,
 ): Promise<OcrProviderResult> {
-  const result = await MlkitOcr.recognizeText(asset.ocrUri);
+  const mlkit = getMlKitModule();
+  const result = await mlkit.recognizeText(asset.ocrUri);
   const lines = flattenMlKitLines(result.blocks).filter((line) => line.text);
 
   return {
