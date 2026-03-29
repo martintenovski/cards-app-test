@@ -12,8 +12,6 @@
  * What we build:
  *   - Dark background #1C1E21
  *   - App logo centred at exactly 88 × 88 pt
- *   - "by"        label (13 pt regular, iOS secondary grey)  ┐ stacked near
- *   - "tenovski"  label (13 pt bold, white)                  ┘ safe-area bottom
  *
  * The image asset name is auto-detected from expo-splash-screen's own storyboard
  * so it always matches the generated asset catalog entry.
@@ -39,7 +37,6 @@ function detectLogoAssetName(storyboardPath) {
 // ---------------------------------------------------------------------------
 // Colour math:
 //   #1C1E21  →  r=0.110  g=0.118  b=0.129
-//   #8E8E93  →  r=0.557  g=0.557  b=0.576
 function buildStoryboard(logoAsset) {
   return `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="21701" targetRuntime="AppleCocoa Touch" propertyAccessControl="none" useAutolayout="YES" launchScreen="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="01J-lp-oVM">
@@ -68,44 +65,6 @@ function buildStoryboard(logoAsset) {
                                 translatesAutoresizingMaskIntoConstraints="NO"
                               id="HGe-GZ-ODE"/>
 
-                            <!-- "by" label – iOS secondary-label grey, 13 pt regular -->
-                            <label
-                                opaque="NO"
-                                userInteractionEnabled="NO"
-                                contentMode="left"
-                                horizontalHuggingPriority="251"
-                                verticalHuggingPriority="251"
-                                text="by"
-                                textAlignment="center"
-                                lineBreakMode="middleTruncation"
-                                baselineAdjustment="alignBaselines"
-                                adjustsFontSizeToFit="NO"
-                                translatesAutoresizingMaskIntoConstraints="NO"
-                                id="kl1-pb-by">
-                                <fontDescription key="fontDescription" type="system" pointSize="13"/>
-                                <color key="textColor" red="0.557" green="0.557" blue="0.576" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
-                                <nil key="highlightedColor"/>
-                            </label>
-
-                            <!-- "tenovski" label – bold white, 13 pt -->
-                            <label
-                                opaque="NO"
-                                userInteractionEnabled="NO"
-                                contentMode="left"
-                                horizontalHuggingPriority="251"
-                                verticalHuggingPriority="251"
-                                text="tenovski"
-                                textAlignment="center"
-                                lineBreakMode="middleTruncation"
-                                baselineAdjustment="alignBaselines"
-                                adjustsFontSizeToFit="NO"
-                                translatesAutoresizingMaskIntoConstraints="NO"
-                                id="kl2-pb-tn">
-                                <fontDescription key="fontDescription" type="boldSystem" pointSize="13"/>
-                                <color key="textColor" white="1" alpha="1" colorSpace="custom" customColorSpace="genericGamma22GrayColorSpace"/>
-                                <nil key="highlightedColor"/>
-                            </label>
-
                         </subviews>
 
                         <viewLayoutGuide key="safeAreaLayoutGuide" id="Bcu-3y-fUS"/>
@@ -119,16 +78,6 @@ function buildStoryboard(logoAsset) {
                             <constraint firstItem="HGe-GZ-ODE" firstAttribute="centerY" secondItem="Ze5-6b-2t3" secondAttribute="centerY" id="c02"/>
                             <constraint firstItem="HGe-GZ-ODE" firstAttribute="width"   constant="88" id="c03"/>
                             <constraint firstItem="HGe-GZ-ODE" firstAttribute="height"  constant="88" id="c04"/>
-
-                            <!-- "by" label: centred horizontally -->
-                            <constraint firstItem="kl1-pb-by" firstAttribute="centerX" secondItem="Ze5-6b-2t3" secondAttribute="centerX" id="c05"/>
-
-                            <!-- "tenovski" label: centred horizontally, 40 pt above safe-area bottom -->
-                            <constraint firstItem="kl2-pb-tn" firstAttribute="centerX" secondItem="Ze5-6b-2t3" secondAttribute="centerX" id="c06"/>
-                            <constraint firstItem="Bcu-3y-fUS" firstAttribute="bottom" secondItem="kl2-pb-tn" secondAttribute="bottom" constant="40" id="c07"/>
-
-                            <!-- "by" sits 2 pt above "tenovski" -->
-                            <constraint firstItem="kl2-pb-tn" firstAttribute="top" secondItem="kl1-pb-by" secondAttribute="bottom" constant="2" id="c08"/>
                         </constraints>
                     </view>
                 </viewController>

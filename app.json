@@ -51,7 +51,6 @@
       "@react-native-community/datetimepicker",
       "expo-web-browser",
       "expo-splash-screen",
-      "./plugins/withAndroidSplashBranding",
       "./plugins/withCustomSplash"
     ],
     "ios": {
