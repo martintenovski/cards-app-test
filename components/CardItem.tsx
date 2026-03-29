@@ -357,6 +357,7 @@ export function CardItem({
             {hasBottomRight ? (
               <View style={styles.footerColRight}>
                 {content.bottomRightLabel === "Brand" &&
+                "brand" in card &&
                 (card.brand === "visa" || card.brand === "mastercard") ? (
                   card.brand === "visa" ? (
                     <Image
