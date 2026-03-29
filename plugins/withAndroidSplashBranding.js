@@ -129,12 +129,32 @@ const DENSITIES = [
   { folder: 'drawable-xxxhdpi', scale: 12 },
 ];
 
-// ─── Styles.xml patch ─────────────────────────────────────────────────────────
-// NOTE: windowSplashScreenBrandingImage is not defined by expo-splash-screen
-// and is not part of the Android compat SplashScreen attrs — omitting it.
+// ─── Android 12+ branding-image style override ───────────────────────────────
+// `android:windowSplashScreenBrandingImage` is available from API 31 (Android
+// 12).  We create a `values-v31/styles.xml` that inherits the base splash theme
+// and adds the branding drawable.  This keeps pre-12 devices unaffected while
+// showing the "by tenovski" branding on 12+.
 
-function patchStylesXml(stylesPath) {
-  // Nothing to patch — branding image attr not supported in this SDK version.
+function writeV31StylesOverride(resRoot) {
+  const dir = path.join(resRoot, 'values-v31');
+  fs.mkdirSync(dir, { recursive: true });
+
+  const xml = [
+    '<?xml version="1.0" encoding="utf-8"?>',
+    '<resources>',
+    '  <style name="Theme.App.SplashScreen" parent="Theme.SplashScreen">',
+    '    <item name="windowSplashScreenBackground">@color/splashscreen_background</item>',
+    '    <item name="windowSplashScreenAnimatedIcon">@drawable/splashscreen_logo</item>',
+    '    <item name="postSplashScreenTheme">@style/AppTheme</item>',
+    '    <item name="android:windowSplashScreenBrandingImage">@drawable/splash_branding</item>',
+    '  </style>',
+    '</resources>',
+    '',
+  ].join('\n');
+
+  const dest = path.join(dir, 'styles.xml');
+  fs.writeFileSync(dest, xml, 'utf-8');
+  console.log(`[withAndroidSplashBranding] wrote values-v31/styles.xml`);
 }
 
 // ─── Config plugin ────────────────────────────────────────────────────────────
@@ -154,8 +174,8 @@ const withAndroidSplashBranding = (config) =>
         console.log(`[withAndroidSplashBranding] wrote ${folder}/splash_branding.png`);
       }
 
-      // 2. Patch styles.xml
-      patchStylesXml(path.join(resRoot, 'values', 'styles.xml'));
+      // 2. Write Android 12+ style override with branding image
+      writeV31StylesOverride(resRoot);
 
       return modConfig;
     },

@@ -16,6 +16,7 @@ import { useCardStore } from "@/store/useCardStore";
 import { APP_THEME, resolveTheme } from "@/utils/theme";
 
 const AUTO_AUTH_DELAY_MS = 180;
+const AUTH_COOLDOWN_MS = 1200;
 const DEFAULT_UNLOCK_MESSAGE =
   "Use your biometrics or device passcode to unlock this wallet.";
 const RESUME_UNLOCK_MESSAGE = "Unlocking Pocket ID after returning to the app.";
@@ -64,7 +65,6 @@ function getBiometricPromptCopy(
   const hasFingerprint = types.includes(
     LocalAuthentication.AuthenticationType.FINGERPRINT,
   );
-  const hasIris = types.includes(LocalAuthentication.AuthenticationType.IRIS);
 
   if (Platform.OS === "ios") {
     if (hasFace) {
@@ -82,24 +82,14 @@ function getBiometricPromptCopy(
     }
   }
 
-  if (hasFace) {
+  // On Android, the system BiometricPrompt handles the UI for whichever
+  // method is enrolled (fingerprint, face, iris).  Show a generic label so
+  // users are never confused by e.g. "Face Unlock" when their device only
+  // has a fingerprint sensor, or vice-versa.
+  if (hasFingerprint || hasFace) {
     return {
-      label: "face unlock",
-      buttonText: "Use Face Unlock",
-    };
-  }
-
-  if (hasFingerprint) {
-    return {
-      label: "fingerprint",
-      buttonText: "Use Fingerprint",
-    };
-  }
-
-  if (hasIris) {
-    return {
-      label: "iris scan",
-      buttonText: "Use Iris Scan",
+      label: "biometric lock",
+      buttonText: "Unlock with Biometrics",
     };
   }
 
@@ -151,6 +141,7 @@ export function AppLockGate({ children }: AppLockGateProps) {
   );
   const authInFlightRef = useRef(false);
   const authPromptActiveRef = useRef(false);
+  const authCooldownUntilRef = useRef(0);
   const autoAuthenticateTimeoutRef = useRef<ReturnType<
     typeof setTimeout
   > | null>(null);
@@ -259,8 +250,21 @@ export function AppLockGate({ children }: AppLockGateProps) {
       setMessage("Authentication is temporarily unavailable. Try again.");
     } finally {
       authInFlightRef.current = false;
-      authPromptActiveRef.current = false;
       setIsAuthenticating(false);
+      // On Android the biometric prompt runs as a system dialog that can
+      // push the app to "background".  The AppState transition back to
+      // "active" sometimes fires AFTER the promise resolves and the refs
+      // are cleared, which causes an immediate re-lock.  Keep the prompt
+      // guard active for a short cooldown so the AppState handler ignores
+      // the stale background→active transition.
+      if (Platform.OS === "android") {
+        authCooldownUntilRef.current = Date.now() + AUTH_COOLDOWN_MS;
+        setTimeout(() => {
+          authPromptActiveRef.current = false;
+        }, AUTH_COOLDOWN_MS);
+      } else {
+        authPromptActiveRef.current = false;
+      }
     }
   };
 
@@ -347,7 +351,8 @@ export function AppLockGate({ children }: AppLockGateProps) {
         isSupported &&
         appLockEnabled &&
         backgroundedSinceUnlockRef.current &&
-        !authPromptActiveRef.current
+        !authPromptActiveRef.current &&
+        Date.now() > authCooldownUntilRef.current
       ) {
         backgroundedSinceUnlockRef.current = false;
         setIsUnlocked(false);
