@@ -188,6 +188,7 @@ export function AppLockGate({ children }: AppLockGateProps) {
 
         if (result.success) {
           backgroundedSinceUnlockRef.current = false;
+          setIsPreviewHidden(false);
           setIsUnlocked(true);
           setHasAuthFailed(false);
           setHasCompletedAppLockSetup(true);
@@ -209,6 +210,7 @@ export function AppLockGate({ children }: AppLockGateProps) {
 
       if (biometricResult.success) {
         backgroundedSinceUnlockRef.current = false;
+        setIsPreviewHidden(false);
         setIsUnlocked(true);
         setHasAuthFailed(false);
         setHasCompletedAppLockSetup(true);
@@ -228,6 +230,7 @@ export function AppLockGate({ children }: AppLockGateProps) {
 
         if (fallbackResult.success) {
           backgroundedSinceUnlockRef.current = false;
+          setIsPreviewHidden(false);
           setIsUnlocked(true);
           setHasAuthFailed(false);
           setHasCompletedAppLockSetup(true);
@@ -355,6 +358,7 @@ export function AppLockGate({ children }: AppLockGateProps) {
         Date.now() > authCooldownUntilRef.current
       ) {
         backgroundedSinceUnlockRef.current = false;
+        setIsPreviewHidden(false);
         setIsUnlocked(false);
         setMessage(RESUME_UNLOCK_MESSAGE);
         setShouldAutoAuthenticate(true);
