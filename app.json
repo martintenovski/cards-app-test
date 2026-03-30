@@ -42,7 +42,9 @@
       [
         "./node_modules/rn-mlkit-ocr/app.plugin.js",
         {
-          "ocrModels": ["latin"],
+          "ocrModels": [
+            "latin"
+          ],
           "ocrUseBundled": true
         }
       ],
@@ -83,10 +85,12 @@
         "backgroundImage": "./assets/droid-icon-background.png",
         "monochromeImage": "./assets/droid-monochrome.png"
       },
-      "versionCode": 49,
+      "versionCode": 50,
       "predictiveBackGestureEnabled": false,
       "package": "com.tenovski.cardsapp",
-      "permissions": ["android.permission.POST_NOTIFICATIONS"]
+      "permissions": [
+        "android.permission.POST_NOTIFICATIONS"
+      ]
     },
     "androidStatusBar": {
       "backgroundColor": "#1C1E21",

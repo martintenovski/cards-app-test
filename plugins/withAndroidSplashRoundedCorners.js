@@ -40,7 +40,7 @@ const withAndroidSplashRoundedCorners = (config) => {
         "src",
         "main",
         "res",
-        "drawable",
+        "drawable-v26",
       );
       fs.mkdirSync(drawableDir, { recursive: true });
       fs.writeFileSync(
