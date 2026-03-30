@@ -55,29 +55,15 @@ function buildStoryboard(logoAsset) {
                         <rect key="frame" x="0.0" y="0.0" width="393" height="852"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
-
-                            <!-- App logo: fixed 88 × 88 pt, centred -->
-                            <imageView
-                                clipsSubviews="YES"
-                                userInteractionEnabled="NO"
-                                contentMode="scaleAspectFit"
-                                image="${logoAsset}"
-                                translatesAutoresizingMaskIntoConstraints="NO"
-                              id="HGe-GZ-ODE"/>
-
+                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" image="${logoAsset}" translatesAutoresizingMaskIntoConstraints="NO" id="HGe-GZ-ODE"/>
                         </subviews>
-
                         <viewLayoutGuide key="safeAreaLayoutGuide" id="Bcu-3y-fUS"/>
-
-                        <!-- Background: #1C1E21 -->
                         <color key="backgroundColor" red="0.110" green="0.118" blue="0.129" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
-
                         <constraints>
-                            <!-- Logo: centred X & Y, fixed 88 × 88 pt -->
                             <constraint firstItem="HGe-GZ-ODE" firstAttribute="centerX" secondItem="Ze5-6b-2t3" secondAttribute="centerX" id="c01"/>
                             <constraint firstItem="HGe-GZ-ODE" firstAttribute="centerY" secondItem="Ze5-6b-2t3" secondAttribute="centerY" id="c02"/>
-                            <constraint firstItem="HGe-GZ-ODE" firstAttribute="width"   constant="88" id="c03"/>
-                            <constraint firstItem="HGe-GZ-ODE" firstAttribute="height"  constant="88" id="c04"/>
+                            <constraint firstItem="HGe-GZ-ODE" firstAttribute="width" constant="88" id="c03"/>
+                            <constraint firstItem="HGe-GZ-ODE" firstAttribute="height" constant="88" id="c04"/>
                         </constraints>
                     </view>
                 </viewController>
@@ -122,11 +108,15 @@ const withCustomSplash = (config) => {
       if (!storyboardPath) {
         storyboardPath = candidates[0];
         fs.mkdirSync(path.dirname(storyboardPath), { recursive: true });
-        console.log(`[withCustomSplash] directory created for ${storyboardPath}`);
+        console.log(
+          `[withCustomSplash] directory created for ${storyboardPath}`,
+        );
       }
 
       const logoAsset = detectLogoAssetName(storyboardPath);
-      console.log(`[withCustomSplash] asset="${logoAsset}", writing ${storyboardPath}`);
+      console.log(
+        `[withCustomSplash] asset="${logoAsset}", writing ${storyboardPath}`,
+      );
       fs.writeFileSync(storyboardPath, buildStoryboard(logoAsset), "utf-8");
 
       return modConfig;
