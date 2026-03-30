@@ -25,7 +25,15 @@ import { useFonts } from "expo-font";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
-import { AppState, Image, LogBox, Platform, Text, useColorScheme, View } from "react-native";
+import {
+  AppState,
+  Image,
+  LogBox,
+  Platform,
+  Text,
+  useColorScheme,
+  View,
+} from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
@@ -50,9 +58,7 @@ export default function RootLayout() {
   const screenshotBlockingEnabled = useCardStore(
     (state) => state.screenshotBlockingEnabled,
   );
-  const lockScreenEnabled = useCardStore(
-    (state) => state.lockScreenEnabled,
-  );
+  const lockScreenEnabled = useCardStore((state) => state.lockScreenEnabled);
   const resolvedTheme = resolveTheme(themePreference, deviceScheme);
   const colors = APP_THEME[resolvedTheme];
   const [fontsLoaded] = useFonts({

@@ -1658,6 +1658,8 @@ export function CardForm({
   const [focusedField, setFocusedField] = useState<FieldName | null>(null);
   const [androidKeyboardHeight, setAndroidKeyboardHeight] = useState(0);
   const inputRefs = useRef<Partial<Record<FieldName, TextInput | null>>>({});
+  const scrollRef = useRef<ScrollView>(null);
+  const scrollOffsetRef = useRef(0);
 
   const localizeFormText = (text: string) => {
     if (language !== "mk") return text;
@@ -1840,6 +1842,35 @@ export function CardForm({
     onSubmit(values, previewPalette);
   };
 
+  const scrollToFocusedInput = (fieldKey: FieldName) => {
+    const input = inputRefs.current[fieldKey];
+    if (!input || !scrollRef.current) return;
+    const delay = Platform.OS === "ios" ? 250 : 350;
+    setTimeout(() => {
+      (input as unknown as View).measureInWindow(
+        (_x: number, inputY: number, _w: number, _h: number) => {
+          if (inputY === undefined) return;
+          (scrollRef.current as unknown as View)?.measureInWindow(
+            (_sx: number, scrollY: number, _sw: number, scrollH: number) => {
+              const relativeY = inputY - scrollY;
+              const visibleHeight =
+                scrollH -
+                (Platform.OS === "android" ? androidKeyboardHeight : 0);
+              if (relativeY > visibleHeight * 0.5 || relativeY < 0) {
+                const targetY = scrollH * 0.25;
+                const delta = relativeY - targetY;
+                scrollRef.current?.scrollTo({
+                  y: Math.max(0, scrollOffsetRef.current + delta),
+                  animated: true,
+                });
+              }
+            },
+          );
+        },
+      );
+    }, delay);
+  };
+
   const focusField = (field: FieldName | undefined) => {
     if (!field) {
       Keyboard.dismiss();
@@ -1849,6 +1880,7 @@ export function CardForm({
 
     inputRefs.current[field]?.focus();
     setFocusedField(field);
+    scrollToFocusedInput(field);
   };
 
   const focusedFieldIndex = focusedField
@@ -1895,6 +1927,7 @@ export function CardForm({
     };
     const handleFocus = () => {
       setFocusedField(field.key);
+      scrollToFocusedInput(field.key);
     };
     const handleSubmitEditing = () => {
       focusField(isLastEditableField ? undefined : nextField);
@@ -2001,6 +2034,7 @@ export function CardForm({
       keyboardVerticalOffset={0}
     >
       <ScrollView
+        ref={scrollRef}
         style={formSt.scroll}
         contentContainerStyle={[
           formSt.content,
@@ -2013,6 +2047,7 @@ export function CardForm({
         keyboardShouldPersistTaps="handled"
         scrollEventThrottle={16}
         onScroll={(event: NativeSyntheticEvent<NativeScrollEvent>) => {
+          scrollOffsetRef.current = event.nativeEvent.contentOffset.y;
           onScrollOffsetChange?.(event.nativeEvent.contentOffset.y);
         }}
       >

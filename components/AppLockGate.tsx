@@ -419,29 +419,30 @@ export function AppLockGate({ children }: AppLockGateProps) {
     };
   }, []);
 
-  const previewShield = isPreviewHidden && lockScreenEnabled ? (
-    <View
-      pointerEvents="none"
-      style={[styles.previewShield, { backgroundColor: colors.background }]}
-    >
+  const previewShield =
+    isPreviewHidden && lockScreenEnabled ? (
       <View
-        style={[
-          styles.lockCard,
-          { backgroundColor: colors.surface, borderColor: colors.border },
-        ]}
+        pointerEvents="none"
+        style={[styles.previewShield, { backgroundColor: colors.background }]}
       >
-        <View style={[styles.lockIcon, { backgroundColor: colors.input }]}>
-          <Feather name="shield" size={30} color={colors.text} />
+        <View
+          style={[
+            styles.lockCard,
+            { backgroundColor: colors.surface, borderColor: colors.border },
+          ]}
+        >
+          <View style={[styles.lockIcon, { backgroundColor: colors.input }]}>
+            <Feather name="shield" size={30} color={colors.text} />
+          </View>
+          <Text style={[styles.title, { color: colors.text }]}>
+            App preview unavailable for security reasons
+          </Text>
+          <Text style={[styles.body, { color: colors.textMuted }]}>
+            Return to Pocket ID to continue.
+          </Text>
         </View>
-        <Text style={[styles.title, { color: colors.text }]}>
-          App preview unavailable for security reasons
-        </Text>
-        <Text style={[styles.body, { color: colors.textMuted }]}>
-          Return to Pocket ID to continue.
-        </Text>
       </View>
-    </View>
-  ) : null;
+    ) : null;
 
   if (!appLockEnabled) {
     return (
@@ -551,96 +552,107 @@ export function AppLockGate({ children }: AppLockGateProps) {
   return (
     <>
       {children}
-      <View style={[styles.lockScreenOverlay, { backgroundColor: colors.background }]}>
       <View
         style={[
-          styles.lockCard,
-          { backgroundColor: colors.surface, borderColor: colors.border },
+          styles.lockScreenOverlay,
+          { backgroundColor: colors.background },
         ]}
       >
-        <View style={[styles.lockIcon, { backgroundColor: colors.input }]}>
-          <Feather name="shield" size={30} color={colors.text} />
-        </View>
-        <Text style={[styles.title, { color: colors.text }]}>
-          App preview unavailable for security reasons
-        </Text>
-        <Text style={[styles.body, { color: colors.textMuted }]}>
-          {message}
-        </Text>
-        {isAuthenticating ? (
-          <View
-            style={[
-              styles.button,
-              {
-                backgroundColor: colors.accent,
-                opacity: 0.85,
-              },
-            ]}
-          >
-            <ActivityIndicator size="small" color={colors.accentText} />
-            <Text style={[styles.buttonText, { color: colors.accentText }]}>
-              Checking…
-            </Text>
+        <View
+          style={[
+            styles.lockCard,
+            { backgroundColor: colors.surface, borderColor: colors.border },
+          ]}
+        >
+          <View style={[styles.lockIcon, { backgroundColor: colors.input }]}>
+            <Feather name="shield" size={30} color={colors.text} />
           </View>
-        ) : hasAuthFailed ? (
-          <>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => {
-                setShouldAutoAuthenticate(true);
-              }}
+          <Text style={[styles.title, { color: colors.text }]}>
+            App preview unavailable for security reasons
+          </Text>
+          <Text style={[styles.body, { color: colors.textMuted }]}>
+            {message}
+          </Text>
+          {isAuthenticating ? (
+            <View
               style={[
                 styles.button,
                 {
                   backgroundColor: colors.accent,
+                  opacity: 0.85,
                 },
               ]}
             >
-              <Feather name="refresh-cw" size={18} color={colors.accentText} />
+              <ActivityIndicator size="small" color={colors.accentText} />
               <Text style={[styles.buttonText, { color: colors.accentText }]}>
-                Try Again
+                Checking…
               </Text>
-            </Pressable>
-            {isInAppLockSetupFlow ? (
+            </View>
+          ) : hasAuthFailed ? (
+            <>
               <Pressable
                 accessibilityRole="button"
-                onPress={cancelAppLockSetup}
+                onPress={() => {
+                  setShouldAutoAuthenticate(true);
+                }}
                 style={[
-                  styles.secondaryButton,
-                  styles.secondaryAction,
+                  styles.button,
                   {
-                    backgroundColor: colors.surfaceMuted,
-                    borderColor: colors.buttonBorder,
+                    backgroundColor: colors.accent,
                   },
                 ]}
               >
-                <Text
-                  style={[styles.secondaryButtonText, { color: colors.text }]}
-                >
-                  Setup later
+                <Feather
+                  name="refresh-cw"
+                  size={18}
+                  color={colors.accentText}
+                />
+                <Text style={[styles.buttonText, { color: colors.accentText }]}>
+                  Try Again
                 </Text>
               </Pressable>
-            ) : null}
-          </>
-        ) : isInAppLockSetupFlow ? (
-          <Pressable
-            accessibilityRole="button"
-            onPress={cancelAppLockSetup}
-            style={[
-              styles.secondaryButton,
-              styles.secondaryAction,
-              {
-                backgroundColor: colors.surfaceMuted,
-                borderColor: colors.buttonBorder,
-              },
-            ]}
-          >
-            <Text style={[styles.secondaryButtonText, { color: colors.text }]}>
-              Setup later
-            </Text>
-          </Pressable>
-        ) : null}
-      </View>
+              {isInAppLockSetupFlow ? (
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={cancelAppLockSetup}
+                  style={[
+                    styles.secondaryButton,
+                    styles.secondaryAction,
+                    {
+                      backgroundColor: colors.surfaceMuted,
+                      borderColor: colors.buttonBorder,
+                    },
+                  ]}
+                >
+                  <Text
+                    style={[styles.secondaryButtonText, { color: colors.text }]}
+                  >
+                    Setup later
+                  </Text>
+                </Pressable>
+              ) : null}
+            </>
+          ) : isInAppLockSetupFlow ? (
+            <Pressable
+              accessibilityRole="button"
+              onPress={cancelAppLockSetup}
+              style={[
+                styles.secondaryButton,
+                styles.secondaryAction,
+                {
+                  backgroundColor: colors.surfaceMuted,
+                  borderColor: colors.buttonBorder,
+                },
+              ]}
+            >
+              <Text
+                style={[styles.secondaryButtonText, { color: colors.text }]}
+              >
+                Setup later
+              </Text>
+            </Pressable>
+          ) : null}
+        </View>
       </View>
     </>
   );

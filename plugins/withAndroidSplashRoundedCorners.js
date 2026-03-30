@@ -36,15 +36,21 @@ const withAndroidSplashRoundedCorners = (config) => {
     (modConfig) => {
       const drawableDir = path.join(
         modConfig.modRequest.platformProjectRoot,
-        "app", "src", "main", "res", "drawable"
+        "app",
+        "src",
+        "main",
+        "res",
+        "drawable",
       );
       fs.mkdirSync(drawableDir, { recursive: true });
       fs.writeFileSync(
         path.join(drawableDir, "splashscreen_logo_rounded.xml"),
         ADAPTIVE_ICON_XML,
-        "utf-8"
+        "utf-8",
       );
-      console.log("[withAndroidSplashRoundedCorners] wrote splashscreen_logo_rounded.xml");
+      console.log(
+        "[withAndroidSplashRoundedCorners] wrote splashscreen_logo_rounded.xml",
+      );
       return modConfig;
     },
   ]);
@@ -58,15 +64,17 @@ const withAndroidSplashRoundedCorners = (config) => {
   config = withAndroidStyles(config, (config) => {
     const styles = config.modResults;
     const splashStyle = styles.resources.style?.find(
-      (s) => s.$.name === "Theme.App.SplashScreen"
+      (s) => s.$.name === "Theme.App.SplashScreen",
     );
     if (splashStyle) {
       const iconItem = splashStyle.item?.find(
-        (i) => i.$.name === "windowSplashScreenAnimatedIcon"
+        (i) => i.$.name === "windowSplashScreenAnimatedIcon",
       );
       if (iconItem) {
         iconItem._ = "@drawable/splashscreen_logo_rounded";
-        console.log("[withAndroidSplashRoundedCorners] patched windowSplashScreenAnimatedIcon");
+        console.log(
+          "[withAndroidSplashRoundedCorners] patched windowSplashScreenAnimatedIcon",
+        );
       }
     }
     return config;
