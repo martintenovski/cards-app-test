@@ -50,6 +50,7 @@
       ],
       "@react-native-community/datetimepicker",
       "expo-web-browser",
+      "./plugins/withAndroidSplashRoundedCorners",
       [
         "expo-splash-screen",
         {
