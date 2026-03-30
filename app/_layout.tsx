@@ -25,7 +25,7 @@ import { useFonts } from "expo-font";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
-import { Image, LogBox, Text, useColorScheme, View } from "react-native";
+import { AppState, Image, LogBox, Platform, Text, useColorScheme, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 
@@ -49,6 +49,9 @@ export default function RootLayout() {
   const themePreference = useCardStore((state) => state.themePreference);
   const screenshotBlockingEnabled = useCardStore(
     (state) => state.screenshotBlockingEnabled,
+  );
+  const lockScreenEnabled = useCardStore(
+    (state) => state.lockScreenEnabled,
   );
   const resolvedTheme = resolveTheme(themePreference, deviceScheme);
   const colors = APP_THEME[resolvedTheme];
@@ -93,6 +96,28 @@ export default function RootLayout() {
       void ScreenCapture.allowScreenCaptureAsync();
     }
   }, [screenshotBlockingEnabled]);
+
+  // On Android the React Native overlay used as a preview shield isn't
+  // captured by the system's recent-apps screenshot — only FLAG_SECURE is.
+  // When the user has "hide screen content" enabled, toggle FLAG_SECURE via
+  // expo-screen-capture so the app shows as blank in the recent-apps switcher.
+  useEffect(() => {
+    if (Platform.OS !== "android" || !lockScreenEnabled) return;
+
+    const sub = AppState.addEventListener("change", (nextState) => {
+      if (nextState === "background" || nextState === "inactive") {
+        void ScreenCapture.preventScreenCaptureAsync();
+      } else if (nextState === "active") {
+        // Restore capture state on foreground.
+        // Keep prevented only if the user also enabled screenshot blocking.
+        if (!screenshotBlockingEnabled) {
+          void ScreenCapture.allowScreenCaptureAsync();
+        }
+      }
+    });
+
+    return () => sub.remove();
+  }, [lockScreenEnabled, screenshotBlockingEnabled]);
 
   // Navigate to card-detail when a notification is tapped
   useEffect(() => {

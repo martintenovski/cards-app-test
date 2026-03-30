@@ -549,7 +549,9 @@ export function AppLockGate({ children }: AppLockGateProps) {
   }
 
   return (
-    <View style={[styles.lockScreen, { backgroundColor: colors.background }]}>
+    <>
+      {children}
+      <View style={[styles.lockScreenOverlay, { backgroundColor: colors.background }]}>
       <View
         style={[
           styles.lockCard,
@@ -639,7 +641,8 @@ export function AppLockGate({ children }: AppLockGateProps) {
           </Pressable>
         ) : null}
       </View>
-    </View>
+      </View>
+    </>
   );
 }
 
@@ -649,6 +652,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingHorizontal: 24,
+  },
+  lockScreenOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 24,
+    zIndex: 9999,
+    elevation: 9999,
   },
   lockCard: {
     width: "100%",
