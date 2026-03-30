@@ -360,9 +360,23 @@ export function getSupportLoadErrorMessage(error: unknown) {
     .join("\n\n");
 }
 
+/**
+ * On Android, RevenueCat returns subscription identifiers as
+ * `productId:basePlanId` (e.g. `supporter_monthly:monthly`). Strip the
+ * base-plan suffix so comparisons against our canonical product IDs work
+ * on both platforms.
+ */
+export function normalizeProductId(identifier: string) {
+  if (Platform.OS !== "android") {
+    return identifier;
+  }
+  const colonIndex = identifier.indexOf(":");
+  return colonIndex === -1 ? identifier : identifier.slice(0, colonIndex);
+}
+
 function logSupportPackageStatus(offering: PurchasesOffering) {
   const availableProductIds = offering.availablePackages.map(
-    (pkg) => pkg.product.identifier,
+    (pkg) => normalizeProductId(pkg.product.identifier),
   );
   const missingProductIds = PRODUCT_ORDER.filter(
     (productId) => !availableProductIds.includes(productId),
@@ -553,16 +567,16 @@ export async function getSupportPackages(): Promise<PurchasesPackage[]> {
   return [...offering.availablePackages]
     .filter((pkg) =>
       PRODUCT_ORDER.includes(
-        pkg.product.identifier as (typeof PRODUCT_ORDER)[number],
+        normalizeProductId(pkg.product.identifier) as (typeof PRODUCT_ORDER)[number],
       ),
     )
     .sort(
       (left, right) =>
         PRODUCT_ORDER.indexOf(
-          left.product.identifier as (typeof PRODUCT_ORDER)[number],
+          normalizeProductId(left.product.identifier) as (typeof PRODUCT_ORDER)[number],
         ) -
         PRODUCT_ORDER.indexOf(
-          right.product.identifier as (typeof PRODUCT_ORDER)[number],
+          normalizeProductId(right.product.identifier) as (typeof PRODUCT_ORDER)[number],
         ),
     );
 }

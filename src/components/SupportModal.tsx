@@ -38,6 +38,7 @@ import {
   getSupportLoadErrorMessage,
   getSupportPackages,
   getSupportProductPurchaseCount,
+  normalizeProductId,
   openMonthlySubscriptionManagement,
   purchaseSupportPackage,
 } from "@/src/services/purchases";
@@ -214,7 +215,7 @@ export function SupportModal({
   };
 
   const handlePurchase = async (aPackage: PurchasesPackage) => {
-    const productId = aPackage.product.identifier;
+    const productId = normalizeProductId(aPackage.product.identifier);
 
     if (!canPurchaseSupportProduct(customerInfo, productId)) {
       setErrorMessage(
@@ -312,10 +313,10 @@ export function SupportModal({
       >
         {(() => {
           const monthlyPackage = packages.find(
-            (candidate) => candidate.product.identifier === "supporter_monthly",
+            (candidate) => normalizeProductId(candidate.product.identifier) === "supporter_monthly",
           );
           const oneTimePackages = packages.filter(
-            (candidate) => candidate.product.identifier !== "supporter_monthly",
+            (candidate) => normalizeProductId(candidate.product.identifier) !== "supporter_monthly",
           );
 
           return (
@@ -354,7 +355,7 @@ export function SupportModal({
                     </Text>
                     <Text style={styles.featuredBody}>
                       {monthlyPackage.product.description ||
-                        fallbackDescription(monthlyPackage.product.identifier)}
+                        fallbackDescription(normalizeProductId(monthlyPackage.product.identifier))}
                     </Text>
 
                     <View style={styles.featuredHighlights}>
@@ -462,31 +463,32 @@ export function SupportModal({
                   </Text>
                   {oneTimePackages.map((aPackage) => {
                     const product = aPackage.product;
+                    const normalizedId = normalizeProductId(product.identifier);
                     const packageDescription =
                       product.description ||
-                      fallbackDescription(product.identifier);
+                      fallbackDescription(normalizedId);
                     const isPurchasing =
                       purchasingIdentifier === product.identifier;
                     const purchaseCount = getSupportProductPurchaseCount(
                       customerInfo,
-                      product.identifier,
+                      normalizedId,
                     );
                     const shouldShowPurchaseCountBadge =
                       purchaseCount > 0 &&
-                      product.identifier !== "supporter_lifetime";
+                      normalizedId !== "supporter_lifetime";
                     const canPurchase = canPurchaseSupportProduct(
                       customerInfo,
-                      product.identifier,
+                      normalizedId,
                     );
                     const buttonDisabled =
                       Boolean(purchasingIdentifier) || !canPurchase;
                     const buttonLabel = !canPurchase
-                      ? product.identifier === "supporter_lifetime"
+                      ? normalizedId === "supporter_lifetime"
                         ? "Owned"
                         : "Added"
                       : isPurchasing
                         ? "Buying…"
-                        : product.identifier === "supporter_lifetime"
+                        : normalizedId === "supporter_lifetime"
                           ? "Unlock forever"
                           : "Buy";
 
@@ -517,7 +519,7 @@ export function SupportModal({
                                 { color: colors.textMuted },
                               ]}
                             >
-                              {product.identifier === "supporter_lifetime"
+                              {normalizedId === "supporter_lifetime"
                                 ? "Lifetime"
                                 : "One-time"}
                             </Text>
