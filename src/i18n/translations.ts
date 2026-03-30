@@ -163,10 +163,6 @@ export type TranslationKeys = {
   settings_view_support_options: string;
   settings_restore_purchases: string;
 
-  settings_section_open_source: string;
-  settings_open_source_body: string;
-  settings_open_on_github: string;
-
   settings_section_developer: string;
   settings_send_test_notification: string;
   settings_view_onboarding: string;
@@ -367,11 +363,6 @@ export const translations: Record<LanguageCode, TranslationKeys> = {
     settings_support_tips_count: "Total tips count",
     settings_view_support_options: "View Support Options",
     settings_restore_purchases: "Restore Purchases",
-
-    settings_section_open_source: "Open Source",
-    settings_open_source_body:
-      "Pocket ID is fully open source. Browse the code, report issues, or contribute on GitHub.",
-    settings_open_on_github: "Open on GitHub",
 
     settings_section_developer: "Developer Actions",
     settings_send_test_notification: "Send test notification (5 s)",
@@ -577,11 +568,6 @@ export const translations: Record<LanguageCode, TranslationKeys> = {
     settings_support_tips_count: "Вкупен број на поддршки",
     settings_view_support_options: "Погледни опции за поддршка",
     settings_restore_purchases: "Врати купувања",
-
-    settings_section_open_source: "Отворен код",
-    settings_open_source_body:
-      "Pocket ID е целосно со отворен код. Прегледај го кодот, пријави проблеми или придонеси на GitHub.",
-    settings_open_on_github: "Отвори на GitHub",
 
     settings_section_developer: "Акции за тестери",
     settings_send_test_notification: "Испрати тест известување (5 с)",
