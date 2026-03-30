@@ -441,11 +441,11 @@ export default function SettingsScreen() {
   };
 
   const handleDeleteData = () => {
-    if (!authUser) return;
-
     Alert.alert(
       "Delete your local data?",
-      "This removes your synced wallet data and clears saved cards on this device. Your Google sign-in remains available, but this action cannot be undone.",
+      authUser
+        ? "This removes your synced wallet data and clears saved cards on this device. Your Google sign-in remains available, but this action cannot be undone."
+        : "This clears all saved cards on this device. This action cannot be undone.",
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -454,13 +454,17 @@ export default function SettingsScreen() {
           onPress: async () => {
             try {
               setAuthBusy("delete-data");
-              setSyncState("idle");
-              await deleteWalletSnapshot(authUser.id);
-              suppressNextAutoSync();
+              if (authUser) {
+                setSyncState("idle");
+                await deleteWalletSnapshot(authUser.id);
+                suppressNextAutoSync();
+              }
               replaceCards([]);
               Alert.alert(
                 "Data deleted",
-                "Pocket ID removed your synced wallet data and cleared the saved cards on this device.",
+                authUser
+                  ? "Pocket ID removed your synced wallet data and cleared the saved cards on this device."
+                  : "Pocket ID cleared all saved cards on this device.",
               );
             } catch {
               Alert.alert(
@@ -999,22 +1003,6 @@ export default function SettingsScreen() {
                         : "Sync Cloud Data"}
                     </Text>
                   </Pressable>
-                  <Pressable
-                    onPress={handleDeleteData}
-                    style={[
-                      styles.testBtn,
-                      {
-                        backgroundColor: colors.surfaceMuted,
-                        borderColor: colors.buttonBorder,
-                      },
-                    ]}
-                  >
-                    <Text style={[styles.testBtnText, { color: colors.text }]}>
-                      {authBusy === "delete-data"
-                        ? "Deleting data on this device…"
-                        : "Delete My Local Data"}
-                    </Text>
-                  </Pressable>
                 </>
               ) : null}
 
@@ -1061,6 +1049,32 @@ export default function SettingsScreen() {
               </View>
             </>
           )}
+        </View>
+
+        <View style={[styles.section, { backgroundColor: colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            Data Management
+          </Text>
+          <Text style={[styles.sectionBody, { color: colors.textMuted }]}>
+            Manage the card data stored on this device.
+          </Text>
+          <Pressable
+            onPress={handleDeleteData}
+            style={[
+              styles.testBtn,
+              styles.dangerButton,
+              {
+                backgroundColor: colors.dangerSoft,
+                borderColor: colors.danger,
+              },
+            ]}
+          >
+            <Text style={[styles.testBtnText, { color: colors.danger }]}>
+              {authBusy === "delete-data"
+                ? "Deleting data on this device…"
+                : "Delete My Local Data"}
+            </Text>
+          </Pressable>
         </View>
 
         <View style={[styles.section, { backgroundColor: colors.surface }]}>
