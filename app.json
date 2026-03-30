@@ -50,13 +50,20 @@
       ],
       "@react-native-community/datetimepicker",
       "expo-web-browser",
-      "expo-splash-screen",
-      "./plugins/withCustomSplash"
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/ios-logo.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#1C1E21",
+          "imageWidth": 88
+        }
+      ]
     ],
     "ios": {
       "icon": "./assets/ios-logo.png",
       "supportsTablet": true,
-      "buildNumber": "1",
+      "buildNumber": "4",
       "bundleIdentifier": "com.tenovski.cardsapp",
       "infoPlist": {
         "NSCameraUsageDescription": "Allow Pocket ID to use the camera so you can scan cards and documents into editable drafts.",
