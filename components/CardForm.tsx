@@ -493,9 +493,28 @@ function getFormSections(values: CardFormValues): {
         {
           key: "secondaryNumber",
           label: "Class / restrictions",
-          kind: "doc-code",
+          kind: "select",
           helperText:
-            "Use the class, endorsements or restrictions exactly as shown.",
+            "Choose the vehicle category shown on your licence.",
+          options: [
+            { label: "AM – Mopeds (≤ 45 km/h)", value: "AM" },
+            { label: "A1 – Light motorcycles (≤ 125cc)", value: "A1" },
+            { label: "A2 – Medium motorcycles", value: "A2" },
+            { label: "A – All motorcycles", value: "A" },
+            { label: "B1 – Quadricycles", value: "B1" },
+            { label: "B – Cars (≤ 3500 kg)", value: "B" },
+            { label: "B96 – Car + trailer (> 3500 kg)", value: "B96" },
+            { label: "BE – Car + heavy trailer", value: "BE" },
+            { label: "C1 – Medium trucks (3500–7500 kg)", value: "C1" },
+            { label: "C1E – C1 + trailer", value: "C1E" },
+            { label: "C – Heavy trucks (> 3500 kg)", value: "C" },
+            { label: "CE – C + trailer", value: "CE" },
+            { label: "D1 – Minibus (≤ 16 passengers)", value: "D1" },
+            { label: "D1E – D1 + trailer", value: "D1E" },
+            { label: "D – Bus (> 8 passengers)", value: "D" },
+            { label: "DE – D + trailer", value: "DE" },
+            { label: "T – Tractors & agricultural vehicles", value: "T" },
+          ],
         },
       ],
       back: [
@@ -715,8 +734,6 @@ function getRequiredFields(values: CardFormValues): FieldName[] {
                   "type",
                   "issuer",
                   "nameOnCard",
-                  "cardNumber",
-                  "address",
                   "dateOfIssue",
                   "dateOfExpiry",
                 ]
@@ -1243,6 +1260,8 @@ function DateRow({
   helperText,
   valid,
   required,
+  cancelLabel,
+  confirmLabel,
 }: {
   label: string;
   value: string;
@@ -1258,6 +1277,8 @@ function DateRow({
   helperText: string;
   valid: boolean;
   required?: boolean;
+  cancelLabel?: string;
+  confirmLabel?: string;
 }) {
   const [iosPickerVisible, setIosPickerVisible] = useState(false);
   const [iosDate, setIosDate] = useState<Date>(() =>
@@ -1379,7 +1400,7 @@ function DateRow({
                   style={iosSt.actionBtn}
                 >
                   <Text style={[iosSt.actionText, { color: colors.textMuted }]}>
-                    Cancel
+                    {cancelLabel ?? "Cancel"}
                   </Text>
                 </Pressable>
                 <Pressable
@@ -1394,7 +1415,7 @@ function DateRow({
                   style={iosSt.actionBtn}
                 >
                   <Text style={[iosSt.actionText, { color: colors.text }]}>
-                    Confirm
+                    {confirmLabel ?? "Confirm"}
                   </Text>
                 </Pressable>
               </View>
@@ -1417,6 +1438,7 @@ function CardColorPicker({
   pickerTitle,
   cancelLabel,
   applyLabel,
+  sectionLabel,
   colors,
 }: {
   presets: [string, string][];
@@ -1425,6 +1447,7 @@ function CardColorPicker({
   pickerTitle: string;
   cancelLabel: string;
   applyLabel: string;
+  sectionLabel: string;
   colors: ThemeColors;
 }) {
   const [customOpen, setCustomOpen] = useState(false);
@@ -1452,7 +1475,7 @@ function CardColorPicker({
   return (
     <View style={cpSt.wrap}>
       <Text style={[cpSt.sectionLabel, { color: colors.textSoft }]}>
-        CARD COLOR
+        {sectionLabel}
       </Text>
 
       <View style={cpSt.row}>
@@ -1746,6 +1769,25 @@ export function CardForm({
         "Оваа iOS верзија сè уште нема вграден избирач за датум. Засега внеси датум рачно.",
       "This Android build does not expose the native date picker yet. You can still type the date manually for now.":
         "Оваа Android верзија сè уште нема вграден избирач за датум. Засега внеси датум рачно.",
+      "Choose the vehicle category shown on your licence.":
+        "Избери категорија на возило прикажана на дозволата.",
+      "AM – Mopeds (≤ 45 km/h)": "AM – Мопеди (≤ 45 km/h)",
+      "A1 – Light motorcycles (≤ 125cc)": "A1 – Лесни мотоцикли (≤ 125cc)",
+      "A2 – Medium motorcycles": "A2 – Средни мотоцикли",
+      "A – All motorcycles": "A – Сите мотоцикли",
+      "B1 – Quadricycles": "B1 – Четириколесни возила",
+      "B – Cars (≤ 3500 kg)": "B – Автомобили (≤ 3500 kg)",
+      "B96 – Car + trailer (> 3500 kg)": "B96 – Автомобил + приколка (> 3500 kg)",
+      "BE – Car + heavy trailer": "BE – Автомобил + тешка приколка",
+      "C1 – Medium trucks (3500–7500 kg)": "C1 – Средни камиони (3500–7500 kg)",
+      "C1E – C1 + trailer": "C1E – C1 + приколка",
+      "C – Heavy trucks (> 3500 kg)": "C – Тешки камиони (> 3500 kg)",
+      "CE – C + trailer": "CE – C + приколка",
+      "D1 – Minibus (≤ 16 passengers)": "D1 – Минибус (≤ 16 патници)",
+      "D1E – D1 + trailer": "D1E – D1 + приколка",
+      "D – Bus (> 8 passengers)": "D – Автобус (> 8 патници)",
+      "DE – D + trailer": "DE – D + приколка",
+      "T – Tractors & agricultural vehicles": "T – Трактори и земјоделски возила",
     };
 
     return map[text] ?? text;
@@ -1989,6 +2031,8 @@ export function CardForm({
           helperText={localizeFormText(field.helperText)}
           valid={valid}
           required={required}
+          cancelLabel={tr("form_cancel_btn")}
+          confirmLabel={tr("form_confirm_btn")}
           onFocus={handleFocus}
           onSubmitEditing={handleSubmitEditing}
           returnKeyType={returnKeyType}
@@ -2039,7 +2083,7 @@ export function CardForm({
         contentContainerStyle={[
           formSt.content,
           {
-            paddingBottom: submitAreaHeight + 24,
+            paddingBottom: submitAreaHeight + 48,
             paddingHorizontal: contentHorizontalPadding,
           },
         ]}
@@ -2139,6 +2183,7 @@ export function CardForm({
           pickerTitle={tr("form_pick_color")}
           cancelLabel={tr("common_cancel")}
           applyLabel={tr("form_apply")}
+          sectionLabel={tr("form_card_color")}
           colors={colors}
         />
       </ScrollView>
@@ -2151,29 +2196,10 @@ export function CardForm({
               {
                 backgroundColor: colors.surface,
                 borderTopColor: colors.border,
+                justifyContent: "flex-end",
               },
             ]}
           >
-            <Pressable
-              accessibilityRole="button"
-              disabled={!nextField}
-              onPress={() => focusField(nextField)}
-              style={({ pressed }) => [
-                accessorySt.actionButton,
-                !nextField ? accessorySt.actionButtonDisabled : null,
-                pressed && nextField ? accessorySt.actionButtonPressed : null,
-              ]}
-            >
-              <Text
-                style={[
-                  accessorySt.actionText,
-                  { color: nextField ? colors.accent : colors.textSoft },
-                ]}
-              >
-                {tr("form_next")}
-              </Text>
-            </Pressable>
-
             <Pressable
               accessibilityRole="button"
               onPress={() => focusField(undefined)}
@@ -2209,29 +2235,10 @@ export function CardForm({
                 backgroundColor: colors.surface,
                 borderTopColor: colors.border,
                 borderColor: colors.border,
+                justifyContent: "flex-end",
               },
             ]}
           >
-            <Pressable
-              accessibilityRole="button"
-              disabled={!nextField}
-              onPress={() => focusField(nextField)}
-              style={({ pressed }) => [
-                accessorySt.actionButton,
-                !nextField ? accessorySt.actionButtonDisabled : null,
-                pressed && nextField ? accessorySt.actionButtonPressed : null,
-              ]}
-            >
-              <Text
-                style={[
-                  accessorySt.actionText,
-                  { color: nextField ? colors.accent : colors.textSoft },
-                ]}
-              >
-                {tr("form_next")}
-              </Text>
-            </Pressable>
-
             <Pressable
               accessibilityRole="button"
               onPress={() => focusField(undefined)}
@@ -2255,7 +2262,7 @@ export function CardForm({
         style={[
           formSt.submitContainer,
           {
-            paddingBottom: Math.max(insets.bottom, 12),
+            paddingBottom: Math.max(insets.bottom, 28),
             paddingHorizontal: contentHorizontalPadding,
             backgroundColor: colors.surface,
           },

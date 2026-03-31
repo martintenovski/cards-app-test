@@ -6,6 +6,7 @@ import {
 import type {
   DocumentClassificationResult,
   ExtractedFieldMap,
+  OcrLineCandidate,
   OcrProviderResult,
   ScanSide,
   ScanWarning,
@@ -30,16 +31,16 @@ const DATE_LABEL_PATTERNS: Array<{ label: ParsedDateLabel; pattern: RegExp }> =
   [
     {
       label: "birth",
-      pattern: /(?:date of birth|birth date|dob|born|birth)/i,
+      pattern: /(?:date of birth|birth date|dob|born|birth|\b3\.)/i,
     },
     {
       label: "issue",
-      pattern: /(?:date of issue|issued on|issued|issue date|issuing date)/i,
+      pattern: /(?:date of issue|issued on|issued|issue date|issuing date|\b4a\.)/i,
     },
     {
       label: "expiry",
       pattern:
-        /(?:date of expiry|expiry date|expiration date|expires|exp(?:iry)?|valid until|valid thru|valid to)/i,
+        /(?:date of expiry|expiry date|expiration date|expires|exp(?:iry)?|valid until|valid thru|valid to|\b4b\.)/i,
     },
   ];
 
@@ -106,21 +107,18 @@ const CATEGORY_KEYWORDS: Array<{
 ];
 
 const NATIONALITY_CODES = [
-  "USA",
-  "GBR",
-  "DEU",
-  "FRA",
-  "ITA",
-  "ESP",
-  "MKD",
-  "CAN",
-  "AUS",
-  "NLD",
-  "CHE",
-  "SWE",
-  "NOR",
-  "DNK",
-  "AUT",
+  // EU / EEA
+  "AUT", "BEL", "BGR", "HRV", "CYP", "CZE", "DNK", "EST",
+  "FIN", "FRA", "DEU", "GRC", "HUN", "IRL", "ITA", "LVA",
+  "LTU", "LUX", "MLT", "NLD", "POL", "PRT", "ROU", "SVK",
+  "SVN", "ESP", "SWE", "ISL", "LIE", "NOR", "CHE",
+  // Balkans (non-EU)
+  "MKD", "SRB", "BIH", "MNE", "ALB", "XKX",
+  // Major world
+  "USA", "CAN", "GBR", "AUS", "NZL", "JPN", "KOR", "CHN",
+  "IND", "BRA", "MEX", "ARG", "ZAF", "TUR", "RUS", "UKR",
+  "ISR", "ARE", "SAU", "EGY", "NGA", "KEN", "SGP", "MYS",
+  "IDN", "THA", "PHL", "VNM", "COL", "PER", "CHL",
 ];
 
 const NAME_REJECTED_KEYWORDS = [
@@ -136,6 +134,123 @@ const NAME_REJECTED_KEYWORDS = [
   "republic",
   "nationality",
   "address",
+];
+
+const BANK_CARD_REJECTED_TERMS = [
+  "visa",
+  "mastercard",
+  "maestro",
+  "american express",
+  "amex",
+  "discover",
+  "unionpay",
+  "jcb",
+  "diners",
+  "debit",
+  "credit",
+  "platinum",
+  "gold",
+  "classic",
+  "standard",
+  "signature",
+  "infinite",
+  "world",
+  "elite",
+  "business",
+  "corporate",
+  "prepaid",
+  "valid thru",
+  "valid through",
+  "valid until",
+  "expires end",
+  "member since",
+  "cardholder",
+  "card holder",
+  "interlink",
+  "electron",
+  "cirrus",
+  "contactless",
+  "checking",
+  "savings",
+  "account",
+];
+
+const PERSONAL_DOC_REJECTED_TERMS = [
+  "identity card", "id card", "лична карта", "lična karta",
+  "driving license", "driving licence", "driver license", "driver licence",
+  "permis de conduire", "führerschein", "возачка дозвола", "vozačka dozvola",
+  "passport", "passeport", "reisepass", "пасош",
+  "republic", "република", "republika", "republic of", "kingdom of",
+  "north macedonia", "северна македонија",
+  "european union", "united states", "united kingdom",
+  "ministry", "ministarstvo", "министерство",
+  "surname", "last name", "family name",
+  "given name", "given names", "first name",
+  "nom", "prénom", "prenom", "nachname", "vorname",
+  "prezime", "ime", "фамилија", "име",
+  "date of birth", "date of issue", "date of expiry",
+  "nationality", "sex", "gender",
+  "address", "place of birth",
+  "document no", "document number", "personal no", "personal number",
+  "card no", "issued by", "authority",
+  "valid until", "expires", "class", "categories",
+];
+
+const CLUB_CARD_REJECTED_TERMS = [
+  "member card", "membership card", "loyalty card", "club card",
+  "gym pass", "gym card", "reward card", "rewards card",
+  "vip card", "premium card", "loyalty program",
+  "membership", "member since",
+  "valid", "valid thru", "valid until", "expires", "expiry",
+  "member id", "member no", "membership no", "membership number",
+  "card number", "barcode", "scan here",
+  "terms and conditions", "www", "http",
+];
+
+const SURNAME_LABELS = [
+  "surname", "last name", "family name",
+  "nom", "nom de famille",
+  "nachname", "familienname",
+  "prezime", "фамилија", "familija",
+  "фамилия", "прізвище",
+  "cognome", "apellido", "apelido",
+  // EU driving license field code 1
+  "1.",
+];
+
+const GIVEN_NAME_LABELS = [
+  "given name", "given names", "first name", "first names", "forename",
+  "prénom", "prenom",
+  "vorname",
+  "ime", "име",
+  "имя",
+  "nome", "nombre",
+  // EU driving license field code 2
+  "2.",
+];
+
+const DOCUMENT_NUMBER_LABELS = [
+  "document no", "document number", "doc no", "doc number",
+  "passport no", "passport number",
+  "license no", "license number", "licence no", "licence number",
+  "card no", "card number",
+  "id no", "id number",
+  "no.", "nr.", "nr",
+  "број", "broj", "numero", "numéro", "nummer",
+  "dl no", "dl", "d.l.",
+  "permis no",
+  // EU driving license field code 5
+  "5.",
+];
+
+const PERSONAL_ID_LABELS = [
+  "personal no", "personal number", "id number", "national id",
+  "nin", "embg", "emso", "jmbg", "pin",
+  "oib", "pesel", "ssn", "cnp", "bsn",
+  "матичен број", "matičen broj", "maticen broj",
+  "матични број", "matični broj",
+  "единствен матичен број",
+  "személyi szám", "rodné číslo",
 ];
 
 function clamp(value: number, min = 0, max = 1) {
@@ -220,6 +335,32 @@ function isNameCandidate(value: string) {
   return !NAME_REJECTED_KEYWORDS.some((keyword) =>
     normalizeForMatching(cleaned).includes(keyword),
   );
+}
+
+function isBankCardNameCandidate(value: string) {
+  if (!isNameCandidate(value)) return false;
+  const lower = normalizeForMatching(value);
+  return !BANK_CARD_REJECTED_TERMS.some((term) => lower.includes(term));
+}
+
+function isPersonalDocNameCandidate(value: string) {
+  const cleaned = normalizeText(value)
+    .replace(/[^A-ZÀ-ÿ' -]/gi, " ")
+    .trim();
+  const tokens = cleaned.split(/\s+/).filter(Boolean);
+  if (tokens.length < 1 || tokens.length > 4) return false;
+  if (countLatinCharacters(cleaned) < 2) return false;
+  const lower = normalizeForMatching(cleaned);
+  return (
+    !NAME_REJECTED_KEYWORDS.some((kw) => lower.includes(kw)) &&
+    !PERSONAL_DOC_REJECTED_TERMS.some((term) => lower.includes(term))
+  );
+}
+
+function isClubCardNameCandidate(value: string) {
+  if (!isNameCandidate(value)) return false;
+  const lower = normalizeForMatching(value);
+  return !CLUB_CARD_REJECTED_TERMS.some((term) => lower.includes(term));
 }
 
 function isAddressCandidate(value: string) {
@@ -489,7 +630,7 @@ function extractAccountNumber(...texts: string[]) {
   return "";
 }
 
-function extractSecurityCode(...texts: string[]) {
+function extractSecurityCode(cardNumber: string, ...texts: string[]) {
   const labeledValue = firstNonEmpty(
     ...texts.map((text) =>
       findByLabel(
@@ -503,13 +644,39 @@ function extractSecurityCode(...texts: string[]) {
     return labeledValue;
   }
 
-  for (const text of texts) {
-    const fallback = (normalizeText(text).match(/\b\d{3,4}\b/g) ?? []).find(
-      (value) => value.length >= 3 && value.length <= 4,
+  // On the back of the card the last 4 digits of the card number are often
+  // printed next to the CVV (e.g. "1234 567"). Try to extract the trailing
+  // 3-4 digit group after the last-4.
+  const cardDigits = cardNumber.replace(/\D/g, "");
+  const last4 = cardDigits.length >= 4 ? cardDigits.slice(-4) : "";
+  if (last4) {
+    const afterLast4 = new RegExp(
+      `${escapeRegExp(last4)}\\s*(\\d{3,4})`,
     );
-    if (fallback) {
-      return fallback;
+    for (const text of texts) {
+      const match = normalizeText(text).match(afterLast4);
+      if (match) return match[1];
     }
+  }
+
+  // Fallback: standalone 3-4 digit numbers, excluding known false positives
+  for (const text of texts) {
+    const candidates = (normalizeText(text).match(/\b\d{3,4}\b/g) ?? [])
+      .filter((value) => {
+        // Exclude the last 4 digits of the card number
+        if (last4 && value === last4) return false;
+        // Exclude year-like numbers (19xx, 20xx)
+        if (/^(?:19|20)\d{2}$/.test(value)) return false;
+        // Exclude values that are substrings of the card number
+        if (cardDigits && cardDigits.includes(value) && value.length <= 4)
+          return false;
+        return true;
+      });
+
+    // Prefer 3-digit candidates (standard CVV) over 4-digit (AMEX CID)
+    const preferred =
+      candidates.find((c) => c.length === 3) ?? candidates[0];
+    if (preferred) return preferred;
   }
 
   return "";
@@ -564,6 +731,348 @@ function findLikelyName(lines: string[]) {
   );
 }
 
+/**
+ * Bank-card-specific holder name extraction using three strategies:
+ * 1. Label-based: look near "CARDHOLDER" / "CARD HOLDER" labels
+ * 2. Spatial: find name candidates positioned below the card number line
+ * 3. Filtered fallback: standard name search with bank-term rejection
+ */
+function findBankCardHolderName(
+  bundle: ProviderBundle,
+  frontLines: string[],
+  cardNumber: string,
+): string {
+  // Strategy 1: Label-based extraction
+  const labelName = findValueNearLabels(
+    frontLines,
+    ["cardholder", "card holder", "holder name", "account holder"],
+    isBankCardNameCandidate,
+  );
+  if (labelName) return labelName;
+
+  // Strategy 2: Spatial — find name candidates below the card number line
+  const frontOcrLines = bundle.front?.lines ?? [];
+  if (cardNumber && frontOcrLines.length > 0) {
+    const cardNumDigits = cardNumber.replace(/\D/g, "");
+    // Find the OCR line containing the card number
+    const cardNumLine = frontOcrLines.find((line) => {
+      const lineDigits = line.text.replace(/\D/g, "");
+      return (
+        lineDigits.length >= 8 &&
+        cardNumDigits.startsWith(lineDigits.slice(0, 8))
+      );
+    });
+
+    if (cardNumLine?.bounds) {
+      const cardNumBottom =
+        cardNumLine.bounds.y + cardNumLine.bounds.height;
+      const candidatesBelow = frontOcrLines
+        .filter(
+          (line) =>
+            line.bounds &&
+            line.bounds.y > cardNumBottom - 5 &&
+            !/\d/.test(normalizeText(line.text)),
+        )
+        .sort((a, b) => (a.bounds?.y ?? 0) - (b.bounds?.y ?? 0))
+        .map((line) => normalizeText(line.text));
+
+      const spatialName = pickBestCandidate(
+        candidatesBelow,
+        isBankCardNameCandidate,
+      );
+      if (spatialName) return spatialName;
+    }
+  }
+
+  // Strategy 3: Filtered fallback with bank-specific rejection
+  return pickBestCandidate(
+    frontLines.filter((line) => !/\d/.test(line)),
+    isBankCardNameCandidate,
+  );
+}
+
+/**
+ * Word-boundary-aware label matching. For short labels (<=4 chars, e.g. "ime")
+ * uses a regex word boundary to avoid substring matches like "prezime".
+ * For longer labels, uses simple `.includes()`.
+ */
+function labelMatchesLine(label: string, line: string): boolean {
+  if (label.length <= 4) {
+    return new RegExp(`(?:^|\\s|[:#-])${escapeRegExp(label)}(?:$|\\s|[:#-])`, "i").test(line);
+  }
+  return line.includes(label);
+}
+
+/**
+ * Spatial-aware label extraction using OCR bounding boxes. Finds a label line
+ * by text matching, then looks at OCR lines whose bounding box is directly
+ * below (within 3x label height) with horizontal overlap.
+ */
+function findValueNearOcrLabels(
+  ocrLines: OcrLineCandidate[],
+  labels: string[],
+  validator?: (value: string) => boolean,
+): string {
+  const normalizedLabels = labels.map((l) => normalizeForMatching(l));
+  const inlinePattern = new RegExp(
+    `(?:${labels.map((l) => escapeRegExp(l)).join("|")})\\s*[:#-]?\\s*`,
+    "i",
+  );
+
+  for (const labelLine of ocrLines) {
+    const normalizedLine = normalizeForMatching(labelLine.text);
+    if (!normalizedLabels.some((lbl) => labelMatchesLine(lbl, normalizedLine))) continue;
+
+    // Attempt 1: inline value (label and value on same line)
+    const inlineValue = preferLatinHalf(
+      labelLine.text.replace(inlinePattern, " "),
+    ).trim();
+    if (inlineValue && (!validator || validator(inlineValue))) {
+      return inlineValue;
+    }
+
+    // Attempt 2: spatial — find lines below this label
+    if (!labelLine.bounds) continue;
+    const labelBottom = labelLine.bounds.y + labelLine.bounds.height;
+    const labelLeft = labelLine.bounds.x;
+    const labelRight = labelLine.bounds.x + labelLine.bounds.width;
+
+    const candidatesBelow = ocrLines
+      .filter((line) => {
+        if (!line.bounds || line === labelLine) return false;
+        if (line.bounds.y < labelBottom - 5) return false;
+        if (line.bounds.y > labelBottom + labelLine.bounds!.height * 3)
+          return false;
+        const lineRight = line.bounds.x + line.bounds.width;
+        return Math.min(labelRight + 50, lineRight + 50) >
+          Math.max(labelLeft, line.bounds.x) - 50;
+      })
+      .sort((a, b) => (a.bounds?.y ?? 0) - (b.bounds?.y ?? 0));
+
+    for (const candidate of candidatesBelow) {
+      const text = preferLatinHalf(candidate.text).trim();
+      if (text && (!validator || validator(text))) return text;
+    }
+  }
+
+  return "";
+}
+
+/**
+ * Personal-doc-specific name extraction using three strategies:
+ * 1. Label-based with multilingual labels + spatial OCR labels
+ * 2. Spatial: candidates in top 60% of card front
+ * 3. Filtered fallback with personal doc rejection
+ */
+function findPersonalDocName(
+  bundle: ProviderBundle,
+  combinedLines: string[],
+): string {
+  const allOcrLines = [
+    ...(bundle.front?.lines ?? []),
+    ...(bundle.back?.lines ?? []),
+  ];
+
+  // Strategy 1: Label-based extraction with multilingual labels
+  const surname = firstNonEmpty(
+    findValueNearLabels(
+      combinedLines,
+      SURNAME_LABELS,
+      isPersonalDocNameCandidate,
+    ),
+    findValueNearOcrLabels(allOcrLines, SURNAME_LABELS, isPersonalDocNameCandidate),
+  );
+  const givenName = firstNonEmpty(
+    findValueNearLabels(
+      combinedLines,
+      GIVEN_NAME_LABELS,
+      isPersonalDocNameCandidate,
+    ),
+    findValueNearOcrLabels(allOcrLines, GIVEN_NAME_LABELS, isPersonalDocNameCandidate),
+  );
+
+  if (givenName || surname) {
+    return [givenName, surname].filter(Boolean).join(" ").trim();
+  }
+
+  // Strategy 2: Spatial — name is typically in the upper-middle of front side
+  const frontOcrLines = bundle.front?.lines ?? [];
+  if (frontOcrLines.length > 0) {
+    const allY = frontOcrLines
+      .filter((l) => l.bounds)
+      .map((l) => l.bounds!.y + l.bounds!.height);
+    const maxY = Math.max(...allY, 1);
+
+    const spatialCandidates = frontOcrLines
+      .filter((line) => line.bounds && line.bounds.y < maxY * 0.6)
+      .sort((a, b) => (a.bounds?.y ?? 0) - (b.bounds?.y ?? 0))
+      .map((line) => preferLatinHalf(line.text));
+
+    const spatialName = pickBestCandidate(
+      spatialCandidates.filter((line) => !/\d/.test(line)),
+      isPersonalDocNameCandidate,
+    );
+    if (spatialName) return spatialName;
+  }
+
+  // Strategy 3: Filtered fallback
+  return pickBestCandidate(
+    combinedLines.filter((line) => !/\d/.test(line)),
+    isPersonalDocNameCandidate,
+  );
+}
+
+/**
+ * Improved sex/gender detection with multilingual support.
+ * Handles single letters (M/F/X), full words (MALE/FEMALE/МАШКИ/ЖЕНСКИ),
+ * and values on the next line after a label.
+ */
+function extractSexField(combinedText: string): string {
+  // Strategy 1: Label + single letter
+  const labeledSingle = findByLabel(
+    combinedText,
+    /(?:sex|gender|пол|spol|geschlecht|sexe)\s*[:#-]?\s*([MFXmfx])\b/i,
+  );
+  if (labeledSingle) return labeledSingle.toUpperCase();
+
+  // Strategy 2: Label + full word
+  const labeledFull = findByLabel(
+    combinedText,
+    /(?:sex|gender|пол|spol|geschlecht|sexe)\s*[:#-]?\s*(male|female|masculin|f[eé]minin|homme|femme|м(?:ашки)?|ж(?:енски)?|moski|zenski|männlich|weiblich)/i,
+  );
+  if (labeledFull) {
+    const lower = labeledFull.toLowerCase();
+    if (/^(?:male|masculin|homme|м(?:ашки)?|moski|m[aä]nnlich)$/.test(lower))
+      return "M";
+    if (/^(?:female|f[eé]minin|femme|ж(?:енски)?|zenski|weiblich)$/.test(lower))
+      return "F";
+  }
+
+  // Strategy 3: Value on the next line after the label
+  const lines = combinedText.split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    if (/(?:sex|gender|пол|spol)/i.test(lines[i])) {
+      const next = normalizeText(lines[i + 1] ?? "").trim();
+      if (/^[MFX]$/i.test(next)) return next.toUpperCase();
+      if (/^(?:male|masculin|homme|м(?:ашки)?|moski)$/i.test(next)) return "M";
+      if (/^(?:female|f[eé]minin|femme|ж(?:енски)?|zenski)$/i.test(next))
+        return "F";
+    }
+  }
+
+  return "";
+}
+
+/**
+ * Multi-strategy club name extraction. Skips generic card titles and picks
+ * the first substantive non-title line.
+ */
+function findClubName(
+  _bundle: ProviderBundle,
+  combinedLines: string[],
+): string {
+  const titleTerms = [
+    "member card", "membership card", "loyalty card", "club card",
+    "gym pass", "reward card", "vip card", "premium card",
+  ];
+
+  for (const line of combinedLines) {
+    const lower = normalizeForMatching(line);
+    if (titleTerms.some((t) => lower.includes(t))) continue;
+    if (/^\d+$/.test(line.trim())) continue;
+    if (line.trim().length < 3) continue;
+    return preferLatinHalf(line);
+  }
+
+  return combinedLines[0] ?? "";
+}
+
+/**
+ * Club member name extraction. Label-based first, then filtered fallback
+ * that excludes the club name itself.
+ */
+function findClubMemberName(
+  bundle: ProviderBundle,
+  combinedLines: string[],
+  clubName: string,
+): string {
+  const allOcrLines = [
+    ...(bundle.front?.lines ?? []),
+    ...(bundle.back?.lines ?? []),
+  ];
+
+  // Strategy 1: Label-based
+  const labelName = firstNonEmpty(
+    findValueNearLabels(
+      combinedLines,
+      ["member name", "cardholder", "card holder", "holder name", "name"],
+      isClubCardNameCandidate,
+    ),
+    findValueNearOcrLabels(
+      allOcrLines,
+      ["member name", "cardholder", "card holder", "holder name", "name"],
+      isClubCardNameCandidate,
+    ),
+  );
+  if (labelName) return labelName;
+
+  // Strategy 2: Filtered fallback excluding the club name
+  const candidates = combinedLines
+    .filter((line) => !/\d/.test(line))
+    .filter((line) => {
+      if (clubName && normalizeForMatching(line) === normalizeForMatching(clubName))
+        return false;
+      return true;
+    });
+
+  return pickBestCandidate(candidates, isClubCardNameCandidate);
+}
+
+/**
+ * Tighter member ID extraction. Label-based first, then alphanumeric codes
+ * with at least one digit that don't match club name or member name.
+ */
+function findClubMemberId(
+  combinedLines: string[],
+  combinedText: string,
+  clubName: string,
+  memberName: string,
+): string {
+  // Strategy 1: Label-based
+  const labeled = firstNonEmpty(
+    findByLabel(
+      combinedText,
+      /(?:member(?:ship)?\s*(?:id|number|no|#)|card\s*(?:number|no|#))\s*[:#-]?\s*([A-Z0-9\-\/ ]{4,24})/i,
+    ),
+    findValueNearLabels(
+      combinedLines,
+      [
+        "member id", "membership id", "membership no", "membership number",
+        "member no", "member number", "card no", "card number", "card #",
+      ],
+      isCodeCandidate,
+      true,
+    ),
+  );
+  if (labeled) return compactCode(labeled);
+
+  // Strategy 2: Targeted codes excluding known non-ID values
+  const knownValues = [clubName, memberName]
+    .filter(Boolean)
+    .map((v) => normalizeForMatching(v));
+
+  const codeMatches = (combinedText.match(/\b[A-Z0-9][\w\-\/]{4,19}\b/gi) ?? [])
+    .map((m) => compactCode(m))
+    .filter((code) => {
+      if (!isCodeCandidate(code)) return false;
+      if (!/\d/.test(code)) return false;
+      if (knownValues.includes(normalizeForMatching(code))) return false;
+      return true;
+    });
+
+  return codeMatches[0] ?? "";
+}
+
 function findValueNearLabels(
   lines: string[],
   labels: string[],
@@ -578,7 +1087,7 @@ function findValueNearLabels(
 
   const candidates = lines.flatMap((line, index) => {
     const normalizedLine = normalizeForMatching(line);
-    if (!normalizedLabels.some((label) => normalizedLine.includes(label))) {
+    if (!normalizedLabels.some((label) => labelMatchesLine(label, normalizedLine))) {
       return [];
     }
 
@@ -701,9 +1210,9 @@ function extractBankFields(bundle: ProviderBundle, fields: ExtractedFieldMap) {
   const frontProvider = bundle.front?.provider ?? provider;
   const backProvider = bundle.back?.provider ?? provider;
   const cardNumber = parseBankCardNumber(combinedText);
-  const holderName = findLikelyName(frontLines);
+  const holderName = findBankCardHolderName(bundle, frontLines, cardNumber);
   const expiry = extractExpiryFromText(frontText, backText, combinedText);
-  const cvc = extractSecurityCode(backText, combinedText);
+  const cvc = extractSecurityCode(cardNumber, backText, combinedText);
   const accountNumber = extractAccountNumber(backText, combinedText);
   const issuerLine =
     findKeywordLine(frontLines, ["bank", "credit", "debit"]) ??
@@ -907,84 +1416,61 @@ function extractPersonalFields(
     setField(fields, "dateOfIssue", dateOfIssue, 0.6, provider, "combined");
 
   // ── Date / identity heuristic fallback ─────────────────────────────────
-  const dateEntries = collectDateEntries(combinedLines);
   const dateOfBirth =
-    pickDateByLabel(dateEntries, "birth") || pickBirthDate(dateEntries);
+    pickDateByLabel(allDateEntries, "birth") || pickBirthDate(allDateEntries);
   const dateOfExpiry =
-    pickDateByLabel(dateEntries, "expiry") ||
-    pickExpiryDate(dateEntries, [dateOfBirth]);
+    pickDateByLabel(allDateEntries, "expiry") ||
+    pickExpiryDate(allDateEntries, [dateOfBirth]);
 
-  // Surname and given name: accept single-word values — both are single tokens
-  // on most ID cards. scoreCandidate's latinStructureScore will prefer the Latin
-  // version over the Cyrillic-artefact version (both look like Latin to the
-  // regex, but the native Latin has a higher vowel ratio).
-  const surname = findValueNearLabels(
-    combinedLines,
-    ["surname", "last name", "family name"],
-    (v) => !/\d/.test(v) && countLatinCharacters(v) >= 3,
-  );
-  const givenName = findValueNearLabels(
-    combinedLines,
-    ["given name", "given names", "first name"],
-    (v) => !/\d/.test(v) && countLatinCharacters(v) >= 3,
-  );
-  const name = firstNonEmpty(
-    [givenName, surname].filter(Boolean).join(" ").trim(),
-    findLikelyName(combinedLines),
-  );
+  // ── Name extraction (multilingual labels + spatial + filtered fallback)
+  const name = findPersonalDocName(bundle, combinedLines);
 
+  // ── Document number (expanded multilingual labels + spatial)
+  const allOcrLines = [
+    ...(bundle.front?.lines ?? []),
+    ...(bundle.back?.lines ?? []),
+  ];
   const documentNumber = firstNonEmpty(
     findValueNearLabels(
       combinedLines,
-      [
-        "document no",
-        "document number",
-        "passport no",
-        "license no",
-        "card no",
-        "id no",
-      ],
+      DOCUMENT_NUMBER_LABELS,
       isCodeCandidate,
       true,
     ),
+    findValueNearOcrLabels(allOcrLines, DOCUMENT_NUMBER_LABELS, isCodeCandidate),
     findByLabel(
       combinedText,
-      /(?:document no|document number|passport no|license no|card no|id no)\s*[:#-]?\s*([A-Z0-9\-\/ ]{5,24})/i,
+      /(?:document\s*(?:no|number)|passport\s*(?:no|number)|licen[cs]e\s*(?:no|number)|card\s*(?:no|number)|id\s*(?:no|number)|no\.|nr\.|број|nummer|numero|numéro|dl\s*no)\s*[:#-]?\s*([A-Z0-9\-\/ ]{5,24})/i,
     ),
   );
 
+  // ── Personal ID (expanded multilingual labels + spatial)
   const personalId = firstNonEmpty(
     findValueNearLabels(
       combinedLines,
-      [
-        "personal no",
-        "personal number",
-        "id number",
-        "national id",
-        "nin",
-        "embg",
-        "emso",
-        "jmbg",
-        "pin",
-      ],
+      PERSONAL_ID_LABELS,
       isCodeCandidate,
       true,
     ),
+    findValueNearOcrLabels(allOcrLines, PERSONAL_ID_LABELS, isCodeCandidate),
     findByLabel(
       combinedText,
-      /(?:personal no|personal number|id number|national id|nin|embg|emso|jmbg|pin)\s*[:#-]?\s*([A-Z0-9\-\/ ]{5,24})/i,
+      /(?:personal\s*(?:no|number)|id\s*number|national\s*id|nin|embg|emso|jmbg|pin|oib|pesel|ssn|cnp|bsn|матичен број|matičen broj|maticen broj)\s*[:#-]?\s*([A-Z0-9\-\/ ]{5,24})/i,
     ),
     (combinedText.match(/\b\d{8,14}\b/g) ?? [])[0] ?? "",
   );
 
-  const nationality =
-    NATIONALITY_CODES.find((code) => combinedText.includes(code)) ??
-    findByLabel(combinedText, /(?:nationality|nat)\s*[:#-]?\s*([A-Z]{2,3})/i) ??
-    "";
-  const sex = findByLabel(
+  // ── Nationality (multilingual label + expanded code list)
+  const nationalityFromLabel = findByLabel(
     combinedText,
-    /(?:sex|gender)\s*[:#-]?\s*([MFX])/i,
-  ).toUpperCase();
+    /(?:nationality|nat|državljanstvo|државјанство|nationalité|staatsangehörigkeit)\s*[:#-]?\s*([A-Z]{2,3})/i,
+  );
+  const nationalityFromCode =
+    NATIONALITY_CODES.find((code) => combinedText.includes(code)) ?? "";
+  const nationality = nationalityFromLabel || nationalityFromCode;
+
+  // ── Sex/gender (multilingual, full-word support)
+  const sex = extractSexField(combinedText);
 
   setField(fields, "nameOnCard", name, 0.72, provider, "combined");
   setField(fields, "cardNumber", documentNumber, 0.68, provider, "combined");
@@ -1177,39 +1663,24 @@ function extractAccessFields(
 function extractClubFields(bundle: ProviderBundle, fields: ExtractedFieldMap) {
   const { combinedLines, combinedText } = gatherLines(bundle);
   const provider = bundle.front?.provider ?? bundle.back?.provider ?? "mlkit";
-  const dates = parseDates(combinedText);
+
   setField(fields, "category", "club", 1, provider, "combined");
   setField(fields, "type", "Club Card", 0.56, provider, "combined");
-  setField(
-    fields,
-    "clubName",
-    combinedLines[0] ?? "",
-    0.58,
-    provider,
-    "combined",
+
+  const clubName = findClubName(bundle, combinedLines);
+  setField(fields, "clubName", clubName, 0.62, provider, "combined");
+
+  const memberName = findClubMemberName(bundle, combinedLines, clubName);
+  setField(fields, "nameOnCard", memberName, 0.76, provider, "combined");
+
+  const memberId = findClubMemberId(
+    combinedLines,
+    combinedText,
+    clubName,
+    memberName,
   );
-  setField(
-    fields,
-    "nameOnCard",
-    findLikelyName(combinedLines),
-    0.76,
-    provider,
-    "combined",
-  );
-  setField(
-    fields,
-    "memberId",
-    firstNonEmpty(
-      findByLabel(
-        combinedText,
-        /(?:member|membership)\s*(?:id|number|no)?\s*[:#-]?\s*([A-Z0-9\-\/ ]{4,24})/i,
-      ),
-      compactCode((combinedText.match(/\b[A-Z0-9\-\/]{5,20}\b/) ?? [""])[0]),
-    ),
-    0.7,
-    provider,
-    "combined",
-  );
+  setField(fields, "memberId", memberId, 0.7, provider, "combined");
+
   setField(
     fields,
     "memberIdFormat",
@@ -1229,8 +1700,18 @@ function extractClubFields(bundle: ProviderBundle, fields: ExtractedFieldMap) {
     provider,
     "combined",
   );
-  setField(fields, "dateOfIssue", dates[0] ?? "", 0.44, provider, "combined");
-  setField(fields, "dateOfExpiry", dates[1] ?? "", 0.58, provider, "combined");
+
+  // Dates: use label-aware date picking (consistent with personal docs)
+  const dateEntries = collectDateEntries(combinedLines);
+  const dateOfIssue =
+    pickDateByLabel(dateEntries, "issue") ||
+    (dateEntries.length >= 1 ? dateEntries[0].formatted : "");
+  const dateOfExpiry =
+    pickDateByLabel(dateEntries, "expiry") ||
+    pickExpiryDate(dateEntries, [dateOfIssue]);
+
+  setField(fields, "dateOfIssue", dateOfIssue, 0.44, provider, "combined");
+  setField(fields, "dateOfExpiry", dateOfExpiry, 0.58, provider, "combined");
 }
 
 export function extractFields(

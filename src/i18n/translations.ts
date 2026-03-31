@@ -201,6 +201,148 @@ export type TranslationKeys = {
   // ── Onboarding ──────────────────────────────────────────────────────────
   onboarding_welcome: string;
   onboarding_get_started: string;
+
+  // ── Alerts / Dialogs ──────────────────────────────────────────────────
+  alert_cancel: string;
+  alert_disable: string;
+  alert_disable_lock_screen_title: string;
+  alert_disable_lock_screen_body: string;
+  alert_purchases_restored_title: string;
+  alert_purchases_restored_body: string;
+  alert_restore_failed_title: string;
+  alert_restore_failed_fallback: string;
+  alert_subscription_settings_failed_title: string;
+  alert_subscription_settings_failed_fallback: string;
+  alert_forget_passphrase_title: string;
+  alert_forget_passphrase_body: string;
+  alert_forget_passphrase_btn: string;
+  alert_forget_passphrase_failed_title: string;
+  alert_forget_passphrase_failed_body: string;
+  alert_sync_passphrase_required_title: string;
+  alert_sync_passphrase_required_body: string;
+  alert_syncing_body: string;
+  alert_delete_local_data_title: string;
+  alert_delete_local_data_body_signed_in: string;
+  alert_delete_local_data_body_signed_out: string;
+  alert_delete_data_btn: string;
+  alert_data_deleted_title: string;
+  alert_data_deleted_body_signed_in: string;
+  alert_data_deleted_body_signed_out: string;
+  alert_delete_data_failed_title: string;
+  alert_delete_data_failed_body: string;
+  alert_delete_account_title: string;
+  alert_delete_account_body: string;
+  alert_delete_account_btn: string;
+  alert_delete_account_failed_title: string;
+  alert_delete_account_failed_fallback: string;
+  alert_invalid_shared_card_title: string;
+  alert_invalid_shared_card_body: string;
+  alert_open_shared_card_failed_title: string;
+  alert_open_shared_card_failed_body: string;
+  alert_google_signin_failed: string;
+  alert_switch_google_failed: string;
+  alert_signout_failed: string;
+
+  // ── Cloud Sync Settings ───────────────────────────────────────────────
+  cloud_sign_in_prompt: string;
+  cloud_to_profile: string;
+  cloud_setup_title: string;
+  cloud_setup_body: string;
+  cloud_step_sign_in: string;
+  cloud_step_sign_in_done: string;
+  cloud_step_create_passphrase: string;
+  cloud_step_passphrase_desc: string;
+  cloud_set_sync_passphrase: string;
+  cloud_update_sync_passphrase: string;
+  cloud_step_read_how: string;
+  cloud_step_read_how_desc: string;
+  cloud_read_more: string;
+  cloud_vault_enabled: string;
+  cloud_vault_checking: string;
+  cloud_vault_not_setup: string;
+  cloud_vault_enabled_desc: string;
+  cloud_vault_not_setup_desc: string;
+  cloud_forgetting_passphrase: string;
+  cloud_forget_passphrase_btn: string;
+  cloud_syncing_data: string;
+  cloud_sync_data_btn: string;
+  cloud_account_deletion: string;
+  cloud_account_deletion_desc: string;
+  cloud_deleting_account: string;
+  cloud_delete_account_btn: string;
+
+  // ── Data Management ───────────────────────────────────────────────────
+  data_management_title: string;
+  data_management_body: string;
+  data_deleting_local: string;
+  data_delete_local_btn: string;
+
+  // ── Support Types ─────────────────────────────────────────────────────
+  support_type_monthly: string;
+  support_type_lifetime: string;
+  support_type_tip: string;
+  support_cancel_monthly: string;
+
+  // ── Credits ───────────────────────────────────────────────────────────
+  credits_title: string;
+  credits_body: string;
+  credits_developed_by: string;
+  credits_view_all: string;
+  credits_all_rights: string;
+  credits_thanks: string;
+
+  // ── Biometric Warnings ────────────────────────────────────────────────
+  biometric_no_hardware: string;
+  biometric_not_enrolled: string;
+
+  // ── Search Extended ───────────────────────────────────────────────────
+  search_empty_hint: string;
+
+  // ── Passphrase Reminder Modal ─────────────────────────────────────────
+  passphrase_reminder_title: string;
+  passphrase_reminder_body: string;
+  passphrase_reminder_go_profile: string;
+  passphrase_reminder_later: string;
+
+  // ── Support Modal ─────────────────────────────────────────────────────
+  support_modal_title: string;
+  support_modal_loading: string;
+  support_modal_error_title: string;
+  support_modal_thank_you: string;
+  support_modal_thank_you_body: string;
+  support_modal_monthly_section: string;
+  support_modal_best_ongoing: string;
+  support_modal_recurring: string;
+  support_modal_highlight_sustainable: string;
+  support_modal_highlight_manage: string;
+  support_modal_billed_by: string;
+  support_modal_active: string;
+  support_modal_starting: string;
+  support_modal_start_monthly: string;
+  support_modal_manage_subscription: string;
+  support_modal_onetime_section: string;
+  support_modal_owned: string;
+  support_modal_added: string;
+  support_modal_buying: string;
+  support_modal_unlock_forever: string;
+  support_modal_buy: string;
+  support_modal_badge_lifetime: string;
+  support_modal_badge_onetime: string;
+  support_modal_purchase_error: string;
+
+  // ── CardForm Extras ───────────────────────────────────────────────────
+  form_card_color: string;
+  form_cancel_btn: string;
+  form_confirm_btn: string;
+
+  // ── Profile Extended ──────────────────────────────────────────────────
+  profile_not_supporter: string;
+  profile_category_breakdown: string;
+  profile_support_body_lifetime: string;
+  profile_support_body_monthly: string;
+  profile_support_body_tipper: string;
+  profile_support_body_default: string;
+  profile_pocket_id_user: string;
 };
 
 export const translations: Record<LanguageCode, TranslationKeys> = {
@@ -404,6 +546,186 @@ export const translations: Record<LanguageCode, TranslationKeys> = {
     // Onboarding
     onboarding_welcome: "Welcome to Pocket ID",
     onboarding_get_started: "Get Started",
+
+    // Alerts / Dialogs
+    alert_cancel: "Cancel",
+    alert_disable: "Disable",
+    alert_disable_lock_screen_title: "Disable Lock Screen?",
+    alert_disable_lock_screen_body:
+      "This will allow the app content to be visible in the recent apps screen and when the app is backgrounded. Your cards and documents may be exposed.",
+    alert_purchases_restored_title: "Purchases restored",
+    alert_purchases_restored_body:
+      "Pocket ID refreshed your RevenueCat customer info and restored any eligible purchases.",
+    alert_restore_failed_title: "Restore failed",
+    alert_restore_failed_fallback:
+      "Pocket ID could not restore purchases right now.",
+    alert_subscription_settings_failed_title:
+      "Could not open subscription settings",
+    alert_subscription_settings_failed_fallback:
+      "Pocket ID could not open the App Store subscription page right now.",
+    alert_forget_passphrase_title: "Forget sync passphrase on this device?",
+    alert_forget_passphrase_body:
+      "Cloud sync will pause here until you enter the passphrase again. Your encrypted data stays in Supabase, but this device will no longer be able to decrypt it.",
+    alert_forget_passphrase_btn: "Forget Passphrase",
+    alert_forget_passphrase_failed_title: "Could not forget passphrase",
+    alert_forget_passphrase_failed_body:
+      "Pocket ID couldn't remove the local sync passphrase right now. Please try again.",
+    alert_sync_passphrase_required_title: "Sync passphrase required",
+    alert_sync_passphrase_required_body:
+      "You must set your sync passphrase first in Settings > Cloud Sync before syncing cloud data.",
+    alert_syncing_body:
+      "Syncing your device and encrypted cloud vault...",
+    alert_delete_local_data_title: "Delete your local data?",
+    alert_delete_local_data_body_signed_in:
+      "This removes your synced wallet data and clears saved cards on this device. Your Google sign-in remains available, but this action cannot be undone.",
+    alert_delete_local_data_body_signed_out:
+      "This clears all saved cards on this device. This action cannot be undone.",
+    alert_delete_data_btn: "Delete Data",
+    alert_data_deleted_title: "Data deleted",
+    alert_data_deleted_body_signed_in:
+      "Pocket ID removed your synced wallet data and cleared the saved cards on this device.",
+    alert_data_deleted_body_signed_out:
+      "Pocket ID cleared all saved cards on this device.",
+    alert_delete_data_failed_title: "Could not delete data",
+    alert_delete_data_failed_body:
+      "Pocket ID couldn't remove your saved data right now. Please try again.",
+    alert_delete_account_title: "Delete account from this app?",
+    alert_delete_account_body:
+      "This wipes out your synced wallet data entirely, forgets your sync passphrase on this device, signs you out of Google, and resets Pocket ID to a first-time state on this device. This cannot be undone.",
+    alert_delete_account_btn: "Delete Account",
+    alert_delete_account_failed_title: "Could not delete account",
+    alert_delete_account_failed_fallback:
+      "Pocket ID couldn't remove this account right now. Please try again.",
+    alert_invalid_shared_card_title: "Invalid shared card",
+    alert_invalid_shared_card_body:
+      "This file is not a valid Pocket ID card export.",
+    alert_open_shared_card_failed_title: "Could not open shared card",
+    alert_open_shared_card_failed_body:
+      "Pocket ID could not read that file.",
+    alert_google_signin_failed: "Google sign-in failed",
+    alert_switch_google_failed: "Could not switch Google account",
+    alert_signout_failed: "Could not sign out",
+
+    // Cloud Sync Settings
+    cloud_sign_in_prompt:
+      "Sign in from the Profile tab to manage cloud sync settings here.",
+    cloud_to_profile: "To the profile",
+    cloud_setup_title: "Set up Google sync in 2 short steps",
+    cloud_setup_body:
+      "You already finished the first part by signing in with Google.",
+    cloud_step_sign_in: "Sign in with Google",
+    cloud_step_sign_in_done:
+      "Done. Your account is connected and ready for secure sync.",
+    cloud_step_create_passphrase: "Create your sync passphrase",
+    cloud_step_passphrase_desc:
+      "This passphrase encrypts your vault before anything is uploaded.",
+    cloud_set_sync_passphrase: "Set Sync Passphrase",
+    cloud_update_sync_passphrase: "Update Sync Passphrase",
+    cloud_step_read_how: "Read how it works",
+    cloud_step_read_how_desc:
+      "See what Google, Supabase, and encryption each do in the flow.",
+    cloud_read_more: "Read More",
+    cloud_vault_enabled: "Encrypted cloud vault is enabled",
+    cloud_vault_checking: "Checking encrypted cloud vault\u2026",
+    cloud_vault_not_setup: "Encrypted cloud vault is not set up yet",
+    cloud_vault_enabled_desc:
+      "Your cards are encrypted on this device before upload, so the database stores ciphertext instead of readable card details.",
+    cloud_vault_not_setup_desc:
+      "Set or use a sync passphrase to encrypt cards before uploading or pulling your saved cards. Until then, cloud sync stays paused on this device to avoid sending readable card data.",
+    cloud_forgetting_passphrase: "Forgetting passphrase\u2026",
+    cloud_forget_passphrase_btn: "Forget Passphrase on This Device",
+    cloud_syncing_data: "Syncing Cloud Data\u2026",
+    cloud_sync_data_btn: "Sync Cloud Data",
+    cloud_account_deletion: "Account deletion",
+    cloud_account_deletion_desc:
+      "Remove your synced wallet data, forget this Google sign-in on the device, and start fresh next time.",
+    cloud_deleting_account: "Deleting Account\u2026",
+    cloud_delete_account_btn: "Delete Account",
+
+    // Data Management
+    data_management_title: "Data Management",
+    data_management_body: "Manage the card data stored on this device.",
+    data_deleting_local: "Deleting data on this device\u2026",
+    data_delete_local_btn: "Delete My Local Data",
+
+    // Support Types
+    support_type_monthly: "Monthly Subscription",
+    support_type_lifetime: "Lifetime",
+    support_type_tip: "Tip",
+    support_cancel_monthly: "Cancel Monthly Subscription",
+
+    // Credits
+    credits_title: "Credits",
+    credits_body: "The people behind Pocket ID.",
+    credits_developed_by: "Developed by",
+    credits_view_all: "View all credits",
+    credits_all_rights: "all rights reserved",
+    credits_thanks: "Thanks to everyone who contributed to Pocket ID.",
+
+    // Biometric Warnings
+    biometric_no_hardware:
+      "Your device doesn\u2019t support biometric authentication.",
+    biometric_not_enrolled:
+      "No biometrics are set up on this device. Add Face ID or a fingerprint in your device settings to enable this.",
+
+    // Search Extended
+    search_empty_hint:
+      "Try a bank name, ID number, membership code or card type.",
+
+    // Passphrase Reminder Modal
+    passphrase_reminder_title: "Set up your sync passphrase",
+    passphrase_reminder_body:
+      "You're signed in with Google, but cloud sync is paused because you haven't created a passphrase yet. Set one up in the Profile tab to start encrypting and syncing your cards.",
+    passphrase_reminder_go_profile: "Go to Profile",
+    passphrase_reminder_later: "Remind me later",
+
+    // Support Modal
+    support_modal_title: "Enjoying the app? \uD83D\uDC9B",
+    support_modal_loading: "Loading support options\u2026",
+    support_modal_error_title: "Could not load support",
+    support_modal_thank_you: "Thank you",
+    support_modal_thank_you_body:
+      "Thank you for supporting Pocket ID. It really helps. \uD83D\uDC9B",
+    support_modal_monthly_section: "Monthly support",
+    support_modal_best_ongoing: "Best for ongoing support",
+    support_modal_recurring: "Recurring",
+    support_modal_highlight_sustainable:
+      "Small recurring support that keeps updates sustainable.",
+    support_modal_highlight_manage:
+      "Manage or cancel later from your store subscription settings.",
+    support_modal_billed_by: "billed by",
+    support_modal_active: "Active",
+    support_modal_starting: "Starting\u2026",
+    support_modal_start_monthly: "Start monthly",
+    support_modal_manage_subscription: "Manage subscription",
+    support_modal_onetime_section: "One-time support",
+    support_modal_owned: "Owned",
+    support_modal_added: "Added",
+    support_modal_buying: "Buying\u2026",
+    support_modal_unlock_forever: "Unlock forever",
+    support_modal_buy: "Buy",
+    support_modal_badge_lifetime: "Lifetime",
+    support_modal_badge_onetime: "One-time",
+    support_modal_purchase_error:
+      "Pocket ID could not complete that purchase right now.",
+
+    // CardForm Extras
+    form_card_color: "CARD COLOR",
+    form_cancel_btn: "Cancel",
+    form_confirm_btn: "Confirm",
+
+    // Profile Extended
+    profile_not_supporter: "Not a supporter yet",
+    profile_category_breakdown: "Category Breakdown",
+    profile_support_body_lifetime:
+      "Your lifetime support is active. You can still leave a tip to support ongoing updates.",
+    profile_support_body_monthly:
+      "Your monthly support is active. You can still add one-time tips for an extra thank you.",
+    profile_support_body_tipper:
+      "Thanks for supporting the app. You can always add another tip or go monthly.",
+    profile_support_body_default:
+      "Support my work and keep this app alive.",
+    profile_pocket_id_user: "Pocket ID user",
   },
 
   mk: {
@@ -583,7 +905,7 @@ export const translations: Record<LanguageCode, TranslationKeys> = {
     profile_active_categories: "Активни категории",
     profile_categories_short: "Категории",
     profile_support_cta_active: "Повторно да го поддржиш Pocket ID? 💛",
-    profile_support_cta_inactive: "Покажи ми малку љубов? 💛",
+    profile_support_cta_inactive: "Дај ми поддршка? 💛",
     profile_support_button_active: "Погледни повеќе опции за поддршка →",
     profile_support_button_inactive: "Поддржи ја апликацијата →",
     profile_account_section: "Сметка",
@@ -611,6 +933,187 @@ export const translations: Record<LanguageCode, TranslationKeys> = {
     // Onboarding
     onboarding_welcome: "Добредојдовте во Pocket ID",
     onboarding_get_started: "Почни",
+
+    // Alerts / Dialogs
+    alert_cancel: "Откажи",
+    alert_disable: "Исклучи",
+    alert_disable_lock_screen_title: "Исклучи заклучен екран?",
+    alert_disable_lock_screen_body:
+      "Ова ќе ја направи содржината на апликацијата видлива на екранот за неодамнешни апликации и кога апликацијата е во заднина. Вашите картички и документи може да бидат изложени.",
+    alert_purchases_restored_title: "Купувањата се вратени",
+    alert_purchases_restored_body:
+      "Pocket ID ги освежи RevenueCat податоците и ги врати сите соодветни купувања.",
+    alert_restore_failed_title: "Враќањето не успеа",
+    alert_restore_failed_fallback:
+      "Pocket ID не може да ги врати купувањата во моментов.",
+    alert_subscription_settings_failed_title:
+      "Не можат да се отворат поставките за претплата",
+    alert_subscription_settings_failed_fallback:
+      "Pocket ID не може да ја отвори страницата за претплати во моментов.",
+    alert_forget_passphrase_title: "Заборави ја лозинката на овој уред?",
+    alert_forget_passphrase_body:
+      "Облак синхронизацијата ќе паузира тука додека повторно не ја внесете лозинката. Вашите шифрирани податоци остануваат во Supabase, но овој уред повеќе нема да може да ги дешифрира.",
+    alert_forget_passphrase_btn: "Заборави лозинка",
+    alert_forget_passphrase_failed_title: "Не може да се заборави лозинката",
+    alert_forget_passphrase_failed_body:
+      "Pocket ID не може да ја отстрани локалната лозинка за синхронизација. Обидете се повторно.",
+    alert_sync_passphrase_required_title: "Потребна е лозинка за синхронизација",
+    alert_sync_passphrase_required_body:
+      "Мора прво да ја поставите лозинката за синхронизација во Поставки > Синхронизација пред синхронизирање.",
+    alert_syncing_body:
+      "Се синхронизираат вашиот уред и шифрираниот облак трезор...",
+    alert_delete_local_data_title: "Избриши ги локалните податоци?",
+    alert_delete_local_data_body_signed_in:
+      "Ова ги отстранува синхронизираните податоци и ги брише зачуваните картички на овој уред. Google најавата останува достапна, но ова дејство не може да се врати.",
+    alert_delete_local_data_body_signed_out:
+      "Ова ги брише сите зачувани картички на овој уред. Ова дејство не може да се врати.",
+    alert_delete_data_btn: "Избриши податоци",
+    alert_data_deleted_title: "Податоците се избришани",
+    alert_data_deleted_body_signed_in:
+      "Pocket ID ги отстрани синхронизираните податоци и ги избриша зачуваните картички на овој уред.",
+    alert_data_deleted_body_signed_out:
+      "Pocket ID ги избриша сите зачувани картички на овој уред.",
+    alert_delete_data_failed_title: "Не можат да се избришат податоците",
+    alert_delete_data_failed_body:
+      "Pocket ID не може да ги отстрани вашите зачувани податоци. Обидете се повторно.",
+    alert_delete_account_title: "Избриши ја сметката од оваа апликација?",
+    alert_delete_account_body:
+      "Ова целосно ги брише синхронизираните податоци, ја заборавува лозинката на овој уред, ве одјавува од Google и го ресетира Pocket ID на почетна состојба. Ова не може да се врати.",
+    alert_delete_account_btn: "Избриши сметка",
+    alert_delete_account_failed_title: "Не може да се избрише сметката",
+    alert_delete_account_failed_fallback:
+      "Pocket ID не може да ја отстрани оваа сметка во моментов. Обидете се повторно.",
+    alert_invalid_shared_card_title: "Невалидна споделена картичка",
+    alert_invalid_shared_card_body:
+      "Оваа датотека не е валиден Pocket ID извоз на картичка.",
+    alert_open_shared_card_failed_title:
+      "Не може да се отвори споделената картичка",
+    alert_open_shared_card_failed_body:
+      "Pocket ID не може да ја прочита таа датотека.",
+    alert_google_signin_failed: "Google најавата не успеа",
+    alert_switch_google_failed: "Не може да се промени Google сметката",
+    alert_signout_failed: "Не може да се одјави",
+
+    // Cloud Sync Settings
+    cloud_sign_in_prompt:
+      "Најавете се од табот Профил за да управувате со поставките за облак синхронизација тука.",
+    cloud_to_profile: "Кон профил",
+    cloud_setup_title: "Постави Google синхронизација во 2 кратки чекори",
+    cloud_setup_body:
+      "Првиот дел веќе е завршен со најавување преку Google.",
+    cloud_step_sign_in: "Најави се со Google",
+    cloud_step_sign_in_done:
+      "Готово. Вашата сметка е поврзана и подготвена за безбедна синхронизација.",
+    cloud_step_create_passphrase: "Креирај лозинка за синхронизација",
+    cloud_step_passphrase_desc:
+      "Оваа лозинка го шифрира трезорот пред да се подигне.",
+    cloud_set_sync_passphrase: "Постави лозинка за синхронизација",
+    cloud_update_sync_passphrase: "Ажурирај лозинка за синхронизација",
+    cloud_step_read_how: "Прочитај како работи",
+    cloud_step_read_how_desc:
+      "Погледни што прават Google, Supabase и шифрирањето во текот.",
+    cloud_read_more: "Прочитај повеќе",
+    cloud_vault_enabled: "Шифрираниот облак трезор е вклучен",
+    cloud_vault_checking: "Се проверува шифрираниот облак трезор\u2026",
+    cloud_vault_not_setup: "Шифрираниот облак трезор не е поставен",
+    cloud_vault_enabled_desc:
+      "Вашите картички се шифрираат на овој уред пред подигање, па базата чува шифриран текст наместо читливи детали.",
+    cloud_vault_not_setup_desc:
+      "Постави или користи лозинка за синхронизација за шифрирање на картичките пред подигање. Дотогаш, облак синхронизацијата е паузирана за да се спречи испраќање на читливи податоци.",
+    cloud_forgetting_passphrase: "Се заборавува лозинката\u2026",
+    cloud_forget_passphrase_btn: "Заборави лозинка на овој уред",
+    cloud_syncing_data: "Се синхронизираат облак податоци\u2026",
+    cloud_sync_data_btn: "Синхронизирај облак податоци",
+    cloud_account_deletion: "Бришење на сметка",
+    cloud_account_deletion_desc:
+      "Отстрани ги синхронизираните податоци, заборави ја Google најавата на уредот и почни одново.",
+    cloud_deleting_account: "Се брише сметка\u2026",
+    cloud_delete_account_btn: "Избриши сметка",
+
+    // Data Management
+    data_management_title: "Управување со податоци",
+    data_management_body: "Управувај со податоците за картички на овој уред.",
+    data_deleting_local: "Се бришат податоци на овој уред\u2026",
+    data_delete_local_btn: "Избриши ги моите локални податоци",
+
+    // Support Types
+    support_type_monthly: "Месечна претплата",
+    support_type_lifetime: "Доживотна",
+    support_type_tip: "Донација",
+    support_cancel_monthly: "Откажи месечна претплата",
+
+    // Credits
+    credits_title: "Заслуги",
+    credits_body: "Луѓето зад Pocket ID.",
+    credits_developed_by: "Развиено од",
+    credits_view_all: "Погледни ги сите заслуги",
+    credits_all_rights: "сите права задржани",
+    credits_thanks: "Благодарност до секој кој придонесе за Pocket ID.",
+
+    // Biometric Warnings
+    biometric_no_hardware:
+      "Вашиот уред не поддржува биометриска автентикација.",
+    biometric_not_enrolled:
+      "Нема поставена биометрика на овој уред. Додајте Face ID или отпечаток во поставките на уредот.",
+
+    // Search Extended
+    search_empty_hint:
+      "Пробај име на банка, ID број, членски код или тип на картичка.",
+
+    // Passphrase Reminder Modal
+    passphrase_reminder_title: "Постави лозинка за синхронизација",
+    passphrase_reminder_body:
+      "Најавени сте со Google, но облак синхронизацијата е паузирана бидејќи сè уште немате лозинка. Поставете ја во табот Профил за да започнете со шифрирање и синхронизирање на картичките.",
+    passphrase_reminder_go_profile: "Кон профил",
+    passphrase_reminder_later: "Потсети ме подоцна",
+
+    // Support Modal
+    support_modal_title: "Ви се допаѓа апликацијата? \uD83D\uDC9B",
+    support_modal_loading: "Се вчитуваат опции за поддршка\u2026",
+    support_modal_error_title: "Не може да се вчита поддршка",
+    support_modal_thank_you: "Ви благодариме",
+    support_modal_thank_you_body:
+      "Ви благодариме за поддршката на Pocket ID. Навистина помага. \uD83D\uDC9B",
+    support_modal_monthly_section: "Месечна поддршка",
+    support_modal_best_ongoing: "Најдобро за постојана поддршка",
+    support_modal_recurring: "Повторувачка",
+    support_modal_highlight_sustainable:
+      "Мала повторувачка поддршка која ги одржува ажурирањата одржливи.",
+    support_modal_highlight_manage:
+      "Управувај или откажи подоцна од поставките за претплата на продавницата.",
+    support_modal_billed_by: "наплатено од",
+    support_modal_active: "Активна",
+    support_modal_starting: "Се стартува\u2026",
+    support_modal_start_monthly: "Започни месечна",
+    support_modal_manage_subscription: "Управувај со претплата",
+    support_modal_onetime_section: "Еднократна поддршка",
+    support_modal_owned: "Поседувано",
+    support_modal_added: "Додадено",
+    support_modal_buying: "Се купува\u2026",
+    support_modal_unlock_forever: "Отклучи засекогаш",
+    support_modal_buy: "Купи",
+    support_modal_badge_lifetime: "Доживотна",
+    support_modal_badge_onetime: "Еднократна",
+    support_modal_purchase_error:
+      "Pocket ID не може да го заврши купувањето во моментов.",
+
+    // CardForm Extras
+    form_card_color: "БОЈА НА КАРТИЧКА",
+    form_cancel_btn: "Откажи",
+    form_confirm_btn: "Потврди",
+
+    // Profile Extended
+    profile_not_supporter: "Сè уште не си поддржувач",
+    profile_category_breakdown: "Преглед по категории",
+    profile_support_body_lifetime:
+      "Вашата доживотна поддршка е активна. Сè уште можете да оставите донација за тековни ажурирања.",
+    profile_support_body_monthly:
+      "Вашата месечна поддршка е активна. Сè уште можете да додадете еднократна донација.",
+    profile_support_body_tipper:
+      "Благодарам за поддршката. Секогаш можете да додадете уште една донација или да преминете на месечна.",
+    profile_support_body_default:
+      "Поддржи ја мојата работа и одржи ја оваа апликација жива.",
+    profile_pocket_id_user: "Pocket ID корисник",
   },
 };
 

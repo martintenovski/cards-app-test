@@ -163,8 +163,8 @@ export function AddCardSheet({ isOpen, onClose }: AddCardSheetProps) {
 
       if (!parsed) {
         Alert.alert(
-          "Invalid shared card",
-          `This file is not a valid Pocket ID card export. Choose a ${SHARED_CARD_FILE_EXTENSION} file and try again.`,
+          tr("alert_invalid_shared_card_title"),
+          tr("alert_invalid_shared_card_body"),
         );
         return;
       }
@@ -179,8 +179,8 @@ export function AddCardSheet({ isOpen, onClose }: AddCardSheetProps) {
           : "";
 
       Alert.alert(
-        "Could not open shared card",
-        `Pocket ID could not read that file. Try downloading it again from Gmail, Drive, or your Files app.${details}`,
+        tr("alert_open_shared_card_failed_title"),
+        `${tr("alert_open_shared_card_failed_body")}${details}`,
       );
     }
   };
@@ -279,6 +279,14 @@ export function AddCardSheet({ isOpen, onClose }: AddCardSheetProps) {
                       size={16}
                       color={colors.accentText}
                     />
+                    <Text
+                      style={[
+                        styles.scanButtonText,
+                        { color: colors.accentText },
+                      ]}
+                    >
+                      {tr("add_card_scan_button")}
+                    </Text>
                     <View
                       style={[
                         styles.betaBadge,
@@ -437,6 +445,10 @@ const styles = StyleSheet.create({
     height: 50,
     borderRadius: 20,
   },
+  scanButtonText: {
+    fontFamily: "ReadexPro-Bold",
+    fontSize: 15,
+  },
   betaBadge: {
     paddingHorizontal: 7,
     paddingVertical: 3,
@@ -447,7 +459,7 @@ const styles = StyleSheet.create({
     fontSize: 10,
   },
   importButton: {
-    flex: 2,
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",

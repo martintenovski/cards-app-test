@@ -17,6 +17,7 @@ import { AppLockGate } from "@/components/AppLockGate";
 import { AuthSessionManager } from "@/components/AuthSessionManager";
 import { CloudSyncManager } from "@/components/CloudSyncManager";
 import { ExpiryNotificationManager } from "@/components/ExpiryNotificationManager";
+import { PassphraseReminderModal } from "@/components/PassphraseReminderModal";
 import { GluestackUIProvider } from "@/components/ui/gluestack-ui-provider";
 import { SupportModalManager } from "@/src/components/SupportModalManager";
 import * as Notifications from "expo-notifications";
@@ -199,6 +200,7 @@ export default function RootLayout() {
             <AuthSessionManager />
             <CloudSyncManager />
             <ExpiryNotificationManager />
+            <PassphraseReminderModal />
             <SupportModalManager />
             <Stack
               screenOptions={{

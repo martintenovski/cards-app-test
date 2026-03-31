@@ -6,6 +6,8 @@ import * as Linking from "expo-linking";
 import * as Notifications from "expo-notifications";
 import {
   Alert,
+  Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -17,6 +19,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import Svg, { Path } from "react-native-svg";
 
 import { deleteWalletSnapshot, isSupabaseConfigured } from "@/lib/supabase";
 import { CloudSyncInfoModal } from "@/components/CloudSyncInfoModal";
@@ -185,6 +188,7 @@ export default function SettingsScreen() {
     "delete-account" | "delete-data" | "forget-passphrase" | null
   >(null);
   const [cloudInfoVisible, setCloudInfoVisible] = useState(false);
+  const [creditsVisible, setCreditsVisible] = useState(false);
   const [cloudVaultStatus, setCloudVaultStatus] = useState<
     "loading" | "missing" | "ready"
   >("loading");
@@ -286,12 +290,12 @@ export default function SettingsScreen() {
   const handleLockScreenChange = (nextValue: boolean) => {
     if (!nextValue) {
       Alert.alert(
-        "Disable Lock Screen?",
-        "This will allow the app content to be visible in the recent apps screen and when the app is backgrounded. Your cards and documents may be exposed.",
+        tr("alert_disable_lock_screen_title"),
+        tr("alert_disable_lock_screen_body"),
         [
-          { text: "Cancel", style: "cancel" },
+          { text: tr("alert_cancel"), style: "cancel" },
           {
-            text: "Disable",
+            text: tr("alert_disable"),
             style: "destructive",
             onPress: () => setLockScreenEnabled(false),
           },
@@ -318,10 +322,11 @@ export default function SettingsScreen() {
       content: {
         title: `${cardTitle} expires soon`,
         body: `Your card expires in 2 days. Tap to view details.`,
-        sound: "default",
+        sound: Platform.OS === "ios" ? "default" : undefined,
         data: { kind: "expiry-reminder", cardId },
       },
       trigger: {
+        channelId: Platform.OS === "android" ? "expiry-reminders" : undefined,
         type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
         seconds: 5,
       },
@@ -338,15 +343,15 @@ export default function SettingsScreen() {
       await restoreSupportPurchases();
       await refreshCustomerInfo();
       Alert.alert(
-        "Purchases restored",
-        "Pocket ID refreshed your RevenueCat customer info and restored any eligible purchases.",
+        tr("alert_purchases_restored_title"),
+        tr("alert_purchases_restored_body"),
       );
     } catch (error) {
       Alert.alert(
-        "Restore failed",
+        tr("alert_restore_failed_title"),
         error instanceof Error
           ? error.message
-          : "Pocket ID could not restore purchases right now.",
+          : tr("alert_restore_failed_fallback"),
       );
     }
   };
@@ -356,10 +361,10 @@ export default function SettingsScreen() {
       await openMonthlySubscriptionManagement(customerInfo);
     } catch (error) {
       Alert.alert(
-        "Could not open subscription settings",
+        tr("alert_subscription_settings_failed_title"),
         error instanceof Error
           ? error.message
-          : "Pocket ID could not open the App Store subscription page right now.",
+          : tr("alert_subscription_settings_failed_fallback"),
       );
     }
   };
@@ -372,12 +377,12 @@ export default function SettingsScreen() {
     if (!authUser) return;
 
     Alert.alert(
-      "Forget sync passphrase on this device?",
-      "Cloud sync will pause here until you enter the passphrase again. Your encrypted data stays in Supabase, but this device will no longer be able to decrypt it.",
+      tr("alert_forget_passphrase_title"),
+      tr("alert_forget_passphrase_body"),
       [
-        { text: "Cancel", style: "cancel" },
+        { text: tr("alert_cancel"), style: "cancel" },
         {
-          text: "Forget Passphrase",
+          text: tr("alert_forget_passphrase_btn"),
           style: "destructive",
           onPress: async () => {
             try {
@@ -386,8 +391,8 @@ export default function SettingsScreen() {
               bumpCloudVaultChangeToken();
             } catch {
               Alert.alert(
-                "Could not forget passphrase",
-                "Pocket ID couldn't remove the local sync passphrase right now. Please try again.",
+                tr("alert_forget_passphrase_failed_title"),
+                tr("alert_forget_passphrase_failed_body"),
               );
             } finally {
               setAuthBusy(null);
@@ -401,25 +406,25 @@ export default function SettingsScreen() {
   const handleFetchLatestData = () => {
     if (cloudVaultStatus !== "ready") {
       Alert.alert(
-        "Sync passphrase required",
-        "You must set your sync passphrase first in Settings > Cloud Sync before syncing cloud data.",
+        tr("alert_sync_passphrase_required_title"),
+        tr("alert_sync_passphrase_required_body"),
       );
       return;
     }
 
-    requestSync("Syncing your device and encrypted cloud vault...");
+    requestSync(tr("alert_syncing_body"));
   };
 
   const handleDeleteData = () => {
     Alert.alert(
-      "Delete your local data?",
+      tr("alert_delete_local_data_title"),
       authUser
-        ? "This removes your synced wallet data and clears saved cards on this device. Your Google sign-in remains available, but this action cannot be undone."
-        : "This clears all saved cards on this device. This action cannot be undone.",
+        ? tr("alert_delete_local_data_body_signed_in")
+        : tr("alert_delete_local_data_body_signed_out"),
       [
-        { text: "Cancel", style: "cancel" },
+        { text: tr("alert_cancel"), style: "cancel" },
         {
-          text: "Delete Data",
+          text: tr("alert_delete_data_btn"),
           style: "destructive",
           onPress: async () => {
             try {
@@ -431,15 +436,15 @@ export default function SettingsScreen() {
               }
               replaceCards([]);
               Alert.alert(
-                "Data deleted",
+                tr("alert_data_deleted_title"),
                 authUser
-                  ? "Pocket ID removed your synced wallet data and cleared the saved cards on this device."
-                  : "Pocket ID cleared all saved cards on this device.",
+                  ? tr("alert_data_deleted_body_signed_in")
+                  : tr("alert_data_deleted_body_signed_out"),
               );
             } catch {
               Alert.alert(
-                "Could not delete data",
-                "Pocket ID couldn't remove your saved data right now. Please try again.",
+                tr("alert_delete_data_failed_title"),
+                tr("alert_delete_data_failed_body"),
               );
             } finally {
               setAuthBusy(null);
@@ -454,12 +459,12 @@ export default function SettingsScreen() {
     if (!authUser) return;
 
     Alert.alert(
-      "Delete account from this app?",
-      "This removes your synced wallet data, forgets your sync passphrase on this device, signs you out of Google, and resets Pocket ID to a first-time state on this device. This cannot be undone.",
+      tr("alert_delete_account_title"),
+      tr("alert_delete_account_body"),
       [
-        { text: "Cancel", style: "cancel" },
+        { text: tr("alert_cancel"), style: "cancel" },
         {
-          text: "Delete Account",
+          text: tr("alert_delete_account_btn"),
           style: "destructive",
           onPress: async () => {
             try {
@@ -475,10 +480,10 @@ export default function SettingsScreen() {
               await signOut();
             } catch (error) {
               Alert.alert(
-                "Could not delete account",
+                tr("alert_delete_account_failed_title"),
                 error instanceof Error
                   ? error.message
-                  : "Pocket ID couldn't remove this account right now. Please try again.",
+                  : tr("alert_delete_account_failed_fallback"),
               );
             } finally {
               setAuthBusy(null);
@@ -607,7 +612,7 @@ export default function SettingsScreen() {
             })}
           </View>
           {!canUseAnimatedStack ? (
-            <Text style={[styles.cardViewHint, { color: colors.textSoft }]}>
+            <Text style={[styles.cardViewHint, { color: "#000000" }]}>
               {tr("settings_card_view_stack_hint")}
             </Text>
           ) : null}
@@ -640,8 +645,8 @@ export default function SettingsScreen() {
               />
               <Text style={styles.warningBadgeText}>
                 {biometricStatus === "no-hardware"
-                  ? "Your device doesn\u2019t support biometric authentication."
-                  : "No biometrics are set up on this device. Add Face ID or a fingerprint in your device settings to enable this."}
+                  ? tr("biometric_no_hardware")
+                  : tr("biometric_not_enrolled")}
               </Text>
             </View>
           ) : null}
@@ -708,9 +713,25 @@ export default function SettingsScreen() {
             {tr("settings_cloud_sync_body")}
           </Text>
           {!isSupabaseConfigured || !authUser ? (
-            <Text style={[styles.sectionBody, { color: colors.textMuted }]}>
-              Sign in from the Profile tab to manage cloud sync settings here.
-            </Text>
+            <>
+              <Text style={[styles.sectionBody, { color: colors.textMuted }]}>
+                {tr("cloud_sign_in_prompt")}
+              </Text>
+              <Pressable
+                onPress={() => router.push("/(tabs)/profile")}
+                style={[
+                  styles.testBtn,
+                  {
+                    backgroundColor: colors.surfaceMuted,
+                    borderColor: colors.buttonBorder,
+                  },
+                ]}
+              >
+                <Text style={[styles.testBtnText, { color: colors.text }]}>
+                  {tr("cloud_to_profile")}
+                </Text>
+              </Pressable>
+            </>
           ) : (
             <>
               {shouldShowCloudSyncGuide ? (
@@ -726,13 +747,12 @@ export default function SettingsScreen() {
                   <Text
                     style={[styles.cloudGuideTitle, { color: colors.text }]}
                   >
-                    Set up Google sync in 2 short steps
+                    {tr("cloud_setup_title")}
                   </Text>
                   <Text
                     style={[styles.cloudGuideBody, { color: colors.textMuted }]}
                   >
-                    You already finished the first part by signing in with
-                    Google.
+                    {tr("cloud_setup_body")}
                   </Text>
 
                   <View style={styles.cloudGuideSteps}>
@@ -755,7 +775,7 @@ export default function SettingsScreen() {
                             { color: colors.text },
                           ]}
                         >
-                          Sign in with Google
+                          {tr("cloud_step_sign_in")}
                         </Text>
                         <Text
                           style={[
@@ -763,8 +783,7 @@ export default function SettingsScreen() {
                             { color: colors.textMuted },
                           ]}
                         >
-                          Done. Your account is connected and ready for secure
-                          sync.
+                          {tr("cloud_step_sign_in_done")}
                         </Text>
                       </View>
                     </View>
@@ -795,7 +814,7 @@ export default function SettingsScreen() {
                             { color: colors.text },
                           ]}
                         >
-                          Create your sync passphrase
+                          {tr("cloud_step_create_passphrase")}
                         </Text>
                         <Text
                           style={[
@@ -803,8 +822,7 @@ export default function SettingsScreen() {
                             { color: colors.textMuted },
                           ]}
                         >
-                          This passphrase encrypts your vault before anything is
-                          uploaded.
+                          {tr("cloud_step_passphrase_desc")}
                         </Text>
                         <Pressable
                           onPress={handleOpenCloudPassphrase}
@@ -822,7 +840,7 @@ export default function SettingsScreen() {
                               { color: colors.accentText },
                             ]}
                           >
-                            Set Sync Passphrase
+                            {tr("cloud_set_sync_passphrase")}
                           </Text>
                         </Pressable>
                       </View>
@@ -851,7 +869,7 @@ export default function SettingsScreen() {
                             { color: colors.text },
                           ]}
                         >
-                          Read how it works
+                          {tr("cloud_step_read_how")}
                         </Text>
                         <Text
                           style={[
@@ -859,8 +877,7 @@ export default function SettingsScreen() {
                             { color: colors.textMuted },
                           ]}
                         >
-                          See what Google, Supabase, and encryption each do in
-                          the flow.
+                          {tr("cloud_step_read_how_desc")}
                         </Text>
                         <Pressable
                           onPress={() => setCloudInfoVisible(true)}
@@ -878,7 +895,7 @@ export default function SettingsScreen() {
                               { color: colors.text },
                             ]}
                           >
-                            Read More
+                            {tr("cloud_read_more")}
                           </Text>
                         </Pressable>
                       </View>
@@ -903,10 +920,10 @@ export default function SettingsScreen() {
                       style={[styles.cloudStatusTitle, { color: colors.text }]}
                     >
                       {cloudVaultStatus === "ready"
-                        ? "Encrypted cloud vault is enabled"
+                        ? tr("cloud_vault_enabled")
                         : cloudVaultStatus === "loading"
-                          ? "Checking encrypted cloud vault…"
-                          : "Encrypted cloud vault is not set up yet"}
+                          ? tr("cloud_vault_checking")
+                          : tr("cloud_vault_not_setup")}
                     </Text>
                     <Text
                       style={[
@@ -915,8 +932,8 @@ export default function SettingsScreen() {
                       ]}
                     >
                       {cloudVaultStatus === "ready"
-                        ? "Your cards are encrypted on this device before upload, so the database stores ciphertext instead of readable card details."
-                        : "Set or use a sync passphrase to encrypt cards before uploading or pulling your saved cards. Until then, cloud sync stays paused on this device to avoid sending readable card data."}
+                        ? tr("cloud_vault_enabled_desc")
+                        : tr("cloud_vault_not_setup_desc")}
                     </Text>
                   </View>
                   <Pressable
@@ -931,8 +948,8 @@ export default function SettingsScreen() {
                   >
                     <Text style={[styles.testBtnText, { color: colors.text }]}>
                       {cloudVaultStatus === "ready"
-                        ? "Update Sync Passphrase"
-                        : "Set Sync Passphrase"}
+                        ? tr("cloud_update_sync_passphrase")
+                        : tr("cloud_set_sync_passphrase")}
                     </Text>
                   </Pressable>
                 </>
@@ -950,8 +967,8 @@ export default function SettingsScreen() {
                 >
                   <Text style={[styles.testBtnText, { color: colors.text }]}>
                     {authBusy === "forget-passphrase"
-                      ? "Forgetting passphrase…"
-                      : "Forget Passphrase on This Device"}
+                      ? tr("cloud_forgetting_passphrase")
+                      : tr("cloud_forget_passphrase_btn")}
                   </Text>
                 </Pressable>
               ) : null}
@@ -969,8 +986,8 @@ export default function SettingsScreen() {
                   >
                     <Text style={[styles.testBtnText, { color: colors.text }]}>
                       {syncStatus === "syncing"
-                        ? "Syncing Cloud Data…"
-                        : "Sync Cloud Data"}
+                        ? tr("cloud_syncing_data")
+                        : tr("cloud_sync_data_btn")}
                     </Text>
                   </Pressable>
                 </>
@@ -988,7 +1005,7 @@ export default function SettingsScreen() {
                 <Text
                   style={[styles.accountDeletionTitle, { color: colors.text }]}
                 >
-                  Account deletion
+                  {tr("cloud_account_deletion")}
                 </Text>
                 <Text
                   style={[
@@ -996,8 +1013,7 @@ export default function SettingsScreen() {
                     { color: colors.textMuted },
                   ]}
                 >
-                  Remove your synced wallet data, forget this Google sign-in on
-                  the device, and start fresh next time.
+                  {tr("cloud_account_deletion_desc")}
                 </Text>
                 <Pressable
                   onPress={handleDeleteAccount}
@@ -1012,8 +1028,8 @@ export default function SettingsScreen() {
                 >
                   <Text style={[styles.testBtnText, { color: colors.danger }]}>
                     {authBusy === "delete-account"
-                      ? "Deleting Account…"
-                      : "Delete Account"}
+                      ? tr("cloud_deleting_account")
+                      : tr("cloud_delete_account_btn")}
                   </Text>
                 </Pressable>
               </View>
@@ -1023,10 +1039,10 @@ export default function SettingsScreen() {
 
         <View style={[styles.section, { backgroundColor: colors.surface }]}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Data Management
+            {tr("data_management_title")}
           </Text>
           <Text style={[styles.sectionBody, { color: colors.textMuted }]}>
-            Manage the card data stored on this device.
+            {tr("data_management_body")}
           </Text>
           <Pressable
             onPress={handleDeleteData}
@@ -1041,8 +1057,8 @@ export default function SettingsScreen() {
           >
             <Text style={[styles.testBtnText, { color: colors.danger }]}>
               {authBusy === "delete-data"
-                ? "Deleting data on this device…"
-                : "Delete My Local Data"}
+                ? tr("data_deleting_local")
+                : tr("data_delete_local_btn")}
             </Text>
           </Pressable>
         </View>
@@ -1074,11 +1090,11 @@ export default function SettingsScreen() {
             </Text>
             <Text style={[styles.supportValue, { color: colors.textMuted }]}>
               {supportSummary.status === "monthly"
-                ? "Monthly Subscription"
+                ? tr("support_type_monthly")
                 : supportSummary.status === "lifetime"
-                  ? "Lifetime"
+                  ? tr("support_type_lifetime")
                   : supportSummary.status === "tipper"
-                    ? "Tip"
+                    ? tr("support_type_tip")
                     : "—"}
             </Text>
           </View>
@@ -1138,7 +1154,7 @@ export default function SettingsScreen() {
               ]}
             >
               <Text style={[styles.testBtnText, { color: colors.text }]}>
-                Cancel Monthly Subscription
+                {tr("support_cancel_monthly")}
               </Text>
             </Pressable>
           ) : null}
@@ -1272,6 +1288,141 @@ export default function SettingsScreen() {
               {tr("settings_view_onboarding")}
             </Text>
           </Pressable>
+        </View>
+
+        <View style={[styles.section, { backgroundColor: colors.surface }]}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+            {tr("credits_title")}
+          </Text>
+          <Text style={[styles.sectionBody, { color: colors.textMuted }]}>
+            {tr("credits_body")}
+          </Text>
+          <Pressable
+            onPress={() => Linking.openURL("https://tenovski.space/")}
+            style={[
+              styles.testBtn,
+              {
+                backgroundColor: colors.surfaceMuted,
+                borderColor: colors.buttonBorder,
+              },
+            ]}
+          >
+            <View style={styles.developerBtnInner}>
+              <Text style={[styles.developerBtnText, { color: colors.text }]}>
+                {tr("credits_developed_by")}
+              </Text>
+              <Svg width={18} height={18} viewBox="0 0 525 525" fill="none">
+                <Path
+                  d="M262.5 0C407.475 0 525 117.525 525 262.5C525 407.475 407.475 525 262.5 525C117.525 525 0 407.475 0 262.5C4.31772e-06 117.525 117.525 4.31667e-06 262.5 0ZM271.854 316.381C265.526 310.186 255.406 310.186 249.078 316.381L207.913 356.682C197.49 366.885 204.714 384.593 219.302 384.593H301.631C316.218 384.593 323.442 366.885 313.02 356.682L271.854 316.381ZM261.706 145.718C238.767 145.718 216.341 152.521 197.268 165.266C178.193 178.011 163.326 196.125 154.547 217.32C145.768 238.514 143.471 261.836 147.947 284.336C150.826 298.804 156.42 312.514 164.361 324.772C171.694 336.091 187.421 335.992 196.957 326.456L231.309 292.103L210.413 259.356C200.041 243.102 211.717 221.803 230.999 221.803H289.932C309.214 221.803 320.888 243.102 310.516 259.356L290.587 290.587L326.456 326.456C335.992 335.992 351.719 336.091 359.051 324.772C366.992 312.514 372.589 298.804 375.466 284.336C379.942 261.836 377.644 238.514 368.865 217.32C360.086 196.125 345.22 178.011 326.146 165.266C307.072 152.521 284.647 145.718 261.706 145.718Z"
+                  fill="#5956FF"
+                />
+              </Svg>
+              <Text style={[styles.developerBtnText, { color: colors.text }]}>
+                Tenovski
+              </Text>
+            </View>
+          </Pressable>
+          <Pressable
+            onPress={() => setCreditsVisible(true)}
+            style={[
+              styles.testBtn,
+              {
+                backgroundColor: colors.surfaceMuted,
+                borderColor: colors.buttonBorder,
+              },
+            ]}
+          >
+            <Text style={[styles.testBtnText, { color: colors.text }]}>
+              {tr("credits_view_all")}
+            </Text>
+          </Pressable>
+          <Text style={[styles.copyrightText, { color: colors.textMuted }]}>
+            {`\u00A9 ${new Date().getFullYear()} \u2014 Pocket ID, ${tr("credits_all_rights")}`}
+          </Text>
+          <Modal
+            visible={creditsVisible}
+            transparent
+            animationType="fade"
+            onRequestClose={() => setCreditsVisible(false)}
+            statusBarTranslucent
+          >
+            <View style={styles.creditsModalRoot}>
+              <Pressable
+                style={StyleSheet.absoluteFill}
+                onPress={() => setCreditsVisible(false)}
+                accessible={false}
+              >
+                <View style={styles.creditsBackdrop} />
+              </Pressable>
+              <View style={styles.creditsCentered} pointerEvents="box-none">
+                <View
+                  style={[
+                    styles.creditsSheet,
+                    {
+                      backgroundColor: colors.surface,
+                      shadowColor: "#000",
+                    },
+                  ]}
+                >
+                  <View style={styles.creditsHeader}>
+                    <Text
+                      style={[styles.creditsTitle, { color: colors.text }]}
+                    >
+                      {tr("credits_title")}
+                    </Text>
+                    <Pressable
+                      onPress={() => setCreditsVisible(false)}
+                      style={[
+                        styles.creditsCloseBtn,
+                        { backgroundColor: colors.surfaceMuted },
+                      ]}
+                      hitSlop={8}
+                    >
+                      <Feather name="x" size={18} color={colors.textMuted} />
+                    </Pressable>
+                  </View>
+                  <Text
+                    style={[
+                      styles.creditsSubtitle,
+                      { color: colors.textMuted },
+                    ]}
+                  >
+                    {tr("credits_thanks")}
+                  </Text>
+                  <ScrollView
+                    style={styles.creditsList}
+                    showsVerticalScrollIndicator={false}
+                  >
+                    {[
+                      "Marko N.", 
+                      "Jovica I.",
+                      "Alex G.",
+                      "Maggie M.",
+                      "Selmin N.",
+                      "Luna T.",
+                    ].map((name) => (
+                      <View
+                        key={name}
+                        style={[
+                          styles.creditsRow,
+                          { borderBottomColor: colors.border },
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.creditsName,
+                            { color: colors.text },
+                          ]}
+                        >
+                          {name}
+                        </Text>
+                      </View>
+                    ))}
+                  </ScrollView>
+                </View>
+              </View>
+            </View>
+          </Modal>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -1560,5 +1711,80 @@ const styles = StyleSheet.create({
     fontSize: 13,
     lineHeight: 20,
     marginTop: 6,
+  },
+  creditsModalRoot: {
+    flex: 1,
+  },
+  creditsBackdrop: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.45)",
+  },
+  creditsCentered: {
+    ...StyleSheet.absoluteFillObject,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 20,
+  },
+  creditsSheet: {
+    width: "100%",
+    maxWidth: 420,
+    borderRadius: 28,
+    padding: 24,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+    elevation: 12,
+  },
+  creditsHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 8,
+  },
+  creditsTitle: {
+    fontFamily: "ReadexPro-Bold",
+    fontSize: 20,
+    flex: 1,
+    marginRight: 12,
+  },
+  creditsCloseBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  creditsSubtitle: {
+    fontFamily: "ReadexPro-Regular",
+    fontSize: 13,
+    lineHeight: 20,
+    marginBottom: 18,
+  },
+  creditsList: {
+    maxHeight: 300,
+  },
+  creditsRow: {
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+  },
+  creditsName: {
+    fontFamily: "ReadexPro-Medium",
+    fontSize: 16,
+  },
+  developerBtnInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+  },
+  developerBtnText: {
+    fontFamily: "ReadexPro-Medium",
+    fontSize: 15,
+  },
+  copyrightText: {
+    fontFamily: "ReadexPro-Regular",
+    fontSize: 12,
+    textAlign: "center",
+    marginTop: 14,
   },
 });

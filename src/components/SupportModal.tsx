@@ -32,6 +32,7 @@ import {
 import { useCardStore } from "@/store/useCardStore";
 import { APP_THEME, resolveTheme } from "@/utils/theme";
 import { recordSupportModalDismissed } from "@/src/hooks/useAutoSupportModal";
+import { useTranslation } from "@/src/hooks/useTranslation";
 import {
   canPurchaseSupportProduct,
   canManageMonthlySubscription,
@@ -101,6 +102,7 @@ export function SupportModal({
   const deviceScheme = useColorScheme();
   const resolvedTheme = resolveTheme(themePreference, deviceScheme);
   const colors = APP_THEME[resolvedTheme];
+  const tr = useTranslation();
   const [packages, setPackages] = useState<PurchasesPackage[]>([]);
   const [isMounted, setIsMounted] = useState(visible);
   const [isLoading, setIsLoading] = useState(false);
@@ -232,7 +234,7 @@ export function SupportModal({
       const customerInfo = await purchaseSupportPackage(aPackage);
       onPurchaseSuccess?.(customerInfo);
       setThankYouMessage(
-        "Thank you for supporting Pocket ID. It really helps. 💛",
+        tr("support_modal_thank_you_body"),
       );
       closeTimeoutRef.current = setTimeout(() => {
         void handleDismiss();
@@ -246,7 +248,7 @@ export function SupportModal({
       setErrorMessage(
         error instanceof Error
           ? error.message
-          : "Pocket ID could not complete that purchase right now.",
+          : tr("support_modal_purchase_error"),
       );
     } finally {
       setPurchasingIdentifier(null);
@@ -265,7 +267,7 @@ export function SupportModal({
           >
             <Feather name="heart" size={26} color={colors.accent} />
           </View>
-          <Text style={[styles.title, { color: colors.text }]}>Thank you</Text>
+          <Text style={[styles.title, { color: colors.text }]}>{tr("support_modal_thank_you")}</Text>
           <Text style={[styles.subtitle, { color: colors.textMuted }]}>
             {thankYouMessage}
           </Text>
@@ -278,7 +280,7 @@ export function SupportModal({
         <View style={styles.centerState}>
           <ActivityIndicator size="small" color={colors.text} />
           <Text style={[styles.subtitle, { color: colors.textMuted }]}>
-            Loading support options…
+            {tr("support_modal_loading")}
           </Text>
         </View>
       );
@@ -293,7 +295,7 @@ export function SupportModal({
             <Feather name="alert-circle" size={26} color={colors.danger} />
           </View>
           <Text style={[styles.title, { color: colors.text }]}>
-            Could not load support
+            {tr("support_modal_error_title")}
           </Text>
           <Text style={[styles.subtitle, { color: colors.textMuted }]}>
             {errorMessage}
@@ -326,7 +328,7 @@ export function SupportModal({
                   <Text
                     style={[styles.sectionEyebrow, { color: colors.textSoft }]}
                   >
-                    Monthly support
+                    {tr("support_modal_monthly_section")}
                   </Text>
                   <LinearGradient
                     colors={["#4895FF", "#1A5FD9", "#0A3BAF"]}
@@ -342,11 +344,11 @@ export function SupportModal({
                           color="rgba(255,255,255,0.85)"
                         />
                         <Text style={styles.featuredBadgeText}>
-                          Best for ongoing support
+                          {tr("support_modal_best_ongoing")}
                         </Text>
                       </View>
                       <View style={styles.featuredPill}>
-                        <Text style={styles.featuredPillText}>Recurring</Text>
+                        <Text style={styles.featuredPillText}>{tr("support_modal_recurring")}</Text>
                       </View>
                     </View>
 
@@ -366,8 +368,7 @@ export function SupportModal({
                           color="rgba(255,255,255,0.85)"
                         />
                         <Text style={styles.featuredHighlightText}>
-                          Small recurring support that keeps updates
-                          sustainable.
+                          {tr("support_modal_highlight_sustainable")}
                         </Text>
                       </View>
                       <View style={styles.featuredHighlightRow}>
@@ -377,8 +378,7 @@ export function SupportModal({
                           color="rgba(255,255,255,0.85)"
                         />
                         <Text style={styles.featuredHighlightText}>
-                          Manage or cancel later from your store subscription
-                          settings.
+                          {tr("support_modal_highlight_manage")}
                         </Text>
                       </View>
                     </View>
@@ -389,7 +389,7 @@ export function SupportModal({
                           {monthlyPackage.product.priceString}
                         </Text>
                         <Text style={styles.featuredPriceCaption}>
-                          billed by {storeName}
+                          {tr("support_modal_billed_by")} {storeName}
                         </Text>
                       </View>
 
@@ -404,10 +404,10 @@ export function SupportModal({
                         const buttonDisabled =
                           Boolean(purchasingIdentifier) || !canPurchase;
                         const buttonLabel = !canPurchase
-                          ? "Active"
+                          ? tr("support_modal_active")
                           : isPurchasing
-                            ? "Starting…"
-                            : "Start monthly";
+                            ? tr("support_modal_starting")
+                            : tr("support_modal_start_monthly");
 
                         return (
                           <Pressable
@@ -446,7 +446,7 @@ export function SupportModal({
                         style={styles.featuredSecondaryButton}
                       >
                         <Text style={styles.featuredSecondaryButtonText}>
-                          Manage subscription
+                          {tr("support_modal_manage_subscription")}
                         </Text>
                       </Pressable>
                     ) : null}
@@ -459,7 +459,7 @@ export function SupportModal({
                   <Text
                     style={[styles.sectionEyebrow, { color: colors.textSoft }]}
                   >
-                    One-time support
+                    {tr("support_modal_onetime_section")}
                   </Text>
                   {oneTimePackages.map((aPackage) => {
                     const product = aPackage.product;
@@ -484,13 +484,13 @@ export function SupportModal({
                       Boolean(purchasingIdentifier) || !canPurchase;
                     const buttonLabel = !canPurchase
                       ? normalizedId === "supporter_lifetime"
-                        ? "Owned"
-                        : "Added"
+                        ? tr("support_modal_owned")
+                        : tr("support_modal_added")
                       : isPurchasing
-                        ? "Buying…"
+                        ? tr("support_modal_buying")
                         : normalizedId === "supporter_lifetime"
-                          ? "Unlock forever"
-                          : "Buy";
+                          ? tr("support_modal_unlock_forever")
+                          : tr("support_modal_buy");
 
                     return (
                       <View
@@ -520,8 +520,8 @@ export function SupportModal({
                               ]}
                             >
                               {normalizedId === "supporter_lifetime"
-                                ? "Lifetime"
-                                : "One-time"}
+                                ? tr("support_modal_badge_lifetime")
+                                : tr("support_modal_badge_onetime")}
                             </Text>
                           </View>
                           {shouldShowPurchaseCountBadge ? (
@@ -698,7 +698,7 @@ export function SupportModal({
           <GestureDetector gesture={dragGesture}>
             <View style={styles.sheetContent}>
               <FormSheetScaffold
-                title="Enjoying the app? 💛"
+                title={tr("support_modal_title")}
                 backgroundColor={colors.surface}
                 titleColor={colors.text}
                 closeColor={colors.textMuted}
@@ -773,7 +773,7 @@ const styles = StyleSheet.create({
   packageList: {
     gap: 12,
     paddingHorizontal: 20,
-    paddingBottom: 16,
+    paddingBottom: 48,
   },
   sectionWrap: {
     gap: 10,

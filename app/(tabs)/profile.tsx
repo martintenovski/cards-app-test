@@ -93,9 +93,11 @@ function SetupValue({
 function SupporterBadges({
   badges,
   colors,
+  notSupporterLabel,
 }: {
   badges: ReturnType<typeof getSupportBadges>;
   colors: (typeof APP_THEME)[keyof typeof APP_THEME];
+  notSupporterLabel: string;
 }) {
   if (badges.length === 0) {
     return (
@@ -106,7 +108,7 @@ function SupporterBadges({
         ]}
       >
         <Text style={[styles.supporterBadgeText, { color: colors.textMuted }]}>
-          Not a supporter yet
+          {notSupporterLabel}
         </Text>
       </View>
     );
@@ -188,11 +190,11 @@ export default function ProfileScreen() {
     : tr("profile_support_cta_inactive");
   const supportCardBody = hasActiveSupport
     ? supporterStatus === "lifetime"
-      ? "Your lifetime support is active. You can still leave a tip anytime if you want to help even more."
+      ? tr("profile_support_body_lifetime")
       : supporterStatus === "monthly"
-        ? "Your monthly support is active. You can still add one-time tips whenever you want."
-        : "Thanks for supporting the app. You can always add another tip whenever you want."
-    : "Support my work and keep this app alive.";
+        ? tr("profile_support_body_monthly")
+        : tr("profile_support_body_tipper")
+    : tr("profile_support_body_default");
   const supportButtonLabel = hasActiveSupport
     ? tr("profile_support_button_active")
     : tr("profile_support_button_inactive");
@@ -240,10 +242,10 @@ export default function ProfileScreen() {
       setAuthBusy(provider);
       const session = await signInWithProvider(provider);
       if (session) {
-        requestSync("Syncing your device and encrypted cloud vault...");
+        requestSync(tr("alert_syncing_body"));
       }
     } catch (error) {
-      Alert.alert("Google sign-in failed", getAuthErrorMessage(error));
+      Alert.alert(tr("alert_google_signin_failed"), getAuthErrorMessage(error));
     } finally {
       setAuthBusy(null);
     }
@@ -256,11 +258,11 @@ export default function ProfileScreen() {
         selectAccount: true,
       });
       if (session) {
-        requestSync("Syncing your device and encrypted cloud vault...");
+        requestSync(tr("alert_syncing_body"));
       }
     } catch (error) {
       Alert.alert(
-        "Could not switch Google account",
+        tr("alert_switch_google_failed"),
         getAuthErrorMessage(error),
       );
     } finally {
@@ -273,7 +275,7 @@ export default function ProfileScreen() {
       setAuthBusy("signout");
       await signOut();
     } catch (error) {
-      Alert.alert("Could not sign out", getAuthErrorMessage(error));
+      Alert.alert(tr("alert_signout_failed"), getAuthErrorMessage(error));
     } finally {
       setAuthBusy(null);
     }
@@ -316,7 +318,7 @@ export default function ProfileScreen() {
             {tr("profile_personal_stats")}
           </Text>
           <View style={styles.supporterBadgeWrap}>
-            <SupporterBadges badges={supportBadges} colors={colors} />
+            <SupporterBadges badges={supportBadges} colors={colors} notSupporterLabel={tr("profile_not_supporter")} />
           </View>
 
           <View style={[styles.statRow, { gap: isCompact ? 10 : 12 }]}>
@@ -509,7 +511,7 @@ export default function ProfileScreen() {
                 {tr("profile_signed_in_as")}
               </Text>
               <Text style={[styles.accountValue, { color: colors.textMuted }]}>
-                {authUser.displayName ?? authUser.email ?? "Pocket ID user"}
+                {authUser.displayName ?? authUser.email ?? tr("profile_pocket_id_user")}
               </Text>
               {shouldShowCloudSyncGuide ? (
                 <View
@@ -552,7 +554,7 @@ export default function ProfileScreen() {
                             { color: colors.text },
                           ]}
                         >
-                          Sign in with Google
+                          {tr("cloud_step_sign_in")}
                         </Text>
                         <Text
                           style={[
@@ -560,8 +562,7 @@ export default function ProfileScreen() {
                             { color: colors.textMuted },
                           ]}
                         >
-                          Done. Your account is connected and ready for secure
-                          sync.
+                          {tr("cloud_step_sign_in_done")}
                         </Text>
                       </View>
                     </View>
@@ -592,7 +593,7 @@ export default function ProfileScreen() {
                             { color: colors.text },
                           ]}
                         >
-                          Create your sync passphrase
+                          {tr("cloud_step_create_passphrase")}
                         </Text>
                         <Text
                           style={[
@@ -600,8 +601,7 @@ export default function ProfileScreen() {
                             { color: colors.textMuted },
                           ]}
                         >
-                          This passphrase encrypts your vault before anything is
-                          uploaded.
+                          {tr("cloud_step_passphrase_desc")}
                         </Text>
                         <Pressable
                           onPress={handleOpenCloudPassphrase}
@@ -648,7 +648,7 @@ export default function ProfileScreen() {
                             { color: colors.text },
                           ]}
                         >
-                          Read how it works
+                          {tr("cloud_step_read_how")}
                         </Text>
                         <Text
                           style={[
@@ -656,8 +656,7 @@ export default function ProfileScreen() {
                             { color: colors.textMuted },
                           ]}
                         >
-                          See what Google, Supabase, and encryption each do in
-                          the flow.
+                          {tr("cloud_step_read_how_desc")}
                         </Text>
                         <Pressable
                           onPress={() => setCloudInfoVisible(true)}
@@ -776,7 +775,7 @@ export default function ProfileScreen() {
           ]}
         >
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            Category Breakdown
+            {tr("profile_category_breakdown")}
           </Text>
           {categoryStats.map((item) => (
             <View

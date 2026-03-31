@@ -101,7 +101,7 @@ export default function SearchScreen() {
               {tr("search_no_results")}
             </Text>
             <Text style={[styles.emptyBody, { color: colors.textMuted }]}>
-              Try a bank name, ID number, membership code or card type.
+              {tr("search_empty_hint")}
             </Text>
           </View>
         ) : (
