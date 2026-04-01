@@ -1258,40 +1258,6 @@ export default function SettingsScreen() {
 
         <View style={[styles.section, { backgroundColor: colors.surface }]}>
           <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            {tr("settings_section_developer")}
-          </Text>
-          <Pressable
-            onPress={sendTestNotification}
-            style={[
-              styles.testBtn,
-              {
-                backgroundColor: colors.surfaceMuted,
-                borderColor: colors.buttonBorder,
-              },
-            ]}
-          >
-            <Text style={[styles.testBtnText, { color: colors.text }]}>
-              {tr("settings_send_test_notification")}
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={replayOnboarding}
-            style={[
-              styles.testBtn,
-              {
-                backgroundColor: colors.surfaceMuted,
-                borderColor: colors.buttonBorder,
-              },
-            ]}
-          >
-            <Text style={[styles.testBtnText, { color: colors.text }]}>
-              {tr("settings_view_onboarding")}
-            </Text>
-          </Pressable>
-        </View>
-
-        <View style={[styles.section, { backgroundColor: colors.surface }]}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>
             {tr("credits_title")}
           </Text>
           <Text style={[styles.sectionBody, { color: colors.textMuted }]}>
