@@ -45,7 +45,9 @@
       [
         "./node_modules/rn-mlkit-ocr/app.plugin.js",
         {
-          "ocrModels": ["latin"],
+          "ocrModels": [
+            "latin"
+          ],
           "ocrUseBundled": true
         }
       ],
@@ -65,7 +67,7 @@
     "ios": {
       "icon": "./assets/ios-logo.png",
       "supportsTablet": true,
-      "buildNumber": "28",
+      "buildNumber": "29",
       "bundleIdentifier": "com.tenovski.cardsapp",
       "infoPlist": {
         "NSCameraUsageDescription": "Allow Pocket ID to use the camera so you can scan cards and documents into editable drafts.",
@@ -86,10 +88,12 @@
         "backgroundImage": "./assets/droid-icon-background.png",
         "monochromeImage": "./assets/droid-monochrome.png"
       },
-      "versionCode": 67,
+      "versionCode": 68,
       "predictiveBackGestureEnabled": false,
       "package": "com.tenovski.cardsapp",
-      "permissions": ["android.permission.POST_NOTIFICATIONS"]
+      "permissions": [
+        "android.permission.POST_NOTIFICATIONS"
+      ]
     },
     "androidStatusBar": {
       "backgroundColor": "#1C1E21",
