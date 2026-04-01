@@ -675,8 +675,8 @@ export const translations: Record<LanguageCode, TranslationKeys> = {
     // Passphrase Reminder Modal
     passphrase_reminder_title: "Set up your sync passphrase",
     passphrase_reminder_body:
-      "You're signed in with Google, but cloud sync is paused because you haven't created a passphrase yet. Set one up in the Profile tab to start encrypting and syncing your cards.",
-    passphrase_reminder_go_profile: "Go to Profile",
+      "You're signed in with Google, but cloud sync is paused because you haven't created a passphrase yet. Set one up now to start encrypting and syncing your cards.",
+    passphrase_reminder_go_profile: "Set Sync Passphrase",
     passphrase_reminder_later: "Remind me later",
 
     // Support Modal
@@ -1063,8 +1063,8 @@ export const translations: Record<LanguageCode, TranslationKeys> = {
     // Passphrase Reminder Modal
     passphrase_reminder_title: "Постави лозинка за синхронизација",
     passphrase_reminder_body:
-      "Најавени сте со Google, но облак синхронизацијата е паузирана бидејќи сè уште немате лозинка. Поставете ја во табот Профил за да започнете со шифрирање и синхронизирање на картичките.",
-    passphrase_reminder_go_profile: "Кон профил",
+      "Најавени сте со Google, но облак синхронизацијата е паузирана бидејќи сè уште немате лозинка. Поставете ја сега за да започнете со шифрирање и синхронизирање на картичките.",
+    passphrase_reminder_go_profile: "Постави лозинка",
     passphrase_reminder_later: "Потсети ме подоцна",
 
     // Support Modal

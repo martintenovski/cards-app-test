@@ -186,7 +186,7 @@ export function SupportModal({
         clearTimeout(closeTimeoutRef.current);
       }
     };
-  }, []);
+  }, [visible]);
 
   const handleDismiss = async () => {
     await recordSupportModalDismissed();
@@ -228,19 +228,33 @@ export function SupportModal({
       return;
     }
 
+    let latestCustomerInfo: CustomerInfo | null = null;
+
     try {
       setPurchasingIdentifier(productId);
       setErrorMessage(null);
-      const customerInfo = await purchaseSupportPackage(aPackage);
-      onPurchaseSuccess?.(customerInfo);
-      setThankYouMessage(
-        tr("support_modal_thank_you_body"),
-      );
+      latestCustomerInfo = await purchaseSupportPackage(aPackage);
+
+      if (!latestCustomerInfo) {
+        return;
+      }
+
+      onPurchaseSuccess?.(latestCustomerInfo);
+      setThankYouMessage(tr("support_modal_thank_you_body"));
       closeTimeoutRef.current = setTimeout(() => {
         void handleDismiss();
       }, 2000);
     } catch (error) {
       const maybePurchaseError = error as { userCancelled?: boolean };
+      if (latestCustomerInfo) {
+        onPurchaseSuccess?.(latestCustomerInfo);
+        setThankYouMessage(tr("support_modal_thank_you_body"));
+        closeTimeoutRef.current = setTimeout(() => {
+          void handleDismiss();
+        }, 2000);
+        return;
+      }
+
       if (maybePurchaseError.userCancelled) {
         return;
       }
@@ -395,11 +409,14 @@ export function SupportModal({
 
                       {(() => {
                         const product = monthlyPackage.product;
+                        const monthlyProductId = normalizeProductId(
+                          product.identifier,
+                        );
                         const isPurchasing =
-                          purchasingIdentifier === product.identifier;
+                          purchasingIdentifier === monthlyProductId;
                         const canPurchase = canPurchaseSupportProduct(
                           customerInfo,
-                          product.identifier,
+                          monthlyProductId,
                         );
                         const buttonDisabled =
                           Boolean(purchasingIdentifier) || !canPurchase;
@@ -438,7 +455,7 @@ export function SupportModal({
 
                     {!canPurchaseSupportProduct(
                       customerInfo,
-                      monthlyPackage.product.identifier,
+                      normalizeProductId(monthlyPackage.product.identifier),
                     ) && canManageMonthlySubscription(customerInfo) ? (
                       <Pressable
                         accessibilityRole="button"
@@ -468,7 +485,7 @@ export function SupportModal({
                       product.description ||
                       fallbackDescription(normalizedId);
                     const isPurchasing =
-                      purchasingIdentifier === product.identifier;
+                      purchasingIdentifier === normalizedId;
                     const purchaseCount = getSupportProductPurchaseCount(
                       customerInfo,
                       normalizedId,

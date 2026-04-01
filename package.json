@@ -8,9 +8,9 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "build:ios:local:production": "NODE_ENV=production eas build --platform ios --local --profile production",
-    "build:android:local:production": "NODE_ENV=production eas build --platform android --local --profile production",
-    "verify:config:production": "NODE_ENV=production npx expo config --type public",
+    "build:ios:local:production": "cross-env NODE_ENV=production eas build --platform ios --local --profile production",
+    "build:android:local:production": "cross-env NODE_ENV=production eas build --platform android --local --profile production",
+    "verify:config:production": "cross-env NODE_ENV=production npx expo config --type public",
     "typecheck": "tsc --noEmit",
     "doctor": "npx expo-doctor",
     "check": "npm run typecheck && npm run doctor"
@@ -77,6 +77,7 @@
   "devDependencies": {
     "@types/react": "~19.1.10",
     "babel-plugin-module-resolver": "^5.0.0",
+    "cross-env": "^7.0.3",
     "tailwindcss": "^3.4.17",
     "typescript": "~5.9.2"
   },

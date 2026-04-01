@@ -141,13 +141,19 @@ async function syncExpiryNotifications(cards: WalletCard[]) {
 export function ExpiryNotificationManager() {
   const cards = useCardStore((state) => state.cards);
   const hasHydrated = useCardStore((state) => state.hasHydrated);
+  const hasSeenOnboarding = useCardStore((state) => state.hasSeenOnboarding);
   const expiryNotificationsEnabled = useCardStore(
     (state) => state.expiryNotificationsEnabled,
   );
   const isSyncingRef = useRef(false);
 
   useEffect(() => {
-    if (Platform.OS === "web" || !hasHydrated || isSyncingRef.current) {
+    if (
+      Platform.OS === "web" ||
+      !hasHydrated ||
+      !hasSeenOnboarding ||
+      isSyncingRef.current
+    ) {
       return;
     }
 
@@ -163,7 +169,7 @@ export function ExpiryNotificationManager() {
     void syncExpiryNotifications(cards).finally(() => {
       isSyncingRef.current = false;
     });
-  }, [cards, expiryNotificationsEnabled, hasHydrated]);
+  }, [cards, expiryNotificationsEnabled, hasHydrated, hasSeenOnboarding]);
 
   return null;
 }

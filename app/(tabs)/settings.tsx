@@ -20,7 +20,6 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
 import Svg, { Path } from "react-native-svg";
-
 import { deleteWalletSnapshot, isSupabaseConfigured } from "@/lib/supabase";
 import { CloudSyncInfoModal } from "@/components/CloudSyncInfoModal";
 import { GoogleWordmark } from "@/components/GoogleWordmark";
@@ -612,7 +611,12 @@ export default function SettingsScreen() {
             })}
           </View>
           {!canUseAnimatedStack ? (
-            <Text style={[styles.cardViewHint, { color: "#000000" }]}>
+            <Text
+              style={[
+                styles.cardViewHint,
+                { color: isDark ? colors.text : colors.textMuted },
+              ]}
+            >
               {tr("settings_card_view_stack_hint")}
             </Text>
           ) : null}
@@ -1263,30 +1267,6 @@ export default function SettingsScreen() {
           <Text style={[styles.sectionBody, { color: colors.textMuted }]}>
             {tr("credits_body")}
           </Text>
-          <View
-            style={[
-              styles.testBtn,
-              {
-                backgroundColor: colors.surfaceMuted,
-                borderColor: colors.buttonBorder,
-              },
-            ]}
-          >
-            <View style={styles.developerBtnInner}>
-              <Text style={[styles.developerBtnText, { color: colors.text }]}>
-                {tr("credits_developed_by")}
-              </Text>
-              <Svg width={18} height={18} viewBox="0 0 525 525" fill="none">
-                <Path
-                  d="M262.5 0C407.475 0 525 117.525 525 262.5C525 407.475 407.475 525 262.5 525C117.525 525 0 407.475 0 262.5C4.31772e-06 117.525 117.525 4.31667e-06 262.5 0ZM271.854 316.381C265.526 310.186 255.406 310.186 249.078 316.381L207.913 356.682C197.49 366.885 204.714 384.593 219.302 384.593H301.631C316.218 384.593 323.442 366.885 313.02 356.682L271.854 316.381ZM261.706 145.718C238.767 145.718 216.341 152.521 197.268 165.266C178.193 178.011 163.326 196.125 154.547 217.32C145.768 238.514 143.471 261.836 147.947 284.336C150.826 298.804 156.42 312.514 164.361 324.772C171.694 336.091 187.421 335.992 196.957 326.456L231.309 292.103L210.413 259.356C200.041 243.102 211.717 221.803 230.999 221.803H289.932C309.214 221.803 320.888 243.102 310.516 259.356L290.587 290.587L326.456 326.456C335.992 335.992 351.719 336.091 359.051 324.772C366.992 312.514 372.589 298.804 375.466 284.336C379.942 261.836 377.644 238.514 368.865 217.32C360.086 196.125 345.22 178.011 326.146 165.266C307.072 152.521 284.647 145.718 261.706 145.718Z"
-                  fill="#5956FF"
-                />
-              </Svg>
-              <Text style={[styles.developerBtnText, { color: colors.text }]}>
-                Tenovski
-              </Text>
-            </View>
-          </View>
           <Pressable
             onPress={() => setCreditsVisible(true)}
             style={[
@@ -1304,6 +1284,17 @@ export default function SettingsScreen() {
           <Text style={[styles.copyrightText, { color: colors.textMuted }]}>
             {`\u00A9 ${new Date().getFullYear()} \u2014 Pocket ID, ${tr("credits_all_rights")}`}
           </Text>
+          <View style={styles.developerBrandRow}>
+            <Svg width={24} height={24} viewBox="0 0 525 525" fill="none">
+              <Path
+                d="M262.5 0C407.475 0 525 117.525 525 262.5C525 407.475 407.475 525 262.5 525C117.525 525 0 407.475 0 262.5C4.31772e-06 117.525 117.525 4.31667e-06 262.5 0ZM271.854 316.381C265.526 310.186 255.406 310.186 249.078 316.381L207.913 356.682C197.49 366.885 204.714 384.593 219.302 384.593H301.631C316.218 384.593 323.442 366.885 313.02 356.682L271.854 316.381ZM261.706 145.718C238.767 145.718 216.341 152.521 197.268 165.266C178.193 178.011 163.326 196.125 154.547 217.32C145.768 238.514 143.471 261.836 147.947 284.336C150.826 298.804 156.42 312.514 164.361 324.772C171.694 336.091 187.421 335.992 196.957 326.456L231.309 292.103L210.413 259.356C200.041 243.102 211.717 221.803 230.999 221.803H289.932C309.214 221.803 320.888 243.102 310.516 259.356L290.587 290.587L326.456 326.456C335.992 335.992 351.719 336.091 359.051 324.772C366.992 312.514 372.589 298.804 375.466 284.336C379.942 261.836 377.644 238.514 368.865 217.32C360.086 196.125 345.22 178.011 326.146 165.266C307.072 152.521 284.647 145.718 261.706 145.718Z"
+                fill="#5956FF"
+              />
+            </Svg>
+            <Text style={[styles.developerText, { color: colors.textMuted }]}>
+              Tenovski
+            </Text>
+          </View>
           <Modal
             visible={creditsVisible}
             transparent
@@ -1736,20 +1727,22 @@ const styles = StyleSheet.create({
     fontFamily: "ReadexPro-Medium",
     fontSize: 16,
   },
-  developerBtnInner: {
+  developerText: {
+    fontFamily: "ReadexPro-Medium",
+    fontSize: 14,
+    textAlign: "center",
+  },
+  developerBrandRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    gap: 6,
-  },
-  developerBtnText: {
-    fontFamily: "ReadexPro-Medium",
-    fontSize: 15,
+    gap: 8,
+    marginTop: 10,
   },
   copyrightText: {
     fontFamily: "ReadexPro-Regular",
     fontSize: 12,
     textAlign: "center",
-    marginTop: 14,
+    marginTop: 12,
   },
 });

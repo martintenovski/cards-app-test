@@ -16,8 +16,12 @@ import { useCardStore } from "@/store/useCardStore";
 import { hasStoredSyncPassphrase } from "@/utils/cloudVault";
 import { APP_THEME, resolveTheme } from "@/utils/theme";
 
-const SNOOZE_KEY = "passphrase_reminder_snoozed_until";
-const SNOOZE_DAYS = 3;
+const PASSHRASE_SETUP_SNOOZE_KEY = "passphrase_reminder_setup_snoozed_until";
+const PASSHRASE_SETUP_SNOOZE_DAYS = 3;
+
+function getSnoozeKey(userId: string) {
+  return `${PASSHRASE_SETUP_SNOOZE_KEY}:${userId}`;
+}
 
 export function PassphraseReminderModal() {
   const tr = useTranslation();
@@ -32,18 +36,53 @@ export function PassphraseReminderModal() {
   const hasHydrated = useCardStore((state) => state.hasHydrated);
 
   const [visible, setVisible] = useState(false);
+  const [dismissedThisSession, setDismissedThisSession] = useState(false);
 
   useEffect(() => {
-    if (!authReady || !hasHydrated || !user) return;
+    if (!user) {
+      setDismissedThisSession(false);
+    }
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (!authReady || !hasHydrated) {
+      return;
+    }
+
+    if (!user) {
+      setVisible(false);
+      return;
+    }
+
+    if (dismissedThisSession) {
+      setVisible(false);
+      return;
+    }
 
     let cancelled = false;
+    const userId = user.id;
 
     async function check() {
-      const snoozedUntil = await AsyncStorage.getItem(SNOOZE_KEY);
-      if (snoozedUntil && Date.now() < Number(snoozedUntil)) return;
+      const snoozeKey = getSnoozeKey(userId);
+      const hasPP = await hasStoredSyncPassphrase(userId);
 
-      const hasPP = await hasStoredSyncPassphrase(user!.id);
-      if (!hasPP && !cancelled) {
+      if (hasPP) {
+        await AsyncStorage.removeItem(snoozeKey).catch(() => null);
+        if (!cancelled) {
+          setVisible(false);
+        }
+        return;
+      }
+
+      const snoozedUntil = await AsyncStorage.getItem(snoozeKey);
+      if (snoozedUntil && Date.now() < Number(snoozedUntil)) {
+        if (!cancelled) {
+          setVisible(false);
+        }
+        return;
+      }
+
+      if (!cancelled) {
         setVisible(true);
       }
     }
@@ -53,17 +92,27 @@ export function PassphraseReminderModal() {
     return () => {
       cancelled = true;
     };
-  }, [authReady, hasHydrated, user]);
+  }, [authReady, dismissedThisSession, hasHydrated, user?.id]);
 
-  async function handleLater() {
-    const snoozedUntil = Date.now() + SNOOZE_DAYS * 24 * 60 * 60 * 1000;
-    await AsyncStorage.setItem(SNOOZE_KEY, String(snoozedUntil));
+  function handleLater() {
+    setDismissedThisSession(true);
     setVisible(false);
   }
 
-  function handleGoProfile() {
+  async function handleOpenPassphraseSetup() {
+    if (user) {
+      const snoozedUntil =
+        Date.now() +
+        PASSHRASE_SETUP_SNOOZE_DAYS * 24 * 60 * 60 * 1000;
+      await AsyncStorage.setItem(
+        getSnoozeKey(user.id),
+        String(snoozedUntil),
+      ).catch(() => null);
+    }
+
+    setDismissedThisSession(true);
     setVisible(false);
-    router.push("/(tabs)/profile");
+    router.push("/cloud-passphrase");
   }
 
   if (!visible) return null;
@@ -73,7 +122,7 @@ export function PassphraseReminderModal() {
       transparent
       animationType="fade"
       visible={visible}
-      onRequestClose={() => void handleLater()}
+      onRequestClose={handleLater}
       statusBarTranslucent
     >
       <View style={styles.overlay}>
@@ -92,7 +141,7 @@ export function PassphraseReminderModal() {
 
           <Pressable
             style={[styles.primaryBtn, { backgroundColor: colors.accent }]}
-            onPress={handleGoProfile}
+            onPress={() => void handleOpenPassphraseSetup()}
           >
             <Text style={[styles.primaryBtnText, { color: colors.accentText }]}>
               {tr("passphrase_reminder_go_profile")}
@@ -104,7 +153,7 @@ export function PassphraseReminderModal() {
               styles.secondaryBtn,
               { borderColor: colors.border, backgroundColor: colors.surfaceMuted },
             ]}
-            onPress={() => void handleLater()}
+            onPress={handleLater}
           >
             <Text style={[styles.secondaryBtnText, { color: colors.textMuted }]}>
               {tr("passphrase_reminder_later")}

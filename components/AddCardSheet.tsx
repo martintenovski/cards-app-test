@@ -343,14 +343,10 @@ export function AddCardSheet({ isOpen, onClose }: AddCardSheetProps) {
                     <View
                       style={[
                         styles.scanDraftIcon,
-                        { backgroundColor: colors.accent },
+                        { backgroundColor: "#0050A3" },
                       ]}
                     >
-                      <Feather
-                        name="camera"
-                        size={18}
-                        color={colors.accentText}
-                      />
+                      <Feather name="info" size={18} color="#FFFFFF" />
                     </View>
                     <View style={styles.importTextWrap}>
                       <Text
@@ -364,14 +360,8 @@ export function AddCardSheet({ isOpen, onClose }: AddCardSheetProps) {
                         style={[styles.importBody, { color: colors.textMuted }]}
                       >
                         {language === "mk"
-                          ? `${pendingScanDraft.analysis.classification.type} е детектирано со ${Math.round(
-                              pendingScanDraft.analysis.providerConfidence *
-                                100,
-                            )}% доверба. Провери и коригирај ги полињата пред зачувување.`
-                          : `${pendingScanDraft.analysis.classification.type} detected with ${Math.round(
-                              pendingScanDraft.analysis.providerConfidence *
-                                100,
-                            )}% confidence. Review and adjust any field before saving.`}
+                          ? `${pendingScanDraft.analysis.classification.type} е детектирано. Провери и коригирај ги полињата пред зачувување.`
+                          : `${pendingScanDraft.analysis.classification.type} detected. Review and adjust any field before saving.`}
                       </Text>
                     </View>
                   </View>
