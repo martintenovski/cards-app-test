@@ -1297,8 +1297,7 @@ export default function SettingsScreen() {
           <Text style={[styles.sectionBody, { color: colors.textMuted }]}>
             {tr("credits_body")}
           </Text>
-          <Pressable
-            onPress={() => Linking.openURL("https://tenovski.space/")}
+          <View
             style={[
               styles.testBtn,
               {
@@ -1321,7 +1320,7 @@ export default function SettingsScreen() {
                 Tenovski
               </Text>
             </View>
-          </Pressable>
+          </View>
           <Pressable
             onPress={() => setCreditsVisible(true)}
             style={[
