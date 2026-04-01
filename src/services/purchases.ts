@@ -218,8 +218,11 @@ function logRevenueCatConfigurationHints(error?: unknown) {
   console.warn(message);
 
   if (error) {
-    const { code, message: errorMessage, underlyingErrorMessage } =
-      getPurchasesErrorDetails(error);
+    const {
+      code,
+      message: errorMessage,
+      underlyingErrorMessage,
+    } = getPurchasesErrorDetails(error);
 
     console.warn(
       `[RevenueCat] Underlying offerings error${code ? ` (${code})` : ""}: ${
@@ -228,7 +231,9 @@ function logRevenueCatConfigurationHints(error?: unknown) {
     );
 
     if (underlyingErrorMessage) {
-      console.warn(`[RevenueCat] Underlying store error: ${underlyingErrorMessage}`);
+      console.warn(
+        `[RevenueCat] Underlying store error: ${underlyingErrorMessage}`,
+      );
     }
   }
 }
@@ -273,7 +278,9 @@ export function getSupportLoadErrorMessage(error: unknown) {
         .join("\n\n");
     }
 
-    if (code === PURCHASES_ERROR_CODE.PRODUCT_NOT_AVAILABLE_FOR_PURCHASE_ERROR) {
+    if (
+      code === PURCHASES_ERROR_CODE.PRODUCT_NOT_AVAILABLE_FOR_PURCHASE_ERROR
+    ) {
       return [
         `Google Play found the app, but one or more support products are not available for package ${getBundleIdentifier()}. This usually means the tester account does not have access yet, the products are still inactive, or the Play Console / RevenueCat product IDs do not match exactly.`,
         debugSuffix,
@@ -375,8 +382,10 @@ export function normalizeProductId(identifier: string) {
 }
 
 function logSupportPackageStatus(offering: PurchasesOffering) {
-  const availableProductIds = offering.availablePackages.map(
-    (pkg) => normalizeProductId(pkg.product.identifier),
+  if (!__DEV__) return;
+
+  const availableProductIds = offering.availablePackages.map((pkg) =>
+    normalizeProductId(pkg.product.identifier),
   );
   const missingProductIds = PRODUCT_ORDER.filter(
     (productId) => !availableProductIds.includes(productId),
@@ -567,16 +576,22 @@ export async function getSupportPackages(): Promise<PurchasesPackage[]> {
   return [...offering.availablePackages]
     .filter((pkg) =>
       PRODUCT_ORDER.includes(
-        normalizeProductId(pkg.product.identifier) as (typeof PRODUCT_ORDER)[number],
+        normalizeProductId(
+          pkg.product.identifier,
+        ) as (typeof PRODUCT_ORDER)[number],
       ),
     )
     .sort(
       (left, right) =>
         PRODUCT_ORDER.indexOf(
-          normalizeProductId(left.product.identifier) as (typeof PRODUCT_ORDER)[number],
+          normalizeProductId(
+            left.product.identifier,
+          ) as (typeof PRODUCT_ORDER)[number],
         ) -
         PRODUCT_ORDER.indexOf(
-          normalizeProductId(right.product.identifier) as (typeof PRODUCT_ORDER)[number],
+          normalizeProductId(
+            right.product.identifier,
+          ) as (typeof PRODUCT_ORDER)[number],
         ),
     );
 }

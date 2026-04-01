@@ -45,6 +45,11 @@ type ReconcileWalletSnapshotResult = {
 type NativeGoogleSignInPackage =
   typeof import("@react-native-google-signin/google-signin");
 
+type NativeGoogleSignInOptions = {
+  loginHint?: string;
+  nonce?: string;
+};
+
 WebBrowser.maybeCompleteAuthSession();
 
 const AUTH_CALLBACK_PATH = "auth/callback";
@@ -140,6 +145,17 @@ function configureNativeGoogleSignInOnce(
   hasConfiguredNativeGoogleSignIn = true;
 }
 
+async function signInWithPatchedNativeGoogle(
+  nativeGoogleSignIn: NativeGoogleSignInPackage,
+  options: NativeGoogleSignInOptions,
+) {
+  const signIn = nativeGoogleSignIn.GoogleSignin.signIn as (
+    options?: NativeGoogleSignInOptions,
+  ) => ReturnType<NativeGoogleSignInPackage["GoogleSignin"]["signIn"]>;
+
+  return await signIn(options);
+}
+
 function isDeveloperConfigurationGoogleSignInError(error: unknown) {
   if (!(error instanceof Error)) {
     return false;
@@ -224,9 +240,9 @@ async function signInWithNativeGoogle(options?: { selectAccount?: boolean }) {
           )
         : undefined;
 
-    const response = await nativeGoogleSignIn.GoogleSignin.signIn(
-      hashedNonce !== undefined ? { nonce: hashedNonce } : {},
-    );
+    const response = await signInWithPatchedNativeGoogle(nativeGoogleSignIn, {
+      ...(hashedNonce !== undefined ? { nonce: hashedNonce } : {}),
+    });
 
     if (nativeGoogleSignIn.isCancelledResponse(response)) {
       return null;
@@ -246,7 +262,11 @@ async function signInWithNativeGoogle(options?: { selectAccount?: boolean }) {
       );
     }
 
-    const { data, error } = await supabase!.auth.signInWithIdToken({
+    if (!supabase) {
+      throw new Error("Supabase is not configured.");
+    }
+
+    const { data, error } = await supabase.auth.signInWithIdToken({
       provider: "google",
       token: idToken,
       ...(rawNonce !== undefined ? { nonce: rawNonce } : {}),
@@ -278,7 +298,11 @@ export const createSessionFromUrl = async (url: string) => {
   const { access_token, refresh_token } = params;
   if (!access_token) return null;
 
-  const { data, error } = await supabase!.auth.setSession({
+  if (!supabase) {
+    throw new Error("Supabase is not configured.");
+  }
+
+  const { data, error } = await supabase.auth.setSession({
     access_token,
     refresh_token,
   });

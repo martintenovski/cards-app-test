@@ -60,7 +60,9 @@ export function useAutoSupportModal(
       setShouldAutoShow(true);
     }
 
-    void decide();
+    void decide().catch(() => {
+      // Non-critical — suppress so auto-show logic never crashes the app.
+    });
   }, [customerInfo, isLoadingCustomerInfo]);
 
   const consumeAutoShow = () => {

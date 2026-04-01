@@ -222,8 +222,8 @@ export default function RootLayout() {
                 name="card-detail"
                 dangerouslySingular={(
                   _name: string,
-                  params: Record<string, string>,
-                ) => params?.id}
+                  params: Record<string, string | string[]>,
+                ) => (typeof params?.id === "string" ? params.id : undefined)}
                 options={{
                   headerShown: false,
                   presentation: "modal",
