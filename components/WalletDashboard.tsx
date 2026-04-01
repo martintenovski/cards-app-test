@@ -20,7 +20,6 @@ import Animated, {
 import { CardDetailModal } from "@/components/CardDetailModal";
 import { CardList } from "@/components/CardList";
 import { CardQuickView } from "@/components/CardQuickView";
-import { CardStack } from "@/components/CardStack";
 import { TopMenu } from "@/components/TopMenu";
 import { DEMO_CARDS } from "@/constants/demoCards";
 import { useTranslation } from "@/src/hooks/useTranslation";
@@ -52,7 +51,6 @@ export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const listRef = useRef<Animated.FlatList<WalletCard> | null>(null);
   const cards = useCardStore((state) => state.cards);
-  const viewMode = useCardStore((state) => state.viewMode);
   const homeFilter = useCardStore((state) => state.homeFilter);
   const language = useCardStore((state) => state.language);
   const themePreference = useCardStore((state) => state.themePreference);
@@ -62,7 +60,6 @@ export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
   const colors = APP_THEME[resolvedTheme];
   const isCompact = width < 390;
   const isShort = height < 760;
-  const canUseAnimatedStack = cards.length >= 4;
 
   const FUN_MESSAGES = useMemo(
     () =>
@@ -397,47 +394,6 @@ export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
               {tr("cards_none_in_category")}
             </Text>
           </View>
-        ) : viewMode === "stack" ? (
-          <View style={styles.stackStage}>
-            {canUseAnimatedStack ? (
-              <CardStack
-                cards={filteredCards}
-                onCardPress={handleCardPress}
-                onCardLongPress={handleCardLongPress}
-              />
-            ) : (
-              <>
-                <CardList
-                  ref={listRef}
-                  cards={filteredCards}
-                  bottomSpacing={132}
-                  onCardPress={handleCardPress}
-                  onCardLongPress={handleCardLongPress}
-                  refreshing={refreshing}
-                  onRefresh={handleRefresh}
-                  funMessage={funMessage}
-                />
-                <View
-                  style={[
-                    styles.stackDisabledNotice,
-                    {
-                      backgroundColor: colors.surface,
-                      borderColor: colors.border,
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.stackDisabledText,
-                      { color: colors.text },
-                    ]}
-                  >
-                    {tr("cards_stack_unlock_hint")}
-                  </Text>
-                </View>
-              </>
-            )}
-          </View>
         ) : (
           <CardList
             ref={listRef}
@@ -503,25 +459,6 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     marginTop: 20,
     marginBottom: 20,
-  },
-  stackStage: {
-    flex: 1,
-    justifyContent: "center",
-    paddingBottom: 0,
-  },
-  stackDisabledNotice: {
-    marginHorizontal: 20,
-    marginTop: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 14,
-    borderWidth: 1,
-    alignItems: "center",
-  },
-  stackDisabledText: {
-    fontFamily: "ReadexPro-Regular",
-    fontSize: 13,
-    textAlign: "center",
   },
   emptyBox: {
     marginHorizontal: 25,

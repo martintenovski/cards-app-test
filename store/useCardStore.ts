@@ -13,7 +13,6 @@ import {
   type CardFormValues,
   type HomeFilter,
   type WalletCard,
-  type WalletViewMode,
   createCardFromForm,
   getContrastColor,
   initialSeedCards,
@@ -44,7 +43,6 @@ const storage: StateStorage =
 
 interface CardStoreState {
   cards: WalletCard[];
-  viewMode: WalletViewMode;
   homeFilter: HomeFilter;
   hasSeenOnboarding: boolean;
   themePreference: ThemePreference;
@@ -58,8 +56,6 @@ interface CardStoreState {
   addCardSheetOpen: boolean;
   hasHydrated: boolean;
   lastModifiedAt: string;
-  setViewMode: (viewMode: WalletViewMode) => void;
-  toggleViewMode: () => void;
   setHomeFilter: (filter: HomeFilter) => void;
   setHasSeenOnboarding: (hasSeenOnboarding: boolean) => void;
   setThemePreference: (themePreference: ThemePreference) => void;
@@ -84,10 +80,6 @@ interface CardStoreState {
   deleteCard: (id: string) => void;
   /** Delete all cards that expired more than 7 days ago */
   purgeExpiredCards: () => void;
-  /** Advance the stack: current top → end (swipe left) */
-  cycleCardFwd: () => void;
-  /** Go back in the stack: last card → front (swipe right) */
-  cycleCardBwd: () => void;
   resetCards: () => void;
 }
 
@@ -95,7 +87,6 @@ export const useCardStore = create<CardStoreState>()(
   persist(
     (set) => ({
       cards: initialSeedCards,
-      viewMode: "list",
       homeFilter: "everything",
       hasSeenOnboarding: false,
       themePreference: "system",
@@ -111,11 +102,6 @@ export const useCardStore = create<CardStoreState>()(
       addCardSheetOpen: false,
       openAddCardSheet: () => set({ addCardSheetOpen: true }),
       closeAddCardSheet: () => set({ addCardSheetOpen: false }),
-      setViewMode: (viewMode) => set({ viewMode }),
-      toggleViewMode: () =>
-        set((state) => ({
-          viewMode: state.viewMode === "stack" ? "list" : "stack",
-        })),
       setHomeFilter: (homeFilter) => set({ homeFilter }),
       setHasSeenOnboarding: (hasSeenOnboarding) => set({ hasSeenOnboarding }),
       setThemePreference: (themePreference) => set({ themePreference }),
@@ -207,23 +193,9 @@ export const useCardStore = create<CardStoreState>()(
           if (surviving.length === state.cards.length) return state;
           return { cards: surviving, lastModifiedAt: new Date().toISOString() };
         }),
-      cycleCardFwd: () =>
-        set((state) => {
-          if (state.cards.length <= 1) return state;
-          const [first, ...rest] = state.cards;
-          return { cards: [...rest, first] };
-        }),
-      cycleCardBwd: () =>
-        set((state) => {
-          if (state.cards.length <= 1) return state;
-          const last = state.cards[state.cards.length - 1];
-          const rest = state.cards.slice(0, -1);
-          return { cards: [last, ...rest] };
-        }),
       resetCards: () =>
         set((state) => ({
           cards: initialSeedCards,
-          viewMode: "list",
           homeFilter: "everything",
           hasSeenOnboarding: state.hasSeenOnboarding,
           themePreference: "system",
@@ -263,7 +235,6 @@ export const useCardStore = create<CardStoreState>()(
       },
       partialize: (state) => ({
         cards: state.cards,
-        viewMode: state.viewMode,
         homeFilter: state.homeFilter,
         hasSeenOnboarding: state.hasSeenOnboarding,
         themePreference: state.themePreference,

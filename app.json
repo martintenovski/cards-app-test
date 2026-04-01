@@ -57,7 +57,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/ios-logo-rounded.png",
+          "image": "./assets/ios-logo.png",
           "resizeMode": "contain",
           "backgroundColor": "#1C1E21",
           "imageWidth": 88

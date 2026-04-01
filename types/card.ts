@@ -6,7 +6,6 @@ export type CardCategory =
   | "vehicle"
   | "access";
 export type HomeFilter = "everything" | CardCategory;
-export type WalletViewMode = "stack" | "list";
 
 export type BankCardType = "Debit Card" | "Credit Card";
 export type PersonalDocType = "Identity Card" | "Driving License" | "Passport";

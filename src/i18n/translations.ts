@@ -98,7 +98,6 @@ export type TranslationKeys = {
   cards_demo_title: string;
   cards_demo_body: string;
   cards_none_in_category: string;
-  cards_stack_unlock_hint: string;
   card_detail_not_found: string;
   card_detail_front: string;
   card_detail_back: string;
@@ -129,12 +128,6 @@ export type TranslationKeys = {
 
   settings_section_language: string;
   settings_language_body: string;
-
-  settings_section_card_view: string;
-  settings_card_view_body: string;
-  settings_card_view_stack: string;
-  settings_card_view_list: string;
-  settings_card_view_stack_hint: string;
 
   settings_section_security: string;
   settings_biometric_lock_label: string;
@@ -428,7 +421,6 @@ export const translations: Record<LanguageCode, TranslationKeys> = {
     cards_demo_body:
       "Don't worry, these disappear once you add a card or sync your cards.",
     cards_none_in_category: "No cards in this category yet.",
-    cards_stack_unlock_hint: "Animated stack unlocks with 4 or more cards.",
     card_detail_not_found: "Card not found",
     card_detail_front: "Front",
     card_detail_back: "Back",
@@ -464,14 +456,6 @@ export const translations: Record<LanguageCode, TranslationKeys> = {
 
     settings_section_language: "Language",
     settings_language_body: "Choose the language used throughout the app.",
-
-    settings_section_card_view: "Card View",
-    settings_card_view_body:
-      "Choose how cards are displayed on the home screen.",
-    settings_card_view_stack: "Animated Stack",
-    settings_card_view_list: "List",
-    settings_card_view_stack_hint:
-      "Animated stack unlocks with 4 or more saved cards.",
 
     settings_section_security: "Security",
     settings_biometric_lock_label: "Biometric Lock",
@@ -811,8 +795,6 @@ export const translations: Record<LanguageCode, TranslationKeys> = {
     cards_demo_body:
       "Не грижи се, овие исчезнуваат кога ќе додадеш картичка или ќе синхронизираш.",
     cards_none_in_category: "Сè уште нема картички во оваа категорија.",
-    cards_stack_unlock_hint:
-      "Анимираниот приказ се отклучува со 4 или повеќе картички.",
     card_detail_not_found: "Картичката не е пронајдена",
     card_detail_front: "Предна",
     card_detail_back: "Задна",
@@ -850,14 +832,6 @@ export const translations: Record<LanguageCode, TranslationKeys> = {
 
     settings_section_language: "Јазик",
     settings_language_body: "Избери јазик кој се користи во апликацијата.",
-
-    settings_section_card_view: "Приказ на картички",
-    settings_card_view_body:
-      "Избери како се прикажуваат картичките на почетниот екран.",
-    settings_card_view_stack: "Анимиран приказ",
-    settings_card_view_list: "Листа",
-    settings_card_view_stack_hint:
-      "Анимираниот приказ се отклучува со 4 или повеќе зачувани картички.",
 
     settings_section_security: "Безбедност",
     settings_biometric_lock_label: "Биометриска заштита",

@@ -127,9 +127,7 @@ export default function SettingsScreen() {
   const setThemePreference = useCardStore((state) => state.setThemePreference);
   const language = useCardStore((state) => state.language);
   const setLanguage = useCardStore((state) => state.setLanguage);
-  const viewMode = useCardStore((state) => state.viewMode);
   const [langDropdownOpen, setLangDropdownOpen] = useState(false);
-  const setViewMode = useCardStore((state) => state.setViewMode);
   const appLockEnabled = useCardStore((state) => state.appLockEnabled);
   const setAppLockEnabled = useCardStore((state) => state.setAppLockEnabled);
   const screenshotBlockingEnabled = useCardStore(
@@ -197,15 +195,8 @@ export default function SettingsScreen() {
   const supportSummary = getSupporterSummary(customerInfo);
   const shouldShowCloudSyncGuide =
     Boolean(authUser) && cloudVaultStatus === "missing";
-  const canUseAnimatedStack = cards.length >= 4;
 
   useScrollToTop(scrollViewRef);
-
-  useEffect(() => {
-    if (!canUseAnimatedStack && viewMode === "stack") {
-      setViewMode("list");
-    }
-  }, [canUseAnimatedStack, setViewMode, viewMode]);
 
   useEffect(() => {
     let cancelled = false;
@@ -558,68 +549,6 @@ export default function SettingsScreen() {
               );
             })}
           </View>
-        </View>
-
-        <View style={[styles.section, { backgroundColor: colors.surface }]}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>
-            {tr("settings_section_card_view")}
-          </Text>
-          <Text style={[styles.sectionBody, { color: colors.textMuted }]}>
-            {tr("settings_card_view_body")}
-          </Text>
-          <View
-            style={[
-              styles.themeOptionRow,
-              {
-                backgroundColor: colors.surfaceMuted,
-                borderColor: colors.buttonBorder,
-              },
-            ]}
-          >
-            {(["stack", "list"] as const).map((option) => {
-              const active = viewMode === option;
-              const disabled = option === "stack" && !canUseAnimatedStack;
-              return (
-                <Pressable
-                  key={option}
-                  disabled={disabled}
-                  onPress={() => {
-                    if (!disabled) {
-                      setViewMode(option);
-                    }
-                  }}
-                  style={[
-                    styles.themeOption,
-                    {
-                      backgroundColor: active ? colors.accent : "transparent",
-                      opacity: disabled ? 0.5 : 1,
-                    },
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.themeOptionText,
-                      { color: active ? colors.accentText : colors.textMuted },
-                    ]}
-                  >
-                    {option === "stack"
-                      ? tr("settings_card_view_stack")
-                      : tr("settings_card_view_list")}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-          {!canUseAnimatedStack ? (
-            <Text
-              style={[
-                styles.cardViewHint,
-                { color: isDark ? colors.text : colors.textMuted },
-              ]}
-            >
-              {tr("settings_card_view_stack_hint")}
-            </Text>
-          ) : null}
         </View>
 
         <View style={[styles.section, { backgroundColor: colors.surface }]}>
@@ -1052,14 +981,13 @@ export default function SettingsScreen() {
             onPress={handleDeleteData}
             style={[
               styles.testBtn,
-              styles.dangerButton,
               {
-                backgroundColor: colors.dangerSoft,
-                borderColor: colors.danger,
+                backgroundColor: colors.surfaceMuted,
+                borderColor: colors.buttonBorder,
               },
             ]}
           >
-            <Text style={[styles.testBtnText, { color: colors.danger }]}>
+            <Text style={[styles.testBtnText, { color: colors.text }]}>
               {authBusy === "delete-data"
                 ? tr("data_deleting_local")
                 : tr("data_delete_local_btn")}
@@ -1285,6 +1213,9 @@ export default function SettingsScreen() {
             {`\u00A9 ${new Date().getFullYear()} \u2014 Pocket ID, ${tr("credits_all_rights")}`}
           </Text>
           <View style={styles.developerBrandRow}>
+            <Text style={[styles.developerByText, { color: colors.textMuted }]}>
+              by
+            </Text>
             <Svg width={24} height={24} viewBox="0 0 525 525" fill="none">
               <Path
                 d="M262.5 0C407.475 0 525 117.525 525 262.5C525 407.475 407.475 525 262.5 525C117.525 525 0 407.475 0 262.5C4.31772e-06 117.525 117.525 4.31667e-06 262.5 0ZM271.854 316.381C265.526 310.186 255.406 310.186 249.078 316.381L207.913 356.682C197.49 366.885 204.714 384.593 219.302 384.593H301.631C316.218 384.593 323.442 366.885 313.02 356.682L271.854 316.381ZM261.706 145.718C238.767 145.718 216.341 152.521 197.268 165.266C178.193 178.011 163.326 196.125 154.547 217.32C145.768 238.514 143.471 261.836 147.947 284.336C150.826 298.804 156.42 312.514 164.361 324.772C171.694 336.091 187.421 335.992 196.957 326.456L231.309 292.103L210.413 259.356C200.041 243.102 211.717 221.803 230.999 221.803H289.932C309.214 221.803 320.888 243.102 310.516 259.356L290.587 290.587L326.456 326.456C335.992 335.992 351.719 336.091 359.051 324.772C366.992 312.514 372.589 298.804 375.466 284.336C379.942 261.836 377.644 238.514 368.865 217.32C360.086 196.125 345.22 178.011 326.146 165.266C307.072 152.521 284.647 145.718 261.706 145.718Z"
@@ -1450,12 +1381,6 @@ const styles = StyleSheet.create({
   themeOptionText: {
     fontFamily: "ReadexPro-Medium",
     fontSize: 14,
-  },
-  cardViewHint: {
-    fontFamily: "ReadexPro-Regular",
-    fontSize: 12,
-    lineHeight: 18,
-    marginTop: 10,
   },
   warningBadge: {
     flexDirection: "row",
@@ -1730,6 +1655,11 @@ const styles = StyleSheet.create({
   developerText: {
     fontFamily: "ReadexPro-Medium",
     fontSize: 14,
+    textAlign: "center",
+  },
+  developerByText: {
+    fontFamily: "ReadexPro-Regular",
+    fontSize: 13,
     textAlign: "center",
   },
   developerBrandRow: {
