@@ -429,7 +429,7 @@ export function WalletDashboard({ routeFilter }: WalletDashboardProps) {
                   <Text
                     style={[
                       styles.stackDisabledText,
-                      { color: colors.textMuted },
+                      { color: colors.text },
                     ]}
                   >
                     {tr("cards_stack_unlock_hint")}
