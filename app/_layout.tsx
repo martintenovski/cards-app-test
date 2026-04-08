@@ -22,31 +22,30 @@ import { GluestackUIProvider } from "@/components/ui/gluestack-ui-provider";
 import { SupportModalManager } from "@/src/components/SupportModalManager";
 import * as Notifications from "expo-notifications";
 import * as ScreenCapture from "expo-screen-capture";
+import * as SplashScreen from "expo-splash-screen";
 import { useFonts } from "expo-font";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import {
   AppState,
-  Image,
   LogBox,
   Platform,
-  Text,
   useColorScheme,
   View,
 } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { useCardStore } from "@/store/useCardStore";
 import { APP_THEME, resolveTheme } from "@/utils/theme";
 
 LogBox.ignoreLogs([
   "Sending `onAnimatedValueUpdate` with no listeners registered.",
-  'Attempted to import the module "C:\\Users\\PowerCube\\copilot-sonnet\\cards-app\\node_modules\\@noble\\ciphers\\chacha"',
-  'Attempted to import the module "C:\\Users\\PowerCube\\copilot-sonnet\\cards-app\\node_modules\\@noble\\ciphers\\utils"',
   'Route "./cloud-passphrase.tsx" is missing the required default export.',
 ]);
+
+SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const router = useRouter();
@@ -82,6 +81,8 @@ export default function RootLayout() {
     if (!fontsLoaded || !hasHydrated) {
       return;
     }
+
+    void SplashScreen.hideAsync();
 
     const isOnboardingRoute = segments[0] === "onboarding";
 
@@ -149,46 +150,7 @@ export default function RootLayout() {
   }, [router]);
 
   if (!fontsLoaded || !hasHydrated) {
-    return (
-      <GestureHandlerRootView style={{ flex: 1, backgroundColor: "#1C1E21" }}>
-        <SafeAreaProvider>
-          <SafeAreaView style={{ flex: 1, backgroundColor: "#1C1E21" }}>
-            <StatusBar style="light" />
-            {/* Logo centred – matches the native iOS/Android splash exactly */}
-            <View
-              style={{
-                flex: 1,
-                alignItems: "center",
-                justifyContent: "center",
-              }}
-            >
-              <Image
-                // eslint-disable-next-line @typescript-eslint/no-require-imports
-                source={require("../assets/ios-logo.png")}
-                style={{ width: 88, height: 88, borderRadius: 20 }}
-                resizeMode="contain"
-              />
-            </View>
-            {/* "by tenovski" footer – mirrors the native iOS storyboard labels */}
-            <View style={{ alignItems: "center", paddingBottom: 40 }}>
-              <Text style={{ color: "#8E8E93", fontSize: 13, lineHeight: 18 }}>
-                by
-              </Text>
-              <Text
-                style={{
-                  color: "#FFFFFF",
-                  fontSize: 13,
-                  fontWeight: "bold",
-                  lineHeight: 18,
-                }}
-              >
-                tenovski
-              </Text>
-            </View>
-          </SafeAreaView>
-        </SafeAreaProvider>
-      </GestureHandlerRootView>
-    );
+    return null;
   }
 
   return (

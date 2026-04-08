@@ -303,6 +303,7 @@ export type TranslationKeys = {
   support_modal_error_title: string;
   support_modal_thank_you: string;
   support_modal_thank_you_body: string;
+  support_modal_continue: string;
   support_modal_monthly_section: string;
   support_modal_best_ongoing: string;
   support_modal_recurring: string;
@@ -667,9 +668,10 @@ export const translations: Record<LanguageCode, TranslationKeys> = {
     support_modal_title: "Enjoying the app? \uD83D\uDC9B",
     support_modal_loading: "Loading support options\u2026",
     support_modal_error_title: "Could not load support",
-    support_modal_thank_you: "Thank you",
+    support_modal_thank_you: "Thank You!",
     support_modal_thank_you_body:
-      "Thank you for supporting Pocket ID. It really helps. \uD83D\uDC9B",
+      "Thank you for your support! You now have access to all supporter features. Enjoy your enhanced Pocket ID experience!",
+    support_modal_continue: "Continue",
     support_modal_monthly_section: "Monthly support",
     support_modal_best_ongoing: "Best for ongoing support",
     support_modal_recurring: "Recurring",
@@ -1045,9 +1047,10 @@ export const translations: Record<LanguageCode, TranslationKeys> = {
     support_modal_title: "Ви се допаѓа апликацијата? \uD83D\uDC9B",
     support_modal_loading: "Се вчитуваат опции за поддршка\u2026",
     support_modal_error_title: "Не може да се вчита поддршка",
-    support_modal_thank_you: "Ви благодариме",
+    support_modal_thank_you: "Ви Благодариме!",
     support_modal_thank_you_body:
-      "Ви благодариме за поддршката на Pocket ID. Навистина помага. \uD83D\uDC9B",
+      "Ви благодариме за поддршката! Сега имате пристап до сите функции за поддржувачи. Уживајте во подобреното Pocket ID искуство!",
+    support_modal_continue: "Продолжи",
     support_modal_monthly_section: "Месечна поддршка",
     support_modal_best_ongoing: "Најдобро за постојана поддршка",
     support_modal_recurring: "Повторувачка",

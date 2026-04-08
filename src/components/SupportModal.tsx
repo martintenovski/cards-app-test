@@ -1,6 +1,6 @@
 import { Feather } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
@@ -111,7 +111,6 @@ export function SupportModal({
   const [purchasingIdentifier, setPurchasingIdentifier] = useState<
     string | null
   >(null);
-  const closeTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const translateY = useSharedValue(SHEET_HEIGHT);
   const backdropOpacity = useSharedValue(0);
   const isScrollAtTop = useSharedValue(1);
@@ -180,14 +179,6 @@ export function SupportModal({
     };
   }, [visible]);
 
-  useEffect(() => {
-    return () => {
-      if (closeTimeoutRef.current) {
-        clearTimeout(closeTimeoutRef.current);
-      }
-    };
-  }, [visible]);
-
   const handleDismiss = async () => {
     await recordSupportModalDismissed();
     setThankYouMessage(null);
@@ -241,17 +232,11 @@ export function SupportModal({
 
       onPurchaseSuccess?.(latestCustomerInfo);
       setThankYouMessage(tr("support_modal_thank_you_body"));
-      closeTimeoutRef.current = setTimeout(() => {
-        void handleDismiss();
-      }, 2000);
     } catch (error) {
       const maybePurchaseError = error as { userCancelled?: boolean };
       if (latestCustomerInfo) {
         onPurchaseSuccess?.(latestCustomerInfo);
         setThankYouMessage(tr("support_modal_thank_you_body"));
-        closeTimeoutRef.current = setTimeout(() => {
-          void handleDismiss();
-        }, 2000);
         return;
       }
 
@@ -272,19 +257,27 @@ export function SupportModal({
   const content = useMemo(() => {
     if (thankYouMessage) {
       return (
-        <View style={styles.centerState}>
-          <View
-            style={[
-              styles.centerIcon,
-              { backgroundColor: colors.surfaceMuted },
-            ]}
-          >
-            <Feather name="heart" size={26} color={colors.accent} />
+        <View style={styles.thankYouScreen}>
+          <View style={styles.thankYouCenter}>
+            <View style={styles.heartGlowOuter}>
+              <View style={styles.heartGlowInner}>
+                <Feather name="heart" size={38} color="#FF4D5A" />
+              </View>
+            </View>
+            <Text style={styles.thankYouTitle}>{tr("support_modal_thank_you")}</Text>
+            <Text style={styles.thankYouBody}>
+              {thankYouMessage}
+            </Text>
           </View>
-          <Text style={[styles.title, { color: colors.text }]}>{tr("support_modal_thank_you")}</Text>
-          <Text style={[styles.subtitle, { color: colors.textMuted }]}>
-            {thankYouMessage}
-          </Text>
+          <View style={styles.thankYouFooter}>
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => void handleDismiss()}
+              style={styles.continueButton}
+            >
+              <Text style={styles.continueButtonText}>{tr("support_modal_continue")}</Text>
+            </Pressable>
+          </View>
         </View>
       );
     }
@@ -712,20 +705,26 @@ export function SupportModal({
             sheetStyle,
           ]}
         >
-          <GestureDetector gesture={dragGesture}>
+          {thankYouMessage ? (
             <View style={styles.sheetContent}>
-              <FormSheetScaffold
-                title={tr("support_modal_title")}
-                backgroundColor={colors.surface}
-                titleColor={colors.text}
-                closeColor={colors.textMuted}
-                handleColor={colors.textSoft}
-                onClose={dismissWithAnimation}
-              >
-                {content}
-              </FormSheetScaffold>
+              {content}
             </View>
-          </GestureDetector>
+          ) : (
+            <GestureDetector gesture={dragGesture}>
+              <View style={styles.sheetContent}>
+                <FormSheetScaffold
+                  title={tr("support_modal_title")}
+                  backgroundColor={colors.surface}
+                  titleColor={colors.text}
+                  closeColor={colors.textMuted}
+                  handleColor={colors.textSoft}
+                  onClose={dismissWithAnimation}
+                >
+                  {content}
+                </FormSheetScaffold>
+              </View>
+            </GestureDetector>
+          )}
         </Animated.View>
       </View>
     </Modal>
@@ -1004,5 +1003,80 @@ const styles = StyleSheet.create({
   },
   dimmedAction: {
     opacity: 0.55,
+  },
+  thankYouScreen: {
+    flex: 1,
+    backgroundColor: "#000000",
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    overflow: "hidden",
+  },
+  thankYouCenter: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 32,
+    gap: 16,
+  },
+  heartGlowOuter: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: "rgba(255, 50, 60, 0.18)",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 8,
+    ...Platform.select({
+      ios: {
+        shadowColor: "#FF3244",
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.45,
+        shadowRadius: 32,
+      },
+      android: {
+        elevation: 12,
+      },
+    }),
+  },
+  heartGlowInner: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "rgba(255, 50, 60, 0.28)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  thankYouTitle: {
+    fontFamily: "ReadexPro-Bold",
+    fontSize: 28,
+    lineHeight: 36,
+    color: "#FFFFFF",
+    textAlign: "center",
+  },
+  thankYouBody: {
+    fontFamily: "ReadexPro-Regular",
+    fontSize: 16,
+    lineHeight: 24,
+    color: "rgba(255, 255, 255, 0.65)",
+    textAlign: "center",
+    maxWidth: 300,
+  },
+  thankYouFooter: {
+    paddingHorizontal: 24,
+    paddingBottom: Platform.OS === "ios" ? 44 : 28,
+    paddingTop: 12,
+    backgroundColor: "#000000",
+  },
+  continueButton: {
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "#2196F3",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  continueButtonText: {
+    fontFamily: "ReadexPro-Bold",
+    fontSize: 17,
+    color: "#FFFFFF",
   },
 });

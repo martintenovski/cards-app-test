@@ -8,10 +8,7 @@
     "icon": "./assets/icon.png",
     "backgroundColor": "#1C1E21",
     "splash": {
-      "image": "./assets/ios-logo.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#1C1E21",
-      "imageWidth": 88
+      "backgroundColor": "#1C1E21"
     },
     "userInterfaceStyle": "automatic",
     "plugins": [
@@ -38,7 +35,8 @@
           },
           "android": {
             "enableProguardInReleaseBuilds": true,
-            "enableShrinkResourcesInReleaseBuilds": true
+            "enableShrinkResourcesInReleaseBuilds": true,
+            "enableMinifyInReleaseBuilds": true
           }
         }
       ],
@@ -57,7 +55,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/ios-logo.png",
+          "image": "./assets/splash-logo.png",
           "resizeMode": "contain",
           "backgroundColor": "#1C1E21",
           "imageWidth": 88
@@ -67,8 +65,8 @@
     "ios": {
       "icon": "./assets/ios-logo.png",
       "supportsTablet": true,
-      "buildNumber": "29",
-      "bundleIdentifier": "com.tenovski.cardsapp",
+      "buildNumber": "30",
+      "bundleIdentifier": "com.bearacle.pocketid",
       "infoPlist": {
         "NSCameraUsageDescription": "Allow Pocket ID to use the camera so you can scan cards and documents into editable drafts.",
         "NSUserNotificationsUsageDescription": "Pocket ID uses notifications to remind you before cards and documents expire.",
@@ -77,20 +75,14 @@
     },
     "android": {
       "icon": "./assets/droid-foreground.png",
-      "splash": {
-        "image": "./assets/ios-logo.png",
-        "resizeMode": "contain",
-        "backgroundColor": "#1C1E21",
-        "imageWidth": 200
-      },
       "adaptiveIcon": {
         "foregroundImage": "./assets/droid-foreground.png",
         "backgroundImage": "./assets/droid-icon-background.png",
         "monochromeImage": "./assets/droid-monochrome.png"
       },
-      "versionCode": 68,
+      "versionCode": 69,
       "predictiveBackGestureEnabled": false,
-      "package": "com.tenovski.cardsapp",
+      "package": "com.bearacle.pocketid",
       "permissions": [
         "android.permission.POST_NOTIFICATIONS"
       ]
@@ -109,6 +101,7 @@
       "eas": {
         "projectId": "b468596e-d8da-4ed6-b9aa-82ff11ef49d5"
       }
-    }
+    },
+    "owner": "tenovski"
   }
 }

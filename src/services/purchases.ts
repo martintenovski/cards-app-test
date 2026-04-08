@@ -176,12 +176,12 @@ function isLikelyRevenueCatConfigurationError(error: unknown) {
 function getBundleIdentifier() {
   if (Platform.OS === "ios") {
     return (
-      Constants.expoConfig?.ios?.bundleIdentifier ?? "com.tenovski.cardsapp"
+      Constants.expoConfig?.ios?.bundleIdentifier ?? "com.bearacle.pocketid"
     );
   }
 
   if (Platform.OS === "android") {
-    return Constants.expoConfig?.android?.package ?? "com.tenovski.cardsapp";
+    return Constants.expoConfig?.android?.package ?? "com.bearacle.pocketid";
   }
 
   return "unknown";
